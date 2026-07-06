@@ -1,6 +1,7 @@
 import { EmptyProducts } from '@/components/marketing/empty-products';
 import { HeroSection } from '@/components/marketing/hero-section';
 import { SectionHeading } from '@/components/marketing/section-heading';
+import { ChristmasSignature } from '@/components/marketing/christmas-signature';
 import { ProductCard } from '@/features/catalog/components/product-card';
 import { listFeaturedProducts } from '@/lib/repositories/catalog.repository';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
@@ -15,12 +16,13 @@ export default async function HomePage() {
     <main className="min-h-screen bg-background px-5 py-8 text-foreground md:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-16">
         <HeroSection siteName={settings.siteName} />
+        <ChristmasSignature />
 
         <section id="collections" className="grid gap-4 md:grid-cols-3">
           {[
-            ['Famille', 'Des ensembles coordonnés pour les photos, soirées et matins doux.'],
-            ['Femme', 'Des coupes confortables avec une finition élégante.'],
-            ['Homme', 'Des pyjamas simples, propres et faciles à offrir.'],
+            ['Famille', 'Des ensembles coordonnes pour les photos, soirees et matins doux.'],
+            ['Femme', 'Des coupes confortables avec une finition elegante.'],
+            ['Homme', 'Des pyjamas simples, propres et faciles a offrir.'],
           ].map(([title, description]) => (
             <article key={title} className="rounded-[2rem] border border-brand-primary/10 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-primary/70">
@@ -34,9 +36,9 @@ export default async function HomePage() {
 
         <section id="vedettes" className="space-y-8">
           <SectionHeading
-            eyebrow="Sélection"
-            title="Les modèles à mettre en avant"
-            description="Cette section est déjà branchée sur Supabase. Le back-office contrôlera les produits, les photos, les prix et le stock."
+            eyebrow="Selection"
+            title="Les modeles a mettre en avant"
+            description="Cette section est deja branchee sur Supabase. Le back-office controlera les produits, les photos, les prix et le stock."
           />
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -57,9 +59,9 @@ export default async function HomePage() {
               </h2>
             </div>
             <div className="rounded-[2rem] bg-white/10 p-6 text-sm leading-7 text-white/80">
-              <p>1. Le client choisit taille, couleur et quantité.</p>
-              <p>2. Le panier calcule le total et prépare le message.</p>
-              <p>3. WhatsApp reçoit la commande avec références, stock et prix.</p>
+              <p>1. Le client choisit taille, couleur et quantite.</p>
+              <p>2. Le panier calcule le total et prepare le message.</p>
+              <p>3. WhatsApp recoit la commande avec references, stock et prix.</p>
             </div>
           </div>
         </section>
