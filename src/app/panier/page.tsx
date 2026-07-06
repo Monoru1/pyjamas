@@ -1,7 +1,11 @@
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
+import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
+import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
-export default function CartPage() {
+export default async function CartPage() {
+  const settings = await getStoreSettings();
+
   return (
     <main className="min-h-screen bg-background px-5 py-10 text-foreground md:px-8">
       <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_360px]">
@@ -12,8 +16,9 @@ export default function CartPage() {
           </div>
           <CartLines />
         </section>
-        <aside>
+        <aside className="space-y-4">
           <CartSummary />
+          <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
       </div>
     </main>
