@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ChristmasClickEffects } from '@/components/motion/christmas-click-effects';
 import { FestiveMotionLayer } from '@/components/motion/festive-motion-layer';
 import { Footer } from '@/components/site/footer';
 import { TopNav } from '@/components/site/top-nav';
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="fr">
       <body>
         <FestiveMotionLayer />
+        <ChristmasClickEffects />
         <TopNav />
         {children}
         <Footer />
