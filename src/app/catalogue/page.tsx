@@ -1,5 +1,5 @@
 import { SectionHeading } from '@/components/marketing/section-heading';
-import { ProductGrid } from '@/features/catalog/components/product-grid';
+import { CatalogueExperience } from '@/features/catalog/components/catalogue-experience';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
 export default async function CataloguePage() {
@@ -10,10 +10,10 @@ export default async function CataloguePage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-10">
         <SectionHeading
           eyebrow="Catalogue"
-          title="Tous les pyjamas disponibles"
-          description="Cette page affichera le catalogue complet avec filtres par collection, taille, couleur et stock."
+          title="Selection Noel premium"
+          description="Filtrez par collection, disponibilite et nouveaute. Le catalogue reste branche sur Supabase et pret pour le back-office."
         />
-        <ProductGrid products={products} />
+        <CatalogueExperience products={products} />
       </div>
     </main>
   );
