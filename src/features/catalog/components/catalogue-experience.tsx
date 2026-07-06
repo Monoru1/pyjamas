@@ -16,13 +16,13 @@ const filters = [
   { key: 'couple', label: 'Couple' },
   { key: 'enfant', label: 'Enfant' },
   { key: 'new', label: 'Nouveautes' },
-  { key: 'available', label: 'En stock' },
+  { key: 'available', label: 'Disponibles' },
 ];
 
 const sorts = [
   { key: 'featured', label: 'Selection' },
-  { key: 'price-asc', label: 'Prix croissant' },
-  { key: 'price-desc', label: 'Prix decroissant' },
+  { key: 'price-asc', label: 'Prix doux' },
+  { key: 'price-desc', label: 'Pieces signature' },
   { key: 'new', label: 'Nouveautes' },
 ];
 
@@ -52,7 +52,7 @@ export function CatalogueExperience({ products }: CatalogueExperienceProps) {
 
   return (
     <section className="space-y-8">
-      <div className="rounded-[2rem] border border-brand-primary/10 bg-white/75 p-4 shadow-sm backdrop-blur md:p-5">
+      <div className="rounded-[2.25rem] border border-brand-primary/10 bg-white/75 p-4 shadow-[0_24px_80px_rgba(80,34,28,0.08)] backdrop-blur md:p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {filters.map((item) => (
@@ -60,10 +60,10 @@ export function CatalogueExperience({ products }: CatalogueExperienceProps) {
                 key={item.key}
                 type="button"
                 onClick={() => setFilter(item.key)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition duration-300 ${
                   filter === item.key
-                    ? 'bg-brand-primary text-white shadow-sm'
-                    : 'bg-brand-cream text-foreground/70 hover:text-brand-primary'
+                    ? 'bg-brand-primary text-white shadow-[0_14px_34px_rgba(143,20,40,0.22)]'
+                    : 'bg-brand-cream text-foreground/70 hover:-translate-y-0.5 hover:text-brand-primary'
                 }`}
               >
                 {item.label}
@@ -72,7 +72,7 @@ export function CatalogueExperience({ products }: CatalogueExperienceProps) {
           </div>
 
           <label className="flex items-center justify-between gap-3 rounded-full bg-brand-cream px-4 py-2 text-sm font-semibold text-foreground/70 lg:min-w-64">
-            Trier
+            Ambiance
             <select value={sort} onChange={(event) => setSort(event.target.value)} className="bg-transparent text-brand-primary outline-none">
               {sorts.map((item) => (
                 <option key={item.key} value={item.key}>
@@ -85,8 +85,8 @@ export function CatalogueExperience({ products }: CatalogueExperienceProps) {
       </div>
 
       <div className="flex items-center justify-between text-sm text-foreground/60">
-        <p>{visibleProducts.length} modele(s)</p>
-        <p>Noel premium · stock visible · commande WhatsApp</p>
+        <p>{visibleProducts.length} merveille(s) a offrir</p>
+        <p className="hidden md:block">Cadeaux doux · Couleurs de fete · Matins chaleureux</p>
       </div>
 
       <ProductGrid products={visibleProducts} />
