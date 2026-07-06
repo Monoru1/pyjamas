@@ -14,7 +14,9 @@ export interface StoreSettings {
   };
 }
 
-function asRecord(value: Json): Record<string, Json> {
+type JsonRecord = Record<string, Json | undefined>;
+
+function asRecord(value: Json): JsonRecord {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value;
   }
