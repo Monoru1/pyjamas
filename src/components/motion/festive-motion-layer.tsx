@@ -3,6 +3,14 @@ export function FestiveMotionLayer() {
     <>
       <div className="motion-aurora" aria-hidden="true" />
       <div className="motion-snow" aria-hidden="true" />
+      <div className="motion-trees" aria-hidden="true">
+        <span>🎄</span>
+        <span>🌲</span>
+        <span>🎄</span>
+        <span>🌲</span>
+        <span>🎄</span>
+        <span>🌲</span>
+      </div>
       <div className="motion-glints" aria-hidden="true">
         <span />
         <span />
@@ -37,6 +45,30 @@ export function FestiveMotionLayer() {
           background-size: 90px 90px, 150px 150px, 240px 240px;
           animation: snow-fall 28s linear infinite;
         }
+
+        .motion-trees {
+          pointer-events: none;
+          position: fixed;
+          inset: 0;
+          z-index: 62;
+          overflow: hidden;
+        }
+
+        .motion-trees span {
+          position: absolute;
+          top: -4rem;
+          font-size: clamp(1rem, 1.7vw, 1.75rem);
+          opacity: .72;
+          filter: drop-shadow(0 10px 22px rgba(15,59,46,.18));
+          animation: tree-fall 18s linear infinite;
+          will-change: transform, opacity;
+        }
+        .motion-trees span:nth-child(1) { left: 8%; animation-delay: 0s; animation-duration: 19s; }
+        .motion-trees span:nth-child(2) { left: 22%; animation-delay: 5s; animation-duration: 23s; }
+        .motion-trees span:nth-child(3) { left: 41%; animation-delay: 2s; animation-duration: 20s; }
+        .motion-trees span:nth-child(4) { left: 61%; animation-delay: 8s; animation-duration: 24s; }
+        .motion-trees span:nth-child(5) { left: 78%; animation-delay: 3s; animation-duration: 21s; }
+        .motion-trees span:nth-child(6) { left: 91%; animation-delay: 10s; animation-duration: 25s; }
 
         .motion-glints {
           pointer-events: none;
@@ -98,6 +130,12 @@ export function FestiveMotionLayer() {
           from { background-position: 0 -100px, 0 -160px, 0 -260px; }
           to { background-position: 70px 320px, -90px 360px, 120px 520px; }
         }
+        @keyframes tree-fall {
+          0% { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(0deg); }
+          10% { opacity: .72; }
+          90% { opacity: .72; }
+          100% { opacity: 0; transform: translate3d(34px, 112vh, 0) rotate(48deg); }
+        }
         @keyframes glint {
           0%, 72%, 100% { opacity: 0; transform: scale(.55) rotate(0deg); }
           80% { opacity: .95; transform: scale(1.55) rotate(25deg); }
@@ -115,6 +153,7 @@ export function FestiveMotionLayer() {
         @media (prefers-reduced-motion: reduce) {
           .motion-aurora,
           .motion-snow,
+          .motion-trees span,
           .motion-glints span,
           .page-reveal,
           .stagger-a,
