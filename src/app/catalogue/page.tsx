@@ -10,8 +10,8 @@ export default async function CataloguePage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-10">
         <SectionHeading
           eyebrow="Catalogue"
-          title="Selection Noel premium"
-          description="Des pieces douces, lumineuses et pretes a offrir pour transformer chaque matin de fete en souvenir."
+          title="Sélection Noël premium"
+          description="Des pièces douces, lumineuses et prêtes à offrir pour transformer chaque matin de fête en souvenir."
         />
         <CatalogueExperience products={products} />
       </div>
