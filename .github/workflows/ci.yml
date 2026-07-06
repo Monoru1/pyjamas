@@ -13,15 +13,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Bootstrap guard
+      - name: Bootstrap status
+        if: ${{ hashFiles('package-lock.json') == '' }}
         run: |
-          if [ ! -f package-lock.json ]; then
-            echo "package-lock.json is not committed yet."
-            echo "Skipping Node quality gates during repository bootstrap."
-            echo "Run npm install locally, commit package-lock.json, then CI will enforce lint/typecheck/tests."
-            exit 0
-          fi
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test -- --run --passWithNoTests
+          echo "package-lock.json is not committed yet."
+          echo "Skipping Node quality gates during repository bootstrap."
+          echo "Run npm install locally, commit package-lock.json, then CI will enforce lint/typecheck/tests."
+      - name: Install dependencies
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm ci
+      - name: Lint
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm run lint
+      - name: Typecheck
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm run typecheck
+      - name: Test
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm test -- --run --passWithNoTests
