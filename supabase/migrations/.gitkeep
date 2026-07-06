@@ -1,0 +1,7 @@
+# Migrations Supabase
+
+La baseline fidèle doit être générée par `npx supabase db pull` depuis le projet `pukvrerdloudfiphomsj`.
+
+Je n'ai pas créé une fausse baseline manuelle ici pour éviter de transformer l'état réel de la base en reconstruction approximative.
+
+Prochaine règle : toute correction SQL après baseline passe par une migration versionnée.
