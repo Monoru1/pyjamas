@@ -1,7 +1,7 @@
 const items = [
-  ['Stock visible', 'Les tailles et couleurs disponibles seront affichées clairement.'],
-  ['Commande rapide', 'Le panier prépare un message de commande structuré.'],
-  ['Gestion boutique', 'Le catalogue reste piloté par le back-office.'],
+  ['Stock visible', 'Tailles et couleurs clairement indiquées avant de commander.'],
+  ['Commande rapide', 'Un panier simple, prêt à devenir un message WhatsApp soigné.'],
+  ['Esprit cadeau', 'Des pièces pensées pour offrir, partager et créer un souvenir.'],
 ];
 
 export function TrustStrip() {
