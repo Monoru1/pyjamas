@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { CatalogProduct } from '@/features/catalog/types';
 import { formatPrice } from '@/lib/utils/money';
 
@@ -7,18 +8,17 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   return (
-    <article className="group overflow-hidden rounded-[2rem] border border-brand-primary/10 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+    <Link
+      href={`/catalogue/${product.slug}`}
+      className="group block overflow-hidden rounded-[2rem] border border-brand-primary/10 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+    >
       <div className="flex aspect-[4/5] items-center justify-center bg-brand-soft/60 p-8">
         {product.primaryImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.primaryImageUrl}
-            alt={product.nameFr}
-            className="h-full w-full rounded-[1.5rem] object-cover"
-          />
+          <img src={product.primaryImageUrl} alt={product.nameFr} className="h-full w-full rounded-[1.5rem] object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center rounded-[1.5rem] border border-dashed border-brand-primary/20 text-center text-sm text-brand-primary/60">
-            Photo produit à ajouter
+            Photo produit a ajouter
           </div>
         )}
       </div>
@@ -38,9 +38,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <h3 className="text-xl font-semibold leading-snug">{product.nameFr}</h3>
         <p className="text-sm text-foreground/60">Stock total : {product.totalStock}</p>
         <p className="text-lg font-semibold text-brand-primary">
-          Dès {formatPrice(product.basePrice, product.currencyCode)}
+          Des {formatPrice(product.basePrice, product.currencyCode)}
         </p>
       </div>
-    </article>
+    </Link>
   );
 }
