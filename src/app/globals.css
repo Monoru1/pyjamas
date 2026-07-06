@@ -20,6 +20,8 @@
   --color-brand-evergreen: var(--brand-evergreen);
   --color-brand-cream: var(--brand-cream);
   --color-brand-rose: var(--brand-rose);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
 }
 
 * { box-sizing: border-box; }
@@ -31,8 +33,13 @@ body {
     radial-gradient(circle at 88% 0%, rgba(143,20,40,.16), transparent 30rem),
     linear-gradient(180deg, #fffaf3 0%, #fff6ec 44%, #fff1e7 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
 }
+
+h1, h2, h3 {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+}
+
 ::selection { background: var(--brand-primary); color: white; }
 
 .snow-field {
