@@ -11,7 +11,7 @@ export default async function CataloguePage() {
         <SectionHeading
           eyebrow="Catalogue"
           title="Selection Noel premium"
-          description="Filtrez par collection, disponibilite et nouveaute. Le catalogue reste branche sur Supabase et pret pour le back-office."
+          description="Des pieces douces, lumineuses et pretes a offrir pour transformer chaque matin de fete en souvenir."
         />
         <CatalogueExperience products={products} />
       </div>
