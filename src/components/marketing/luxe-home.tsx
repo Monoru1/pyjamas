@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { EmptyProducts } from '@/components/marketing/empty-products';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { ProductCard } from '@/features/catalog/components/product-card';
@@ -31,7 +32,14 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
       <section className="relative px-4 py-8 sm:px-5 md:px-8 md:py-14">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
           <div className="relative overflow-hidden rounded-[2.5rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] md:rounded-[3.5rem]">
-            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url(${heroImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            <Image
+              src={heroImage}
+              alt="Ambiance de Noël chaleureuse"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 58vw"
+              className="object-cover opacity-30"
+            />
             <div className="absolute inset-0 bg-gradient-to-br from-brand-evergreen via-brand-evergreen/92 to-brand-primary/82" />
             <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-accent/25 blur-3xl" />
             <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-brand-primary/40 blur-3xl" />
@@ -74,7 +82,13 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
 
           <div className="grid gap-5">
             <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 bg-brand-cream shadow-[0_30px_90px_rgba(80,34,28,0.12)] md:rounded-[3rem]">
-              <div className="absolute inset-0" style={{ backgroundImage: `url(${giftImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+              <Image
+                src={giftImage}
+                alt="Paquets cadeaux de Noël"
+                fill
+                sizes="(max-width: 1024px) 100vw, 42vw"
+                className="object-cover"
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-brand-evergreen/86 via-brand-evergreen/16 to-transparent" />
               <div className="absolute inset-x-5 bottom-5 rounded-[2rem] border border-white/15 bg-white/12 p-6 text-white backdrop-blur-md">
                 <p className="text-xs font-semibold uppercase tracking-[0.32em] text-brand-accent">Gift season</p>
@@ -101,7 +115,15 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
             <p className="text-xs font-semibold uppercase tracking-[0.34em] text-brand-accent">Rituel de fête</p>
             <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Un matin de Noël en un clic.</h2>
           </div>
-          <div className="min-h-[320px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 shadow-[0_30px_90px_rgba(80,34,28,0.10)]" style={{ backgroundImage: `url(${loungeImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+          <div className="relative min-h-[320px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 shadow-[0_30px_90px_rgba(80,34,28,0.10)]">
+            <Image
+              src={loungeImage}
+              alt="Salon chaleureux le matin de Noël"
+              fill
+              sizes="(max-width: 1024px) 100vw, 60vw"
+              className="object-cover"
+            />
+          </div>
         </div>
       </section>
 
