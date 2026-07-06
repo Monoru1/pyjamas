@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Footer } from '@/components/site/footer';
+import { TopNav } from '@/components/site/top-nav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,6 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="fr">
       <body>
+        <TopNav />
         {children}
         <Footer />
       </body>
