@@ -1,0 +1,14 @@
+project_id = "maison-des-pyjamas"
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[storage.buckets.product-images]
+public = true
+
+[storage.buckets.site-assets]
+public = true
