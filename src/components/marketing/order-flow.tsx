@@ -1,7 +1,7 @@
 const steps = [
-  ['1', 'Choisir', 'Le client selectionne le modele, la taille, la couleur et la quantite.'],
-  ['2', 'Verifier', 'Le panier calcule le total et garde les references produit.'],
-  ['3', 'Envoyer', 'La commande est envoyee sur WhatsApp avec un message propre.'],
+  ['1', 'Choisir', 'Sélectionnez le modèle, la taille, la couleur et la quantité.'],
+  ['2', 'Composer', 'Le panier prépare une commande claire, avec références et total.'],
+  ['3', 'Envoyer', 'WhatsApp s’ouvre avec un message prêt à valider avec la boutique.'],
 ];
 
 export function OrderFlow() {
@@ -11,10 +11,10 @@ export function OrderFlow() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70">Commande</p>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight md:text-5xl">
-            Un parcours simple jusqu au message WhatsApp.
+            Un parcours fluide jusqu’au message WhatsApp.
           </h2>
           <p className="mt-5 text-sm leading-7 text-white/75">
-            Le front doit rester clair. Le client voit le stock, ajoute au panier et envoie une commande lisible.
+            Tout reste simple : choisir, vérifier, envoyer. La boutique s’occupe du reste.
           </p>
         </div>
 
