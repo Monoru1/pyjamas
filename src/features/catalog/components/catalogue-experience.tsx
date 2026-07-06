@@ -15,15 +15,15 @@ const filters = [
   { key: 'homme', label: 'Homme' },
   { key: 'couple', label: 'Couple' },
   { key: 'enfant', label: 'Enfant' },
-  { key: 'new', label: 'Nouveautes' },
+  { key: 'new', label: 'Nouveautés' },
   { key: 'available', label: 'Disponibles' },
 ];
 
 const sorts = [
-  { key: 'featured', label: 'Selection' },
+  { key: 'featured', label: 'Sélection' },
   { key: 'price-asc', label: 'Prix doux' },
-  { key: 'price-desc', label: 'Pieces signature' },
-  { key: 'new', label: 'Nouveautes' },
+  { key: 'price-desc', label: 'Pièces signature' },
+  { key: 'new', label: 'Nouveautés' },
 ];
 
 function matchesFilter(product: CatalogProduct, filter: string) {
@@ -85,8 +85,8 @@ export function CatalogueExperience({ products }: CatalogueExperienceProps) {
       </div>
 
       <div className="flex items-center justify-between text-sm text-foreground/60">
-        <p>{visibleProducts.length} merveille(s) a offrir</p>
-        <p className="hidden md:block">Cadeaux doux · Couleurs de fete · Matins chaleureux</p>
+        <p>{visibleProducts.length} merveille(s) à offrir</p>
+        <p className="hidden md:block">Cadeaux doux · Couleurs de fête · Matins chaleureux</p>
       </div>
 
       <ProductGrid products={visibleProducts} />
