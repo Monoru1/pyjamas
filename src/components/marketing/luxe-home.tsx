@@ -13,8 +13,8 @@ const giftImage = 'https://images.unsplash.com/photo-1512909006721-3d6018887383?
 const loungeImage = 'https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=1000&q=85';
 
 const collections = [
-  ['Famille', 'Le pyjama coordonne pour les photos, les cadeaux et les matins de fete.'],
-  ['Elle', 'Textures douces, coupes elegantes, details qui font cadeau.'],
+  ['Famille', 'Le pyjama coordonné pour les photos, les cadeaux et les matins de fête.'],
+  ['Elle', 'Textures douces, coupes élégantes, détails qui font cadeau.'],
   ['Lui', 'Confort sobre, couleurs profondes et finition premium.'],
 ];
 
@@ -40,7 +40,7 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
               <div className="flex items-center justify-between gap-4">
                 <BrandLogo compact />
                 <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-brand-accent backdrop-blur">
-                  Noel 2026
+                  Noël 2026
                 </span>
               </div>
 
@@ -50,11 +50,11 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
                   Offrir la chaleur. Porter le luxe.
                 </h1>
                 <p className="mt-8 max-w-2xl text-base leading-8 text-white/76 md:text-xl">
-                  Une selection de pyjamas de Noel pensee comme un cadeau : douce, elegante, rapide a commander et impossible a oublier.
+                  Une sélection de pyjamas de Noël pensée comme un cadeau : douce, élégante, rapide à commander et impossible à oublier.
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                   <a href="#vedettes" className="rounded-full bg-brand-accent px-7 py-4 text-center text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.32)]">
-                    Voir la selection
+                    Voir la sélection
                   </a>
                   <a href="/catalogue" className="rounded-full border border-white/20 bg-white/10 px-7 py-4 text-center text-sm font-semibold text-white backdrop-blur">
                     Catalogue complet
@@ -98,8 +98,8 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
       <section className="px-4 pb-8 sm:px-5 md:px-8">
         <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div className="rounded-[2.5rem] bg-brand-primary p-8 text-white shadow-[0_30px_90px_rgba(143,20,40,0.22)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-brand-accent">Rituel de fete</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Un matin de Noel en un clic.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.34em] text-brand-accent">Rituel de fête</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Un matin de Noël en un clic.</h2>
           </div>
           <div className="min-h-[320px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 shadow-[0_30px_90px_rgba(80,34,28,0.10)]" style={{ backgroundImage: `url(${loungeImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
         </div>
@@ -109,9 +109,9 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-primary">Selection cadeau</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-primary">Sélection cadeau</p>
               <h2 className="mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.04em] md:text-6xl">
-                Les pieces qui doivent faire ouvrir le panier.
+                Les pièces qui doivent faire ouvrir le panier.
               </h2>
             </div>
             <a href="/catalogue" className="rounded-full border border-brand-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-brand-primary">
