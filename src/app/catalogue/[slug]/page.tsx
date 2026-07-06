@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { ProductBenefits } from '@/features/catalog/components/product-benefits';
 import { ProductGallery } from '@/features/catalog/components/product-gallery';
 import { VariantPicker } from '@/features/catalog/components/variant-picker';
 import { getProductBySlug } from '@/lib/repositories/catalog.repository';
@@ -16,23 +17,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <main className="min-h-screen bg-background px-5 py-10 text-foreground md:px-8">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.92fr_1.08fr]">
         <ProductGallery product={product} />
 
         <section className="space-y-8">
-          <div className="space-y-4">
+          <div className="rounded-[3rem] border border-brand-primary/10 bg-white/70 p-6 shadow-[0_30px_90px_rgba(80,34,28,0.10)] backdrop-blur md:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">
-              {product.categoryNameFr ?? 'Catalogue'}
+              {product.categoryNameFr ?? 'Edition Noel'}
             </p>
-            <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">{product.nameFr}</h1>
+            <h1 className="mt-5 text-5xl font-semibold leading-[0.92] tracking-[-0.06em] md:text-7xl">
+              {product.nameFr}
+            </h1>
             {product.descriptionFr ? (
-              <p className="max-w-2xl text-base leading-8 text-foreground/65">{product.descriptionFr}</p>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-foreground/65">{product.descriptionFr}</p>
             ) : null}
-            <p className="text-2xl font-semibold text-brand-primary">
-              Dès {formatPrice(product.basePrice, product.currencyCode)}
-            </p>
+            <div className="mt-8 flex flex-wrap items-end gap-4">
+              <p className="text-3xl font-semibold text-brand-primary">
+                {formatPrice(product.basePrice, product.currencyCode)}
+              </p>
+              {product.compareAtPrice ? (
+                <p className="pb-1 text-lg text-foreground/40 line-through">
+                  {formatPrice(product.compareAtPrice, product.currencyCode)}
+                </p>
+              ) : null}
+            </div>
           </div>
 
+          <ProductBenefits />
           <VariantPicker product={product} />
         </section>
       </div>
