@@ -1,6 +1,7 @@
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
 import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
+import { CustomerForm } from '@/features/checkout/components/customer-form';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
 export default async function CartPage() {
@@ -17,6 +18,7 @@ export default async function CartPage() {
           <CartLines />
         </section>
         <aside className="space-y-4">
+          <CustomerForm />
           <CartSummary />
           <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
