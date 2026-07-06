@@ -2,6 +2,7 @@
 
 import { buildWhatsAppMessage, buildWhatsAppUrl } from '@/features/cart/whatsapp.service';
 import { useCartStore } from '@/features/cart/cart.store';
+import { useCheckoutCustomerStore } from '@/features/checkout/customer-form.store';
 
 interface WhatsAppCheckoutButtonProps {
   phoneNumber: string;
@@ -9,14 +10,17 @@ interface WhatsAppCheckoutButtonProps {
 
 export function WhatsAppCheckoutButton({ phoneNumber }: WhatsAppCheckoutButtonProps) {
   const lines = useCartStore((state) => state.lines);
+  const name = useCheckoutCustomerStore((state) => state.name);
+  const customerPhone = useCheckoutCustomerStore((state) => state.phone);
+  const comment = useCheckoutCustomerStore((state) => state.comment);
   const disabled = lines.length === 0 || !phoneNumber;
 
   function handleCheckout() {
     if (disabled) return;
     const message = buildWhatsAppMessage(lines, {
-      name: 'Client boutique',
-      phone: null,
-      comment: null,
+      name: name || 'Client boutique',
+      phone: customerPhone || null,
+      comment: comment || null,
     });
     window.open(buildWhatsAppUrl(phoneNumber, message), '_blank', 'noopener,noreferrer');
   }
