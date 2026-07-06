@@ -85,6 +85,11 @@ export function FestiveMotionLayer() {
         }
         .magnetic-cta:hover::before { transform: translateX(120%); }
 
+        .page-reveal { animation: page-reveal .85s cubic-bezier(.16,.9,.2,1) both; }
+        .stagger-a { animation: item-rise .85s cubic-bezier(.16,.9,.2,1) both; animation-delay: .08s; }
+        .stagger-b { animation: item-rise .85s cubic-bezier(.16,.9,.2,1) both; animation-delay: .18s; }
+        .stagger-c { animation: item-rise .85s cubic-bezier(.16,.9,.2,1) both; animation-delay: .28s; }
+
         @keyframes aurora-drift {
           from { transform: translate3d(-2%, -1%, 0) scale(1); }
           to { transform: translate3d(3%, 2%, 0) scale(1.08); }
@@ -98,11 +103,23 @@ export function FestiveMotionLayer() {
           80% { opacity: .95; transform: scale(1.55) rotate(25deg); }
           88% { opacity: .2; transform: scale(.9) rotate(45deg); }
         }
+        @keyframes page-reveal {
+          from { opacity: 0; transform: translateY(18px); filter: blur(8px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+        @keyframes item-rise {
+          from { opacity: 0; transform: translateY(24px) scale(.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
 
         @media (prefers-reduced-motion: reduce) {
           .motion-aurora,
           .motion-snow,
-          .motion-glints span { animation: none; }
+          .motion-glints span,
+          .page-reveal,
+          .stagger-a,
+          .stagger-b,
+          .stagger-c { animation: none; }
         }
       `}</style>
     </>
