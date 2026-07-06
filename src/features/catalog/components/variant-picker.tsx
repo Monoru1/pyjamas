@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { ProductDetails, ProductVariant } from '@/features/catalog/types';
+import { AddButton } from '@/features/cart/components/add-button';
+import type { ProductDetails } from '@/features/catalog/types';
 import { formatPrice } from '@/lib/utils/money';
 
 interface VariantPickerProps {
@@ -57,12 +58,15 @@ export function VariantPicker({ product }: VariantPickerProps) {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-brand-primary p-5 text-white">
-        <p className="text-sm text-white/70">Selection actuelle</p>
-        <p className="mt-2 text-xl font-semibold">
-          {selected.colorNameFr} - {selected.sizeLabel}
-        </p>
-        <p className="mt-1 text-sm text-white/75">{selected.sku}</p>
+      <div className="flex items-center justify-between gap-4 rounded-2xl bg-brand-primary p-5 text-white">
+        <div>
+          <p className="text-sm text-white/70">Selection actuelle</p>
+          <p className="mt-2 text-xl font-semibold">
+            {selected.colorNameFr} - {selected.sizeLabel}
+          </p>
+          <p className="mt-1 text-sm text-white/75">{selected.sku}</p>
+        </div>
+        <AddButton product={product} variant={selected} />
       </div>
     </div>
   );
