@@ -1,102 +1,84 @@
-// Partial generated types from Supabase project pukvrerdloudfiphomsj.
-// This file covers the storefront/catalog/checkout foundation.
-// Replace with the full generated output after the official baseline migration is committed.
+import type { CategoryRow, CollectionRow, ProductCatalogRow, ProductCollectionRow, ProductImageRow, ProductRow, ProductVariantRow } from './types/catalog';
+import type { CustomerRow, OrderItemRow, OrderRow } from './types/commerce';
+import type { BannerRow, FaqRow, HomepageSectionRow, TestimonialRow } from './types/cms';
+import type { CurrencyRow, DashboardSummaryRow, LanguageRow, SettingRow } from './types/reference';
+import type { AdminRole, AnalyticsEventType, DiscountType, OrderStatus } from './types/enums';
+
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+type GenericRow = Record<string, Json>;
+type Table<Row = GenericRow> = {
+  Row: Row;
+  Insert: Partial<Row>;
+  Update: Partial<Row>;
+  Relationships: [];
+};
 
 export type Database = {
   public: {
     Tables: {
-      product_variants: {
-        Row: {
-          audience: string | null;
-          color_hex: string | null;
-          color_name_en: string | null;
-          color_name_fr: string;
-          compare_at_price: number | null;
-          created_at: string;
-          id: string;
-          is_active: boolean;
-          low_stock_threshold: number;
-          price: number;
-          product_id: string;
-          size_label: string;
-          sku: string;
-          stock_quantity: number;
-          updated_at: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-      product_images: {
-        Row: {
-          alt_en: string | null;
-          alt_fr: string | null;
-          created_at: string;
-          id: string;
-          is_primary: boolean;
-          product_id: string;
-          sort_order: number;
-          url: string;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
-      settings: {
-        Row: {
-          description: string | null;
-          key: string;
-          updated_at: string;
-          value: Json;
-        };
-        Insert: never;
-        Update: never;
-        Relationships: [];
-      };
+      activity_logs: Table;
+      analytics_events: Table;
+      banners: Table<BannerRow>;
+      categories: Table<CategoryRow>;
+      collections: Table<CollectionRow>;
+      coupons: Table;
+      currencies: Table<CurrencyRow>;
+      customers: Table<CustomerRow>;
+      faq: Table<FaqRow>;
+      homepage_sections: Table<HomepageSectionRow>;
+      languages: Table<LanguageRow>;
+      order_items: Table<OrderItemRow>;
+      orders: Table<OrderRow>;
+      product_collections: Table<ProductCollectionRow>;
+      product_images: Table<ProductImageRow>;
+      product_variants: Table<ProductVariantRow>;
+      products: Table<ProductRow>;
+      profiles: Table;
+      reviews: Table;
+      settings: Table<SettingRow>;
+      test: Table;
+      testimonials: Table<TestimonialRow>;
     };
     Views: {
-      product_catalog: {
-        Row: {
-          base_price: number | null;
-          category_id: string | null;
-          category_name_en: string | null;
-          category_name_fr: string | null;
-          category_slug: string | null;
-          compare_at_price: number | null;
-          created_at: string | null;
-          currency_code: string | null;
-          deleted_at: string | null;
-          description_en: string | null;
-          description_fr: string | null;
-          id: string | null;
-          is_active: boolean | null;
-          is_featured: boolean | null;
-          is_new: boolean | null;
-          max_variant_price: number | null;
-          min_variant_price: number | null;
-          name_en: string | null;
-          name_fr: string | null;
-          primary_image_url: string | null;
-          seo_description_en: string | null;
-          seo_description_fr: string | null;
-          seo_title_en: string | null;
-          seo_title_fr: string | null;
-          slug: string | null;
-          sort_order: number | null;
-          total_stock: number | null;
-          updated_at: string | null;
-        };
-        Relationships: [];
-      };
+      dashboard_summary: { Row: DashboardSummaryRow; Relationships: [] };
+      product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      is_admin: { Args: never; Returns: boolean };
+      is_super_admin: { Args: never; Returns: boolean };
+      slugify: { Args: { input: string }; Returns: string };
+    };
     Enums: {
-      admin_role: 'super_admin' | 'admin' | 'employee';
-      analytics_event_type: 'product_view' | 'add_to_cart' | 'checkout_whatsapp' | 'collection_view';
-      discount_type: 'percentage' | 'fixed';
-      order_status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+      admin_role: AdminRole;
+      analytics_event_type: AnalyticsEventType;
+      discount_type: DiscountType;
+      order_status: OrderStatus;
     };
     CompositeTypes: Record<string, never>;
   };
 };
+
+type DefaultSchema = Database['public'];
+
+export type Tables<T extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])> =
+  (DefaultSchema['Tables'] & DefaultSchema['Views'])[T] extends { Row: infer R } ? R : never;
+
+export type TablesInsert<T extends keyof DefaultSchema['Tables']> =
+  DefaultSchema['Tables'][T] extends { Insert: infer I } ? I : never;
+
+export type TablesUpdate<T extends keyof DefaultSchema['Tables']> =
+  DefaultSchema['Tables'][T] extends { Update: infer U } ? U : never;
+
+export type Enums<T extends keyof DefaultSchema['Enums']> = DefaultSchema['Enums'][T];
+
+export const Constants = {
+  public: {
+    Enums: {
+      admin_role: ['super_admin', 'admin', 'employee'],
+      analytics_event_type: ['product_view', 'add_to_cart', 'checkout_whatsapp', 'collection_view'],
+      discount_type: ['percentage', 'fixed'],
+      order_status: ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'],
+    },
+  },
+} as const;
