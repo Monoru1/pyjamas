@@ -24,8 +24,16 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="snow-field" />
       <div className="intro-curtain">
-        <div className="rounded-full border border-white/25 px-6 py-4 text-xs font-semibold uppercase tracking-[0.35em]">
-          La Maison des Pyjamas
+        <div className="rounded-[2rem] bg-white/95 px-7 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur">
+          <Image
+            src="/brand/logo-maison-pyjamas.svg"
+            alt="La Maison des Pyjamas"
+            width={360}
+            height={152}
+            priority
+            unoptimized
+            className="h-24 w-auto object-contain md:h-32"
+          />
         </div>
       </div>
 
