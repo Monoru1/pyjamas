@@ -1,15 +1,15 @@
 const collections = [
   {
     title: 'Famille',
-    description: 'Des ensembles coordonnes pour les photos, les soirees et les matins doux.',
+    description: 'Des ensembles coordonnés pour les photos, les soirées et les matins doux.',
   },
   {
     title: 'Femme',
-    description: 'Des coupes confortables avec une finition elegante et facile a porter.',
+    description: 'Des coupes confortables avec une finition élégante et facile à porter.',
   },
   {
     title: 'Homme',
-    description: 'Des pyjamas simples, propres et faciles a offrir.',
+    description: 'Des pyjamas simples, propres et faciles à offrir.',
   },
 ];
 
