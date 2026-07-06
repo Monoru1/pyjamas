@@ -8,7 +8,8 @@ export function TopNav() {
         <Link href="/" aria-label="Accueil La Maison des Pyjamas">
           <BrandLogo />
         </Link>
-        <div className="flex items-center gap-5 text-sm font-medium text-foreground/70">
+        <div className="flex items-center gap-4 text-sm font-medium text-foreground/70 md:gap-5">
+          <Link href="/collections" className="hidden transition hover:text-brand-primary sm:inline">Collections</Link>
           <Link href="/catalogue" className="transition hover:text-brand-primary">Catalogue</Link>
           <Link href="/panier" className="rounded-full bg-brand-primary px-4 py-2 text-white transition hover:bg-brand-evergreen">Panier</Link>
         </div>
