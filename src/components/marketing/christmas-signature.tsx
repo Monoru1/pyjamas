@@ -1,7 +1,7 @@
 const features = [
-  ['01', 'Cadeaux sans stress', 'Une selection claire pour offrir vite sans perdre le cote premium.'],
-  ['02', 'Ambiance maison', 'Une direction chaude : creme, bordeaux, or doux et vert sapin.'],
-  ['03', 'Achat fluide', 'Stock visible, panier simple et commande WhatsApp structuree.'],
+  ['01', 'Cadeaux sans stress', 'Une sélection claire pour offrir vite sans perdre le côté premium.'],
+  ['02', 'Ambiance maison', 'Une direction chaude : crème, bordeaux, or doux et vert sapin.'],
+  ['03', 'Achat fluide', 'Stock visible, panier simple et commande WhatsApp structurée.'],
 ];
 
 export function ChristmasSignature() {
@@ -11,9 +11,9 @@ export function ChristmasSignature() {
       <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-brand-primary/35 blur-3xl" />
       <div className="relative grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Noel premium</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Noël premium</p>
           <h2 className="mt-5 text-4xl font-semibold tracking-tight md:text-6xl">
-            Une boutique qui doit sentir le cadeau avant meme le premier clic.
+            Une boutique qui doit sentir le cadeau avant même le premier clic.
           </h2>
         </div>
         <div className="grid gap-4">
