@@ -11,39 +11,43 @@ export function buildWhatsAppMessage(lines: CartLine[], customer: CheckoutCustom
   }
 
   const currency = lines[0]?.currency ?? 'XOF';
-  const items = lines.map((line, index) => {
-    const attributes = [
-      line.sizeLabel ? `Taille : ${line.sizeLabel}` : null,
-      line.colorName ? `Couleur : ${line.colorName}` : null,
-    ]
-      .filter(Boolean)
-      .join(' | ');
+  const separator = '━━━━━━━━━━━━━━━━━━━━';
+  const items = lines.flatMap((line, index) => {
+    const total = line.unitPrice * line.quantity;
 
     return [
       `${index + 1}. ${line.productName}`,
-      `   Réf : ${line.sku}`,
-      attributes ? `   ${attributes}` : null,
-      `   ${line.quantity} × ${formatPrice(line.unitPrice, line.currency)} = ${formatPrice(
-        line.unitPrice * line.quantity,
-        line.currency,
-      )}`,
-    ]
-      .filter(Boolean)
-      .join('\n');
+      `Réf : ${line.sku}`,
+      line.sizeLabel ? `Taille : ${line.sizeLabel}` : null,
+      line.colorName ? `Couleur : ${line.colorName}` : null,
+      `Quantité : ${line.quantity}`,
+      `Prix : ${formatPrice(line.unitPrice, line.currency)}`,
+      `Sous-total : ${formatPrice(total, line.currency)}`,
+      '',
+    ].filter(Boolean);
   });
 
   return [
-    '🛍️ *Nouvelle commande — La Maison des Pyjamas*',
+    separator,
+    '🛍️ Nouvelle commande',
+    'La Maison des Pyjamas',
+    separator,
     '',
-    `*Client :* ${customer.name.trim()}`,
-    `*Téléphone :* ${customer.phone?.trim() || '—'}`,
+    '👤 Client',
+    `Nom : ${customer.name.trim()}`,
+    `Téléphone : ${customer.phone?.trim() || '—'}`,
     '',
-    '*Articles :*',
+    separator,
+    '🎁 Articles',
     ...items,
+    separator,
+    `Total : ${formatPrice(computeSubtotal(lines), currency)}`,
+    separator,
     '',
-    `*Total : ${formatPrice(computeSubtotal(lines), currency)}*`,
+    '💬 Message client',
+    customer.comment?.trim() || '—',
     '',
-    `*Commentaire :* ${customer.comment?.trim() || '—'}`,
+    'Merci de me confirmer la disponibilité et les modalités de livraison.',
   ].join('\n');
 }
 
