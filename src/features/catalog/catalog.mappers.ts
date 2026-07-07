@@ -104,7 +104,7 @@ export function mapCatalogImage(row: ImageRow): CatalogImage {
     altFr: row.alt_fr,
     altEn: row.alt_en,
     isPrimary: row.is_primary,
-    sortOrder: row.sortOrder,
+    sortOrder: row.sort_order,
   };
 }
 
