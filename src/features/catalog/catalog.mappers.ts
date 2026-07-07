@@ -11,6 +11,7 @@ interface CatalogRow {
   category_slug: string | null;
   category_name_fr: string | null;
   category_name_en: string | null;
+  collection_slugs: string[] | null;
   base_price: number | null;
   compare_at_price: number | null;
   currency_code: string | null;
@@ -66,6 +67,7 @@ export function mapCatalogProduct(row: CatalogRow): CatalogProduct {
     categorySlug: row.category_slug,
     categoryNameFr: row.category_name_fr,
     categoryNameEn: row.category_name_en,
+    collectionSlugs: row.collection_slugs ?? [],
     basePrice: row.base_price ?? 0,
     compareAtPrice: row.compare_at_price,
     currencyCode: assertCurrency(row.currency_code),
@@ -102,7 +104,7 @@ export function mapCatalogImage(row: ImageRow): CatalogImage {
     altFr: row.alt_fr,
     altEn: row.alt_en,
     isPrimary: row.is_primary,
-    sortOrder: row.sort_order,
+    sortOrder: row.sortOrder,
   };
 }
 
