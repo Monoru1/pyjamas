@@ -5,6 +5,7 @@ const navigationLinks = [
   ['Catalogue', '/catalogue'],
   ['Accessoires', '/accessoires'],
   ['Contact', '/contact'],
+  ['Panier', '/panier'],
 ];
 
 const socialLinks = [
@@ -18,28 +19,23 @@ export function Footer() {
   return (
     <footer className="border-t border-brand-primary/10 bg-brand-cream px-5 py-14 md:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="grid gap-10 border-b border-brand-primary/10 pb-10 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
+        <div className="flex flex-col gap-8 border-b border-brand-primary/10 pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <BrandLogo />
-            <p className="mt-5 max-w-md text-sm leading-7 text-foreground/60">
-              Pyjamas, accessoires cocooning et cadeaux premium pour toute la famille.
+            <p className="mt-5 max-w-lg text-sm leading-7 text-foreground/60">
+              Pyjamas de Noël, accessoires cocooning et cadeaux premium pour des moments doux en famille.
             </p>
           </div>
 
-          <div>
-            <p className="font-semibold text-brand-evergreen">Navigation</p>
-            <div className="mt-4 grid gap-3 text-sm text-foreground/60">
+          <div className="flex flex-col gap-5 lg:items-end">
+            <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-foreground/62">
               {navigationLinks.map(([label, href]) => (
                 <a key={label} href={href} className="transition hover:text-brand-primary">
                   {label}
                 </a>
               ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="font-semibold text-brand-evergreen">Réseaux</p>
-            <div className="mt-4 grid gap-3 text-sm text-foreground/60">
+            </nav>
+            <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm text-foreground/50">
               {socialLinks.map(([label, href]) => (
                 <a key={label} href={href} target="_blank" rel="noreferrer" className="transition hover:text-brand-primary">
                   {label}
