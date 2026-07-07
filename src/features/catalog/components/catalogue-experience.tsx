@@ -38,10 +38,9 @@ function matchesFilter(product: CatalogProduct, filter: string) {
   if (filter === 'all') return true;
   if (filter === 'new') return product.isNew;
   if (filter === 'available') return product.totalStock > 0;
-  if (filter === 'accessoires') return product.categorySlug === 'accessoires';
-  if (filter === 'noel-fetes') return product.isFeatured || product.nameFr.toLowerCase().includes('noël');
+  if (product.categorySlug === filter || product.collectionSlugs.includes(filter)) return true;
 
-  const haystack = `${product.categorySlug ?? ''} ${product.categoryNameFr ?? ''} ${product.nameFr} ${product.descriptionFr ?? ''}`.toLowerCase();
+  const haystack = `${product.categoryNameFr ?? ''} ${product.nameFr} ${product.descriptionFr ?? ''}`.toLowerCase();
   return haystack.includes(filter.replace('-', ' ')) || haystack.includes(filter);
 }
 
