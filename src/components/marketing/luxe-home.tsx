@@ -9,8 +9,7 @@ interface LuxeHomeProps {
   products: CatalogProduct[];
 }
 
-const heroImage = 'https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=1400&q=85';
-const giftImage = 'https://images.unsplash.com/photo-1512909006721-3d6018887383?auto=format&fit=crop&w=1000&q=85';
+const heroImage = 'https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=1600&q=85';
 const loungeImage = 'https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=1000&q=85';
 
 const collections = [
@@ -25,93 +24,54 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
       <div className="snow-field" />
       <div className="intro-curtain">
         <div className="rounded-[2rem] bg-white/95 px-7 py-5 shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur">
-          <Image
-            src="/brand/logo-maison-pyjamas.svg"
-            alt="La Maison des Pyjamas"
-            width={360}
-            height={152}
-            priority
-            unoptimized
-            className="h-24 w-auto object-contain md:h-32"
-          />
+          <Image src="/brand/logo-maison-pyjamas.svg" alt="La Maison des Pyjamas" width={360} height={152} priority unoptimized className="h-24 w-auto object-contain md:h-32" />
         </div>
       </div>
 
-      <section className="relative px-4 py-8 sm:px-5 md:px-8 md:py-14">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] md:rounded-[3.5rem]">
+      <section className="relative px-4 py-8 sm:px-5 md:px-8 md:py-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="relative min-h-[680px] overflow-hidden rounded-[2.5rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] md:rounded-[3.5rem] lg:min-h-[760px]">
             <Image
               src={heroImage}
-              alt="Ambiance de Noël chaleureuse"
+              alt="Famille en pyjamas de Noël"
               fill
               priority
-              sizes="(max-width: 1024px) 100vw, 58vw"
-              className="object-cover opacity-30"
+              sizes="100vw"
+              className="object-cover object-center opacity-80"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-evergreen via-brand-evergreen/92 to-brand-primary/82" />
-            <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-accent/25 blur-3xl" />
-            <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-brand-primary/40 blur-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-evergreen via-brand-evergreen/82 to-brand-evergreen/8" />
+            <div className="absolute inset-0 bg-gradient-to-t from-brand-evergreen/30 via-transparent to-transparent" />
+            <div className="absolute -bottom-28 -left-20 h-96 w-96 rounded-full bg-brand-primary/35 blur-3xl" />
 
-            <div className="relative flex min-h-[620px] flex-col justify-between gap-12 p-7 sm:p-9 md:p-12 lg:min-h-[760px]">
-              <div className="flex items-center justify-between gap-4">
-                <BrandLogo compact />
+            <div className="relative flex min-h-[680px] max-w-3xl flex-col justify-between gap-12 p-7 sm:p-9 md:p-12 lg:min-h-[760px]">
+              <div className="flex items-center gap-5">
                 <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-brand-accent backdrop-blur">
                   Noël 2026
                 </span>
               </div>
 
-              <div className="max-w-4xl">
+              <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.45em] text-brand-accent md:text-sm">{siteName}</p>
                 <h1 className="mt-6 text-5xl font-semibold leading-[0.86] tracking-[-0.07em] sm:text-6xl md:text-8xl lg:text-[7.8rem]">
                   Offrir la chaleur. Porter le luxe.
                 </h1>
-                <p className="mt-8 max-w-2xl text-base leading-8 text-white/76 md:text-xl">
-                  Une sélection de pyjamas de Noël pensée comme un cadeau : douce, élégante, rapide à commander et impossible à oublier.
+                <p className="mt-8 max-w-xl text-base leading-8 text-white/82 md:text-xl">
+                  Une sélection de pyjamas de Noël pensée pour les moments inoubliables en famille.
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <a href="#vedettes" className="rounded-full bg-brand-accent px-7 py-4 text-center text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.32)]">
-                    Voir la sélection
-                  </a>
-                  <a href="/catalogue" className="rounded-full border border-white/20 bg-white/10 px-7 py-4 text-center text-sm font-semibold text-white backdrop-blur">
-                    Catalogue complet
+                  <a href="#vedettes" className="magnetic-cta rounded-full bg-brand-primary px-7 py-4 text-center text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[0_18px_55px_rgba(143,20,40,0.34)]">
+                    Découvrir la collection
                   </a>
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                {['Stock clair', 'Tailles visibles', 'Commande WhatsApp'].map((item) => (
+                {['Idéal à offrir', 'Qualité premium', 'Commande WhatsApp'].map((item) => (
                   <div key={item} className="rounded-3xl border border-white/10 bg-white/10 p-4 text-sm font-semibold backdrop-blur">
                     {item}
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5">
-            <div className="relative min-h-[420px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 bg-brand-cream shadow-[0_30px_90px_rgba(80,34,28,0.12)] md:rounded-[3rem]">
-              <Image
-                src={giftImage}
-                alt="Paquets cadeaux de Noël"
-                fill
-                sizes="(max-width: 1024px) 100vw, 42vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-brand-evergreen/86 via-brand-evergreen/16 to-transparent" />
-              <div className="absolute inset-x-5 bottom-5 rounded-[2rem] border border-white/15 bg-white/12 p-6 text-white backdrop-blur-md">
-                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-brand-accent">Gift season</p>
-                <p className="mt-3 text-3xl font-semibold tracking-[-0.04em]">Le site doit sentir le paquet cadeau.</p>
-              </div>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-1">
-              {collections.map(([title, text]) => (
-                <article key={title} className="group rounded-[2rem] border border-brand-primary/10 bg-white/82 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_70px_rgba(80,34,28,0.12)]">
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-primary/70">Collection</p>
-                  <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em]">{title}</h2>
-                  <p className="mt-3 text-sm leading-6 text-foreground/60">{text}</p>
-                </article>
-              ))}
             </div>
           </div>
         </div>
@@ -124,13 +84,7 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
             <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Un matin de Noël en un clic.</h2>
           </div>
           <div className="relative min-h-[320px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 shadow-[0_30px_90px_rgba(80,34,28,0.10)]">
-            <Image
-              src={loungeImage}
-              alt="Salon chaleureux le matin de Noël"
-              fill
-              sizes="(max-width: 1024px) 100vw, 60vw"
-              className="object-cover"
-            />
+            <Image src={loungeImage} alt="Salon chaleureux le matin de Noël" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
           </div>
         </div>
       </section>
