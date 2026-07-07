@@ -10,10 +10,8 @@ interface CataloguePageProps {
 }
 
 export default async function CataloguePage({ searchParams }: CataloguePageProps) {
-  const [products, params] = await Promise.all([
-    listProducts(72),
-    searchParams ?? Promise.resolve({}),
-  ]);
+  const products = await listProducts(72);
+  const params = await searchParams;
 
   return (
     <main className="min-h-screen bg-background px-5 py-10 text-foreground md:px-8">
@@ -23,7 +21,7 @@ export default async function CataloguePage({ searchParams }: CataloguePageProps
           title="Sélection Noël premium"
           description="Des pièces douces, lumineuses et prêtes à offrir pour transformer chaque matin de fête en souvenir."
         />
-        <CatalogueExperience products={products} initialCollection={params.collection} initialType={params.type} />
+        <CatalogueExperience products={products} initialCollection={params?.collection} initialType={params?.type} />
       </div>
     </main>
   );
