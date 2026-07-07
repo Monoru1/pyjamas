@@ -8,11 +8,8 @@ export function FestiveMotionLayer() {
         <span>🌲</span>
         <span>🎄</span>
         <span>🌲</span>
-        <span>🎄</span>
-        <span>🌲</span>
       </div>
       <div className="motion-glints" aria-hidden="true">
-        <span />
         <span />
         <span />
         <span />
@@ -23,11 +20,11 @@ export function FestiveMotionLayer() {
           position: fixed;
           inset: -20%;
           z-index: 0;
-          opacity: .55;
+          opacity: .45;
           background:
-            radial-gradient(circle at 18% 18%, rgba(201,154,46,.24), transparent 20rem),
-            radial-gradient(circle at 78% 8%, rgba(143,20,40,.18), transparent 24rem),
-            radial-gradient(circle at 65% 80%, rgba(15,59,46,.16), transparent 26rem);
+            radial-gradient(circle at 18% 18%, rgba(201,154,46,.20), transparent 20rem),
+            radial-gradient(circle at 78% 8%, rgba(143,20,40,.14), transparent 24rem),
+            radial-gradient(circle at 65% 80%, rgba(15,59,46,.12), transparent 26rem);
           filter: blur(8px);
           animation: aurora-drift 18s ease-in-out infinite alternate;
         }
@@ -36,12 +33,12 @@ export function FestiveMotionLayer() {
           pointer-events: none;
           position: fixed;
           inset: 0;
-          z-index: 60;
-          opacity: .52;
+          z-index: 5;
+          opacity: .34;
           background-image:
-            radial-gradient(circle, rgba(255,255,255,.95) 0 1px, transparent 2px),
-            radial-gradient(circle, rgba(255,255,255,.65) 0 1.5px, transparent 2.5px),
-            radial-gradient(circle, rgba(255,255,255,.38) 0 2px, transparent 3px);
+            radial-gradient(circle, rgba(255,255,255,.88) 0 1px, transparent 2px),
+            radial-gradient(circle, rgba(255,255,255,.50) 0 1.5px, transparent 2.5px),
+            radial-gradient(circle, rgba(255,255,255,.30) 0 2px, transparent 3px);
           background-size: 90px 90px, 150px 150px, 240px 240px;
           animation: snow-fall 28s linear infinite;
         }
@@ -50,48 +47,45 @@ export function FestiveMotionLayer() {
           pointer-events: none;
           position: fixed;
           inset: 0;
-          z-index: 62;
+          z-index: 6;
           overflow: hidden;
         }
 
         .motion-trees span {
           position: absolute;
           top: -4rem;
-          font-size: clamp(1rem, 1.7vw, 1.75rem);
-          opacity: .72;
-          filter: drop-shadow(0 10px 22px rgba(15,59,46,.18));
-          animation: tree-fall 18s linear infinite;
+          font-size: clamp(.85rem, 1.25vw, 1.25rem);
+          opacity: .42;
+          filter: drop-shadow(0 10px 22px rgba(15,59,46,.14));
+          animation: tree-fall 24s linear infinite;
           will-change: transform, opacity;
         }
-        .motion-trees span:nth-child(1) { left: 8%; animation-delay: 0s; animation-duration: 19s; }
-        .motion-trees span:nth-child(2) { left: 22%; animation-delay: 5s; animation-duration: 23s; }
-        .motion-trees span:nth-child(3) { left: 41%; animation-delay: 2s; animation-duration: 20s; }
-        .motion-trees span:nth-child(4) { left: 61%; animation-delay: 8s; animation-duration: 24s; }
-        .motion-trees span:nth-child(5) { left: 78%; animation-delay: 3s; animation-duration: 21s; }
-        .motion-trees span:nth-child(6) { left: 91%; animation-delay: 10s; animation-duration: 25s; }
+        .motion-trees span:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 26s; }
+        .motion-trees span:nth-child(2) { left: 38%; animation-delay: 7s; animation-duration: 30s; }
+        .motion-trees span:nth-child(3) { left: 66%; animation-delay: 3s; animation-duration: 28s; }
+        .motion-trees span:nth-child(4) { left: 88%; animation-delay: 11s; animation-duration: 32s; }
 
         .motion-glints {
           pointer-events: none;
           position: fixed;
           inset: 0;
-          z-index: 61;
+          z-index: 7;
           overflow: hidden;
         }
 
         .motion-glints span {
           position: absolute;
-          width: 8px;
-          height: 8px;
+          width: 7px;
+          height: 7px;
           border-radius: 999px;
           background: #c99a2e;
-          box-shadow: 0 0 24px rgba(201,154,46,.95);
+          box-shadow: 0 0 24px rgba(201,154,46,.85);
           opacity: 0;
-          animation: glint 5.8s ease-in-out infinite;
+          animation: glint 6.8s ease-in-out infinite;
         }
         .motion-glints span:nth-child(1) { left: 14%; top: 22%; animation-delay: .2s; }
-        .motion-glints span:nth-child(2) { left: 82%; top: 18%; animation-delay: 1.4s; }
-        .motion-glints span:nth-child(3) { left: 72%; top: 66%; animation-delay: 2.1s; }
-        .motion-glints span:nth-child(4) { left: 24%; top: 78%; animation-delay: 3.2s; }
+        .motion-glints span:nth-child(2) { left: 82%; top: 18%; animation-delay: 1.8s; }
+        .motion-glints span:nth-child(3) { left: 72%; top: 66%; animation-delay: 3.1s; }
 
         .cinematic-card {
           transform: translateZ(0);
@@ -132,14 +126,14 @@ export function FestiveMotionLayer() {
         }
         @keyframes tree-fall {
           0% { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(0deg); }
-          10% { opacity: .72; }
-          90% { opacity: .72; }
-          100% { opacity: 0; transform: translate3d(34px, 112vh, 0) rotate(48deg); }
+          12% { opacity: .42; }
+          88% { opacity: .42; }
+          100% { opacity: 0; transform: translate3d(26px, 112vh, 0) rotate(38deg); }
         }
         @keyframes glint {
           0%, 72%, 100% { opacity: 0; transform: scale(.55) rotate(0deg); }
-          80% { opacity: .95; transform: scale(1.55) rotate(25deg); }
-          88% { opacity: .2; transform: scale(.9) rotate(45deg); }
+          80% { opacity: .65; transform: scale(1.45) rotate(25deg); }
+          88% { opacity: .15; transform: scale(.9) rotate(45deg); }
         }
         @keyframes page-reveal {
           from { opacity: 0; transform: translateY(18px); filter: blur(8px); }
