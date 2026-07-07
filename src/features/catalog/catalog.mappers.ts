@@ -8,6 +8,7 @@ interface CatalogRow {
   description_fr: string | null;
   description_en: string | null;
   category_id: string | null;
+  category_slug: string | null;
   category_name_fr: string | null;
   category_name_en: string | null;
   base_price: number | null;
@@ -62,6 +63,7 @@ export function mapCatalogProduct(row: CatalogRow): CatalogProduct {
     descriptionFr: row.description_fr,
     descriptionEn: row.description_en,
     categoryId: row.category_id,
+    categorySlug: row.category_slug,
     categoryNameFr: row.category_name_fr,
     categoryNameEn: row.category_name_en,
     basePrice: row.base_price ?? 0,
