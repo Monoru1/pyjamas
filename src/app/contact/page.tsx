@@ -1,3 +1,10 @@
+const socialLinks = [
+  ['Instagram', 'https://www.instagram.com/'],
+  ['Facebook', 'https://www.facebook.com/'],
+  ['TikTok', 'https://www.tiktok.com/'],
+  ['WhatsApp', 'https://wa.me/'],
+];
+
 export default function ContactPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-5 py-10 text-foreground md:px-8">
@@ -8,10 +15,10 @@ export default function ContactPage() {
         <section className="rounded-[3rem] bg-brand-evergreen p-8 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] md:p-12">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Contact</p>
           <h1 className="mt-5 text-5xl font-semibold leading-[0.92] tracking-[-0.06em] md:text-7xl">
-            Une question, une taille, une livraison ?
+            Nous sommes là pour vous accompagner.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-8 text-white/75">
-            La boutique vous accompagne pour choisir le bon pyjama, composer un cadeau et confirmer la disponibilité avant votre passage.
+            Une taille à confirmer, un cadeau à composer ou une livraison à préparer : contactez la boutique avant votre commande.
           </p>
           <div className="mt-8 grid gap-4 text-sm text-white/80 sm:grid-cols-2">
             <div className="rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur">
@@ -42,6 +49,22 @@ export default function ContactPage() {
           />
         </section>
       </div>
+
+      <section className="relative mx-auto mt-8 max-w-7xl rounded-[2.5rem] border border-brand-primary/10 bg-white/70 p-7 backdrop-blur md:p-9">
+        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">Réseaux</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-brand-evergreen">Suivre la maison.</h2>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {socialLinks.map(([label, href]) => (
+              <a key={label} href={href} target="_blank" rel="noreferrer" className="rounded-full border border-brand-primary/10 px-5 py-3 text-sm font-semibold text-foreground/70 transition hover:-translate-y-0.5 hover:bg-brand-primary hover:text-white">
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
