@@ -34,6 +34,7 @@ export interface CatalogProduct {
   descriptionFr: string | null;
   descriptionEn: string | null;
   categoryId: string | null;
+  categorySlug: string | null;
   categoryNameFr: string | null;
   categoryNameEn: string | null;
   basePrice: number;
