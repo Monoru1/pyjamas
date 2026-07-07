@@ -6,15 +6,18 @@ import type { CatalogProduct } from '@/features/catalog/types';
 
 interface CatalogueExperienceProps {
   products: CatalogProduct[];
+  initialCollection?: string;
+  initialType?: string;
 }
 
 const filters = [
   { key: 'all', label: 'Tout' },
-  { key: 'famille', label: 'Famille' },
+  { key: 'noel-fetes', label: 'Noël' },
+  { key: 'famille-assortie', label: 'Famille' },
   { key: 'femme', label: 'Femme' },
   { key: 'homme', label: 'Homme' },
-  { key: 'couple', label: 'Couple' },
   { key: 'enfant', label: 'Enfant' },
+  { key: 'accessoires', label: 'Accessoires' },
   { key: 'new', label: 'Nouveautés' },
   { key: 'available', label: 'Disponibles' },
 ];
@@ -26,17 +29,24 @@ const sorts = [
   { key: 'new', label: 'Nouveautés' },
 ];
 
+function normalizeFilter(value?: string) {
+  if (!value) return 'all';
+  return filters.some((item) => item.key === value) ? value : 'all';
+}
+
 function matchesFilter(product: CatalogProduct, filter: string) {
   if (filter === 'all') return true;
   if (filter === 'new') return product.isNew;
   if (filter === 'available') return product.totalStock > 0;
+  if (filter === 'accessoires') return product.categorySlug === 'accessoires';
+  if (filter === 'noel-fetes') return product.isFeatured || product.nameFr.toLowerCase().includes('noël');
 
-  const haystack = `${product.categoryNameFr ?? ''} ${product.nameFr} ${product.descriptionFr ?? ''}`.toLowerCase();
-  return haystack.includes(filter);
+  const haystack = `${product.categorySlug ?? ''} ${product.categoryNameFr ?? ''} ${product.nameFr} ${product.descriptionFr ?? ''}`.toLowerCase();
+  return haystack.includes(filter.replace('-', ' ')) || haystack.includes(filter);
 }
 
-export function CatalogueExperience({ products }: CatalogueExperienceProps) {
-  const [filter, setFilter] = useState('all');
+export function CatalogueExperience({ products, initialCollection, initialType }: CatalogueExperienceProps) {
+  const [filter, setFilter] = useState(initialType === 'accessory' ? 'accessoires' : normalizeFilter(initialCollection));
   const [sort, setSort] = useState('featured');
 
   const visibleProducts = useMemo(() => {
