@@ -20,7 +20,23 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'La Maison des Pyjamas',
-  description: 'Site officiel et back-office de La Maison des Pyjamas.',
+  description: 'Pyjamas, accessoires cocooning et cadeaux premium pour la maison.',
+  icons: {
+    icon: '/brand/logo-maison-pyjamas.svg',
+    shortcut: '/brand/logo-maison-pyjamas.svg',
+    apple: '/brand/logo-maison-pyjamas.svg',
+  },
+  openGraph: {
+    title: 'La Maison des Pyjamas',
+    description: 'Pyjamas, accessoires cocooning et cadeaux premium pour la maison.',
+    images: ['/brand/logo-maison-pyjamas.svg'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'La Maison des Pyjamas',
+    description: 'Pyjamas, accessoires cocooning et cadeaux premium pour la maison.',
+    images: ['/brand/logo-maison-pyjamas.svg'],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
