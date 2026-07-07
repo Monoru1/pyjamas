@@ -117,4 +117,5 @@ export type ProductCatalogRow = {
   total_stock: number | null;
   min_variant_price: number | null;
   max_variant_price: number | null;
+  collection_slugs: string[] | null;
 };
