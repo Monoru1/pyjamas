@@ -37,6 +37,7 @@ export interface CatalogProduct {
   categorySlug: string | null;
   categoryNameFr: string | null;
   categoryNameEn: string | null;
+  collectionSlugs: string[];
   basePrice: number;
   compareAtPrice: number | null;
   currencyCode: CurrencyCode;
