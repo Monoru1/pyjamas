@@ -60,7 +60,6 @@ export async function updateProduct(formData: FormData) {
     name_fr: name,
     description_fr: String(formData.get('description_fr') ?? '').trim() || null,
     base_price: price,
-    compare_at_price: Number(formData.get('compare_at_price')) || null,
     is_active: formData.get('is_active') === 'on',
     is_featured: formData.get('is_featured') === 'on',
     is_new: formData.get('is_new') === 'on',
@@ -193,4 +192,57 @@ export async function archiveProduct(formData: FormData) {
   revalidatePath('/');
   revalidatePath('/catalogue');
   revalidatePath('/admin/produits');
+}
+
+export async function setPromotion(formData: FormData) {
+  const supabase = await guardAdmin();
+  const productId = String(formData.get('product_id'));
+  const promotionPrice = Math.max(0, Number(formData.get('promotion_price')) || 0);
+  const { data: product } = await supabase.from('products').select('base_price, compare_at_price').eq('id', productId).single();
+  if (!product || !promotionPrice || promotionPrice >= Number(product.base_price)) return;
+  const { data: promotion } = await supabase.from('collections').select('id').eq('slug', 'promotions').single();
+  if (!promotion) return;
+  await supabase.from('products').update({ base_price: promotionPrice, compare_at_price: product.compare_at_price ?? product.base_price }).eq('id', productId);
+  await supabase.from('product_collections').upsert({ product_id: productId, collection_id: promotion.id });
+  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+}
+
+export async function removePromotion(formData: FormData) {
+  const supabase = await guardAdmin();
+  const productId = String(formData.get('product_id'));
+  const { data: product } = await supabase.from('products').select('compare_at_price').eq('id', productId).single();
+  const { data: promotion } = await supabase.from('collections').select('id').eq('slug', 'promotions').single();
+  if (product?.compare_at_price) await supabase.from('products').update({ base_price: product.compare_at_price, compare_at_price: null }).eq('id', productId);
+  if (promotion) await supabase.from('product_collections').delete().eq('product_id', productId).eq('collection_id', promotion.id);
+  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+}
+
+export async function updateCollection(formData: FormData) {
+  const supabase = await guardAdmin();
+  const id = String(formData.get('id'));
+  const name = String(formData.get('name_fr') ?? '').trim();
+  if (!id || !name) return;
+  let imageUrl = String(formData.get('image_url') ?? '');
+  const file = formData.get('image');
+  if (file instanceof File && file.size && file.type.startsWith('image/')) {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'webp';
+    const path = `collections/${id}-${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
+    if (error) throw new Error(error.message);
+    imageUrl = supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
+  }
+  await supabase.from('collections').update({ name_fr: name, description_fr: String(formData.get('description_fr') ?? '').trim() || null, image_url: imageUrl || null, is_active: formData.get('is_active') === 'on' }).eq('id', id);
+  const selectedProducts = formData.getAll('product_ids').map(String);
+  await supabase.from('product_collections').delete().eq('collection_id', id);
+  if (selectedProducts.length) await supabase.from('product_collections').insert(selectedProducts.map(product_id => ({ product_id, collection_id: id })));
+  revalidatePath('/collections'); revalidatePath('/catalogue'); revalidatePath('/admin/collections');
+}
+
+export async function createCollection(formData: FormData) {
+  const supabase = await guardAdmin();
+  const name = String(formData.get('name_fr') ?? '').trim();
+  if (!name) return;
+  const slug = `${toSlug(name) || 'collection'}-${crypto.randomUUID().slice(0, 6)}`;
+  await supabase.from('collections').insert({ slug, name_fr: name, description_fr: String(formData.get('description_fr') ?? '').trim() || null, is_active: false, sort_order: 999 });
+  revalidatePath('/collections'); revalidatePath('/admin/collections');
 }

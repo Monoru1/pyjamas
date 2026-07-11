@@ -1,14 +1,16 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ReceiptText, Settings } from 'lucide-react';
+import { FolderKanban, LayoutDashboard, Package, ReceiptText, Settings, Tag } from 'lucide-react';
 import { signOutAdmin } from '@/app/admin/actions';
 
 const links = [
   { href: '/admin', label: 'Vue d’ensemble', icon: LayoutDashboard },
   { href: '/admin/commandes', label: 'Commandes', icon: ReceiptText },
   { href: '/admin/produits', label: 'Produits & stock', icon: Package },
-  { href: '/admin/site', label: 'Réglages du site', icon: Settings },
+  { href: '/admin/collections', label: 'Collections', icon: FolderKanban },
+  { href: '/admin/promotions', label: 'Promotions', icon: Tag },
+  { href: '/admin/site', label: 'Images accueil', icon: Settings },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
