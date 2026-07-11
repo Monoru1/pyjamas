@@ -26,7 +26,9 @@ export async function updateSession(request: NextRequest) {
   const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
   const isLoginRoute = request.nextUrl.pathname.startsWith('/admin/login');
 
-  if (isAdminRoute && !isLoginRoute && !data?.claims) {
+  const { data: isAdmin } = data?.claims ? await supabase.rpc('is_admin') : { data: false };
+
+  if (isAdminRoute && !isLoginRoute && !isAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = '/admin/login';
     return NextResponse.redirect(url);
