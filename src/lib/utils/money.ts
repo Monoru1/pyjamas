@@ -7,8 +7,8 @@ const CURRENCY_META: Record<CurrencyCode, { label: string; decimals: number }> =
   GBP: { label: '£', decimals: 2 },
 };
 
-export function formatPrice(amount: number, currency: CurrencyCode = 'XOF'): string {
-  const meta = CURRENCY_META[currency];
+export function formatPrice(amount: number, currency: CurrencyCode | string = 'XOF'): string {
+  const meta = CURRENCY_META[currency as CurrencyCode] ?? CURRENCY_META.XOF;
   const formatted = new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: meta.decimals,
     maximumFractionDigits: meta.decimals,
