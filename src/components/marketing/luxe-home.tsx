@@ -3,22 +3,14 @@ import { EmptyProducts } from '@/components/marketing/empty-products';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { ProductCard } from '@/features/catalog/components/product-card';
 import type { CatalogProduct } from '@/features/catalog/types';
+import type { StoreSettings } from '@/lib/repositories/settings.repository';
 
 interface LuxeHomeProps {
-  siteName: string;
+  settings: StoreSettings;
   products: CatalogProduct[];
 }
 
-const heroImage = 'https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=1600&q=85';
-const loungeImage = 'https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=1000&q=85';
-
-const collections = [
-  ['Famille', 'Le pyjama coordonné pour les photos, les cadeaux et les matins de fête.'],
-  ['Elle', 'Textures douces, coupes élégantes, détails qui font cadeau.'],
-  ['Lui', 'Confort sobre, couleurs profondes et finition premium.'],
-];
-
-export function LuxeHome({ siteName, products }: LuxeHomeProps) {
+export function LuxeHome({ settings, products }: LuxeHomeProps) {
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <div className="snow-field" />
@@ -32,7 +24,7 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
         <div className="mx-auto max-w-7xl">
           <div className="relative min-h-[680px] overflow-hidden rounded-[2.5rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] md:rounded-[3.5rem] lg:min-h-[760px]">
             <Image
-              src={heroImage}
+              src={settings.heroImage}
               alt="Famille en pyjamas de Noël"
               fill
               priority
@@ -51,7 +43,7 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
               </div>
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-brand-accent md:text-sm">{siteName}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-brand-accent md:text-sm">{settings.siteName}</p>
                 <h1 className="mt-6 text-5xl font-semibold leading-[0.86] tracking-[-0.07em] sm:text-6xl md:text-8xl lg:text-[7.8rem]">
                   Offrir la chaleur. Porter le luxe.
                 </h1>
@@ -84,7 +76,7 @@ export function LuxeHome({ siteName, products }: LuxeHomeProps) {
             <h2 className="mt-4 text-4xl font-semibold tracking-[-0.05em] md:text-6xl">Un matin de Noël en un clic.</h2>
           </div>
           <div className="relative min-h-[320px] overflow-hidden rounded-[2.5rem] border border-brand-primary/10 shadow-[0_30px_90px_rgba(80,34,28,0.10)]">
-            <Image src={loungeImage} alt="Salon chaleureux le matin de Noël" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
+            <Image src={settings.loungeImage} alt="Salon chaleureux le matin de Noël" fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
           </div>
         </div>
       </section>

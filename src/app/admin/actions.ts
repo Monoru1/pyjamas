@@ -115,6 +115,17 @@ export async function setPrimaryProductImage(formData: FormData) {
 
 export async function updateSiteSettings(formData: FormData) {
   const supabase = await guardAdmin();
+  async function uploadHomeImage(field: string, current: string) {
+    const file = formData.get(field);
+    if (!(file instanceof File) || !file.size || !file.type.startsWith('image/')) return current;
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
+    const path = `homepage/${field}-${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
+    if (error) throw new Error(error.message);
+    return supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
+  }
+  const heroImage = await uploadHomeImage('hero_image', String(formData.get('hero_image_url') ?? ''));
+  const loungeImage = await uploadHomeImage('lounge_image', String(formData.get('lounge_image_url') ?? ''));
   await supabase.from('settings').upsert([
     {
       key: 'site',
@@ -133,8 +144,53 @@ export async function updateSiteSettings(formData: FormData) {
       },
       description: 'Configuration des commandes WhatsApp',
     },
+    {
+      key: 'social',
+      value: {
+        instagram: String(formData.get('instagram_url') ?? '').trim(),
+        tiktok: String(formData.get('tiktok_url') ?? '').trim(),
+      },
+      description: 'Réseaux sociaux de la boutique',
+    },
+    {
+      key: 'homepage',
+      value: { heroImage, loungeImage },
+      description: 'Visuels de la page d’accueil',
+    },
   ]);
   revalidatePath('/');
   revalidatePath('/panier');
   revalidatePath('/admin/site');
+}
+
+function toSlug(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+export async function createProduct(formData: FormData) {
+  const supabase = await guardAdmin();
+  const name = String(formData.get('name_fr') ?? '').trim();
+  const price = Math.max(0, Number(formData.get('base_price')) || 0);
+  if (!name) return;
+  const slug = `${toSlug(name) || 'nouveau-produit'}-${crypto.randomUUID().slice(0, 6)}`;
+  const { data: product, error } = await supabase.from('products').insert({
+    slug, name_fr: name, description_fr: String(formData.get('description_fr') ?? '').trim() || null,
+    base_price: price, currency_code: 'XOF', is_active: false, sort_order: 999,
+  }).select('id').single();
+  if (error || !product) throw new Error(error?.message || 'Produit impossible à créer');
+  await supabase.from('product_variants').insert({
+    product_id: product.id, sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    color_name_fr: 'Standard', size_label: 'Unique', price, stock_quantity: 0, low_stock_threshold: 2,
+  });
+  revalidatePath('/admin/produits');
+}
+
+export async function archiveProduct(formData: FormData) {
+  const supabase = await guardAdmin();
+  const id = String(formData.get('id'));
+  await supabase.from('products').update({ is_active: false, deleted_at: new Date().toISOString() }).eq('id', id);
+  revalidatePath('/');
+  revalidatePath('/catalogue');
+  revalidatePath('/admin/produits');
 }

@@ -1,11 +1,8 @@
-const socialLinks = [
-  ['Instagram', 'https://www.instagram.com/'],
-  ['Facebook', 'https://www.facebook.com/'],
-  ['TikTok', 'https://www.tiktok.com/'],
-  ['WhatsApp', 'https://wa.me/'],
-];
+import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const settings = await getStoreSettings();
+  const socialLinks = [['Instagram', settings.instagramUrl], ['TikTok', settings.tiktokUrl], ['WhatsApp', `https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`]];
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-5 py-10 text-foreground md:px-8">
       <div className="pointer-events-none absolute -right-24 top-10 h-96 w-96 rounded-full bg-brand-accent/15 blur-3xl" />
@@ -30,7 +27,7 @@ export default function ContactPage() {
               <p className="mt-2 text-white/65">Itinéraire, horaires et retrait.</p>
             </div>
           </div>
-          <a href="https://wa.me/" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.28)] transition hover:-translate-y-0.5">
+          <a href={`https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.28)] transition hover:-translate-y-0.5">
             Écrire sur WhatsApp
           </a>
         </section>

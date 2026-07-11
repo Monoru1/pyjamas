@@ -8,5 +8,5 @@ export default async function HomePage() {
     listFeaturedProducts(6),
   ]);
 
-  return <LuxeHome siteName={settings.siteName} products={featuredProducts} />;
+  return <LuxeHome settings={settings} products={featuredProducts} />;
 }
