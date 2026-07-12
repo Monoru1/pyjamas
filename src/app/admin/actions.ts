@@ -61,14 +61,49 @@ export async function updateProduct(formData: FormData) {
     name_fr: name,
     description_fr: String(formData.get('description_fr') ?? '').trim() || null,
     base_price: price,
+    category_id: String(formData.get('category_id') ?? '') || null,
     is_active: formData.get('is_active') === 'on',
     is_featured: formData.get('is_featured') === 'on',
     is_new: formData.get('is_new') === 'on',
   }).eq('id', id);
+  const collectionIds = formData.getAll('collection_ids').map(String);
+  await supabase.from('product_collections').delete().eq('product_id', id);
+  if (collectionIds.length) {
+    await supabase.from('product_collections').insert(collectionIds.map(collection_id => ({ product_id: id, collection_id })));
+  }
 
   revalidatePath('/');
   revalidatePath('/catalogue');
   revalidatePath('/admin/produits');
+}
+
+export async function createVariant(formData: FormData) {
+  const supabase = await guardAdmin();
+  const productId = String(formData.get('product_id') ?? '');
+  const size = String(formData.get('size_label') ?? '').trim();
+  const price = Math.max(0, Number(formData.get('price')) || 0);
+  const stock = Math.max(0, Number(formData.get('stock')) || 0);
+  if (!productId || !size || !price) return;
+
+  const { error } = await supabase.from('product_variants').insert({
+    product_id: productId,
+    sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    color_name_fr: String(formData.get('color_name_fr') ?? '').trim() || 'Standard',
+    size_label: size,
+    price,
+    stock_quantity: stock,
+    low_stock_threshold: 2,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/produits');
+}
+
+export async function deleteVariant(formData: FormData) {
+  const supabase = await guardAdmin();
+  const id = String(formData.get('id') ?? '');
+  if (!id) return;
+  await supabase.from('product_variants').delete().eq('id', id);
+  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/produits');
 }
 
 export async function uploadProductImage(formData: FormData) {
@@ -175,15 +210,17 @@ export async function createProduct(formData: FormData) {
   const price = Math.max(0, Number(formData.get('base_price')) || 0);
   if (!name) return;
   const slug = `${toSlug(name) || 'nouveau-produit'}-${crypto.randomUUID().slice(0, 6)}`;
+  const sizes = selectedSizes.length ? selectedSizes : ['Unique'];
+  const variantPrices = sizes.map(size => Math.max(0, Number(formData.get(`price_${size}`)) || price));
   const { data: product, error } = await supabase.from('products').insert({
     slug, name_fr: name, description_fr: String(formData.get('description_fr') ?? '').trim() || null,
-    base_price: price, currency_code: 'XOF', is_active: false, sort_order: 999,
+    base_price: Math.min(...variantPrices), category_id: String(formData.get('category_id') ?? '') || null,
+    currency_code: 'XOF', is_active: false, sort_order: 999,
   }).select('id').single();
   if (error || !product) throw new Error(error?.message || 'Produit impossible à créer');
-  const sizes = selectedSizes.length ? selectedSizes : ['Unique'];
-  const variants = sizes.map(size => ({
+  const variants = sizes.map((size, index) => ({
     product_id: product.id, sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    color_name_fr: 'Standard', size_label: size, price: Math.max(0, Number(formData.get(`price_${size}`)) || price), stock_quantity: 0, low_stock_threshold: 2,
+    color_name_fr: 'Standard', size_label: size, price: variantPrices[index], stock_quantity: 0, low_stock_threshold: 2,
   }));
   await supabase.from('product_variants').insert(variants);
   const collectionIds = formData.getAll('collection_ids').map(String);
