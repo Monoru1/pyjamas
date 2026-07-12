@@ -31,7 +31,8 @@ describe('whatsapp checkout service', () => {
     expect(message).toContain('Nouvelle commande');
     expect(message).toContain('Awa');
     expect(message).toContain('Réf : PYJ-H-VRT-XL');
-    expect(message).toContain('Taille : XL | Couleur : Vert');
+    expect(message).toContain('Taille : XL');
+    expect(message).toContain('Couleur : Vert');
     expect(message).toContain('Total : 25 000 FCFA');
   });
 

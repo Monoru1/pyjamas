@@ -4,6 +4,18 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+async function validateImage(file: FormDataEntryValue | null): Promise<File | null> {
+  if (!(file instanceof File) || !file.size || file.size > MAX_IMAGE_BYTES || !ALLOWED_IMAGE_TYPES.has(file.type)) return null;
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  const isPng = bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isWebp = bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+  return isPng || isJpeg || isWebp ? file : null;
+}
+
 async function guardAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -109,8 +121,8 @@ export async function deleteVariant(formData: FormData) {
 export async function uploadProductImage(formData: FormData) {
   const supabase = await guardAdmin();
   const productId = String(formData.get('product_id'));
-  const file = formData.get('image');
-  if (!(file instanceof File) || !file.size || !file.type.startsWith('image/')) return;
+  const file = await validateImage(formData.get('image'));
+  if (!file) return;
 
   const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
   const path = `${productId}/${crypto.randomUUID()}.${extension}`;
@@ -151,8 +163,8 @@ export async function setPrimaryProductImage(formData: FormData) {
 export async function updateSiteSettings(formData: FormData) {
   const supabase = await guardAdmin();
   async function uploadHomeImage(field: string, current: string) {
-    const file = formData.get(field);
-    if (!(file instanceof File) || !file.size || !file.type.startsWith('image/')) return current;
+    const file = await validateImage(formData.get(field));
+    if (!file) return current;
     const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
     const path = `homepage/${field}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
@@ -269,8 +281,8 @@ export async function updateCollection(formData: FormData) {
   const name = String(formData.get('name_fr') ?? '').trim();
   if (!id || !name) return;
   let imageUrl = String(formData.get('image_url') ?? '');
-  const file = formData.get('image');
-  if (file instanceof File && file.size && file.type.startsWith('image/')) {
+  const file = await validateImage(formData.get('image'));
+  if (file) {
     const ext = file.name.split('.').pop()?.toLowerCase() || 'webp';
     const path = `collections/${id}-${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
