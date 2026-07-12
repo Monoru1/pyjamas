@@ -246,3 +246,13 @@ export async function createCollection(formData: FormData) {
   await supabase.from('collections').insert({ slug, name_fr: name, description_fr: String(formData.get('description_fr') ?? '').trim() || null, is_active: false, sort_order: 999 });
   revalidatePath('/collections'); revalidatePath('/admin/collections');
 }
+
+export async function deleteCollection(formData: FormData) {
+  const supabase = await guardAdmin();
+  const id = String(formData.get('id'));
+  const slug = String(formData.get('slug'));
+  if (!id || slug === 'promotions') return;
+  await supabase.from('product_collections').delete().eq('collection_id', id);
+  await supabase.from('collections').delete().eq('id', id);
+  revalidatePath('/collections'); revalidatePath('/catalogue'); revalidatePath('/admin/collections');
+}
