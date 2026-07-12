@@ -35,11 +35,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <p className="text-3xl font-semibold text-brand-primary">
                 {formatPrice(product.basePrice, product.currencyCode)}
               </p>
-              {product.compareAtPrice ? (
-                <p className="pb-1 text-lg text-foreground/40 line-through">
-                  {formatPrice(product.compareAtPrice, product.currencyCode)}
-                </p>
-              ) : null}
             </div>
           </div>
 

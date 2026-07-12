@@ -7,8 +7,6 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const hasPromo = product.compareAtPrice && product.compareAtPrice > product.basePrice;
-
   return (
     <Link
       href={`/catalogue/${product.slug}`}
@@ -25,7 +23,6 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
         <div className="absolute left-4 top-4 flex gap-2">
           {product.isNew ? <span className="rounded-full bg-brand-accent px-3 py-1 text-xs font-semibold text-brand-evergreen">Nouveau</span> : null}
-          {hasPromo ? <span className="rounded-full bg-brand-primary px-3 py-1 text-xs font-semibold text-white">Offre</span> : null}
         </div>
         <div className="absolute inset-x-4 bottom-4 rounded-2xl bg-white/82 p-3 text-xs font-semibold text-brand-primary opacity-0 shadow-sm backdrop-blur transition group-hover:opacity-100">
           Voir tailles, couleurs et stock
@@ -43,11 +40,6 @@ export function ProductCard({ product }: ProductCardProps) {
             {formatPrice(product.basePrice, product.currencyCode)}
           </p>
         </div>
-        {hasPromo ? (
-          <p className="text-sm text-foreground/45 line-through">
-            {formatPrice(product.compareAtPrice ?? product.basePrice, product.currencyCode)}
-          </p>
-        ) : null}
       </div>
     </Link>
   );
