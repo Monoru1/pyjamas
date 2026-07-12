@@ -29,10 +29,7 @@ const sorts = [
   { key: 'new', label: 'Nouveautés' },
 ];
 
-function normalizeFilter(value?: string) {
-  if (!value) return 'all';
-  return filters.some((item) => item.key === value) ? value : 'all';
-}
+function normalizeFilter(value?: string) { return value || 'all'; }
 
 function matchesFilter(product: CatalogProduct, filter: string) {
   if (filter === 'all') return true;
@@ -61,7 +58,7 @@ export function CatalogueExperience({ products, initialCollection, initialType }
 
   return (
     <section className="space-y-8">
-      <div className="rounded-[2.25rem] border border-brand-primary/10 bg-white/75 p-4 shadow-[0_24px_80px_rgba(80,34,28,0.08)] backdrop-blur md:p-5">
+      {!initialCollection && <div className="rounded-[2.25rem] border border-brand-primary/10 bg-white/75 p-4 shadow-[0_24px_80px_rgba(80,34,28,0.08)] backdrop-blur md:p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {filters.map((item) => (
@@ -92,10 +89,11 @@ export function CatalogueExperience({ products, initialCollection, initialType }
           </label>
         </div>
       </div>
+      }
 
       <div className="flex items-center justify-between text-sm text-foreground/60">
-        <p>{visibleProducts.length} merveille(s) à offrir</p>
-        <p className="hidden md:block">Cadeaux doux · Couleurs de fête · Matins chaleureux</p>
+        <p>{visibleProducts.length} article{visibleProducts.length > 1 ? 's' : ''}</p>
+        <p className="hidden md:block">{initialCollection ? `Collection : ${initialCollection.replaceAll('-', ' ')}` : 'Catalogue complet'}</p>
       </div>
 
       <ProductGrid products={visibleProducts} />

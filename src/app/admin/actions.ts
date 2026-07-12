@@ -33,7 +33,8 @@ export async function updateVariantStock(formData: FormData) {
   const supabase = await guardAdmin();
   const id = String(formData.get('id'));
   const stock = Math.max(0, Number(formData.get('stock')) || 0);
-  await supabase.from('product_variants').update({ stock_quantity: stock }).eq('id', id);
+  const price = Math.max(0, Number(formData.get('price')) || 0);
+  await supabase.from('product_variants').update({ stock_quantity: stock, price }).eq('id', id);
   revalidatePath('/admin');
   revalidatePath('/admin/produits');
 }
@@ -170,6 +171,7 @@ function toSlug(value: string) {
 export async function createProduct(formData: FormData) {
   const supabase = await guardAdmin();
   const name = String(formData.get('name_fr') ?? '').trim();
+  const selectedSizes = formData.getAll('sizes').map(String);
   const price = Math.max(0, Number(formData.get('base_price')) || 0);
   if (!name) return;
   const slug = `${toSlug(name) || 'nouveau-produit'}-${crypto.randomUUID().slice(0, 6)}`;
@@ -178,10 +180,14 @@ export async function createProduct(formData: FormData) {
     base_price: price, currency_code: 'XOF', is_active: false, sort_order: 999,
   }).select('id').single();
   if (error || !product) throw new Error(error?.message || 'Produit impossible à créer');
-  await supabase.from('product_variants').insert({
+  const sizes = selectedSizes.length ? selectedSizes : ['Unique'];
+  const variants = sizes.map(size => ({
     product_id: product.id, sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    color_name_fr: 'Standard', size_label: 'Unique', price, stock_quantity: 0, low_stock_threshold: 2,
-  });
+    color_name_fr: 'Standard', size_label: size, price: Math.max(0, Number(formData.get(`price_${size}`)) || price), stock_quantity: 0, low_stock_threshold: 2,
+  }));
+  await supabase.from('product_variants').insert(variants);
+  const collectionIds = formData.getAll('collection_ids').map(String);
+  if (collectionIds.length) await supabase.from('product_collections').insert(collectionIds.map(collection_id => ({ product_id: product.id, collection_id })));
   revalidatePath('/admin/produits');
 }
 
@@ -196,24 +202,27 @@ export async function archiveProduct(formData: FormData) {
 
 export async function setPromotion(formData: FormData) {
   const supabase = await guardAdmin();
-  const productId = String(formData.get('product_id'));
+  const variantId = String(formData.get('variant_id'));
   const promotionPrice = Math.max(0, Number(formData.get('promotion_price')) || 0);
-  const { data: product } = await supabase.from('products').select('base_price, compare_at_price').eq('id', productId).single();
-  if (!product || !promotionPrice || promotionPrice >= Number(product.base_price)) return;
+  const { data: variant } = await supabase.from('product_variants').select('product_id, price, compare_at_price').eq('id', variantId).single();
+  if (!variant || !promotionPrice || promotionPrice >= Number(variant.price)) return;
   const { data: promotion } = await supabase.from('collections').select('id').eq('slug', 'promotions').single();
   if (!promotion) return;
-  await supabase.from('products').update({ base_price: promotionPrice, compare_at_price: product.compare_at_price ?? product.base_price }).eq('id', productId);
-  await supabase.from('product_collections').upsert({ product_id: productId, collection_id: promotion.id });
+  await supabase.from('product_variants').update({ price: promotionPrice, compare_at_price: variant.compare_at_price ?? variant.price }).eq('id', variantId);
+  await supabase.from('product_collections').upsert({ product_id: variant.product_id, collection_id: promotion.id });
   revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
 }
 
 export async function removePromotion(formData: FormData) {
   const supabase = await guardAdmin();
-  const productId = String(formData.get('product_id'));
-  const { data: product } = await supabase.from('products').select('compare_at_price').eq('id', productId).single();
+  const variantId = String(formData.get('variant_id'));
+  const { data: variant } = await supabase.from('product_variants').select('product_id, compare_at_price').eq('id', variantId).single();
   const { data: promotion } = await supabase.from('collections').select('id').eq('slug', 'promotions').single();
-  if (product?.compare_at_price) await supabase.from('products').update({ base_price: product.compare_at_price, compare_at_price: null }).eq('id', productId);
-  if (promotion) await supabase.from('product_collections').delete().eq('product_id', productId).eq('collection_id', promotion.id);
+  if (variant?.compare_at_price) await supabase.from('product_variants').update({ price: variant.compare_at_price, compare_at_price: null }).eq('id', variantId);
+  if (promotion && variant) {
+    const { count } = await supabase.from('product_variants').select('id', { count: 'exact', head: true }).eq('product_id', variant.product_id).not('compare_at_price', 'is', null);
+    if (!count) await supabase.from('product_collections').delete().eq('product_id', variant.product_id).eq('collection_id', promotion.id);
+  }
   revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
 }
 

@@ -16,6 +16,8 @@ interface CatalogRow {
   compare_at_price: number | null;
   currency_code: string | null;
   primary_image_url: string | null;
+  min_variant_price: number | null;
+  min_variant_compare_at_price: number | null;
   total_stock: number | null;
   is_featured: boolean | null;
   is_new: boolean | null;
@@ -68,8 +70,8 @@ export function mapCatalogProduct(row: CatalogRow): CatalogProduct {
     categoryNameFr: row.category_name_fr,
     categoryNameEn: row.category_name_en,
     collectionSlugs: row.collection_slugs ?? [],
-    basePrice: row.base_price ?? 0,
-    compareAtPrice: row.compare_at_price,
+    basePrice: row.min_variant_price ?? row.base_price ?? 0,
+    compareAtPrice: row.min_variant_compare_at_price ?? null,
     currencyCode: assertCurrency(row.currency_code),
     primaryImageUrl: row.primary_image_url,
     totalStock: row.total_stock ?? 0,
