@@ -7,7 +7,7 @@ const adultSizes = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
 const childSizes = Array.from({ length: 13 }, (_, index) => `${index + 1} ${index === 0 ? 'an' : 'ans'}`);
 
 function SizeChoices() {
-  return <fieldset className="field-wide collection-products"><legend>Tailles et prix par taille</legend><p className="field-help">Adultes : S à 3XL. Enfants : 1 à 13 ans. Coche uniquement les tailles vendues.</p><div className="size-groups"><div><strong>Adultes</strong>{adultSizes.map(size => <label key={size}><input type="checkbox" name="sizes" value={size}/><span>{size}</span><input name={`price_${size}`} type="number" min="0" placeholder="Prix FCFA"/></label>)}</div><div><strong>Enfants</strong>{childSizes.map(size => <label key={size}><input type="checkbox" name="sizes" value={size}/><span>{size}</span><input name={`price_${size}`} type="number" min="0" placeholder="Prix FCFA"/></label>)}</div></div></fieldset>;
+  return <fieldset className="field-wide size-selectors"><legend>Tailles disponibles</legend><p className="field-help">Ouvre une liste puis coche une ou plusieurs tailles. Les variantes sont créées au prix de départ ; tu pourras ajuster chaque prix ensuite.</p><div className="size-dropdowns"><details><summary>Adultes <span>S à 3XL</span></summary><div>{adultSizes.map(size => <label key={size}><input type="checkbox" name="sizes" value={size}/>{size}</label>)}</div></details><details><summary>Enfants <span>1 à 13 ans</span></summary><div>{childSizes.map(size => <label key={size}><input type="checkbox" name="sizes" value={size}/>{size}</label>)}</div></details></div></fieldset>;
 }
 
 export default async function ProductsPage() {
