@@ -10,13 +10,13 @@ export function ProductGallery({ product }: ProductGalleryProps) {
 
   return (
     <div className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-      <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[3rem] border border-brand-primary/10 bg-brand-soft/60 p-4 shadow-[0_30px_90px_rgba(80,34,28,0.12)] md:p-6">
+      <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[2rem] border border-brand-primary/10 bg-brand-soft/60 p-3 shadow-[0_30px_90px_rgba(80,34,28,0.12)] sm:p-4 md:rounded-[3rem] md:p-6">
         <div className="absolute left-6 top-6 z-10 rounded-full bg-brand-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-brand-evergreen">
           Edition fete
         </div>
         {primary ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={primary.url} alt={primary.altFr ?? product.nameFr} className="h-full w-full rounded-[2.5rem] object-cover transition duration-700 hover:scale-105" />
+          <img src={primary.url} alt={primary.altFr ?? product.nameFr} className="h-full w-full rounded-[1.65rem] object-cover transition duration-700 hover:scale-105 md:rounded-[2.5rem]" />
         ) : (
           <div className="flex h-full w-full items-center justify-center rounded-[2.5rem] border border-dashed border-brand-primary/20 text-center text-brand-primary/60">
             Photo produit a ajouter

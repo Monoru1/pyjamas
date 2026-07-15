@@ -36,9 +36,9 @@ export function ProductCard({ product }: ProductCardProps) {
           {product.categoryNameFr ?? 'Pyjama'}
         </p>
         <h3 className="text-xl font-semibold leading-snug tracking-[-0.02em]">{product.nameFr}</h3>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <p className="text-sm text-foreground/60">Stock : {product.totalStock}</p>
-          <div className="text-right"><p className="text-lg font-semibold text-brand-primary">{formatPrice(product.basePrice, product.currencyCode)}</p>{hasPromotion ? <p className="text-xs text-foreground/45 line-through">{formatPrice(product.compareAtPrice ?? product.basePrice, product.currencyCode)}</p> : null}</div>
+          <div className="text-left sm:text-right"><p className="text-lg font-semibold text-brand-primary">{formatPrice(product.basePrice, product.currencyCode)}</p>{hasPromotion ? <p className="text-xs text-foreground/45 line-through">{formatPrice(product.compareAtPrice ?? product.basePrice, product.currencyCode)}</p> : null}</div>
         </div>
       </div>
     </Link>

@@ -22,7 +22,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
 
       <section className="relative px-4 py-8 sm:px-5 md:px-8 md:py-12">
         <div className="mx-auto max-w-7xl">
-          <div className="relative min-h-[680px] overflow-hidden rounded-[2.5rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] md:rounded-[3.5rem] lg:min-h-[760px]">
+          <div className="relative min-h-[580px] overflow-hidden rounded-[2rem] bg-brand-evergreen text-white shadow-[0_35px_120px_rgba(15,59,46,0.28)] sm:min-h-[640px] md:rounded-[3.5rem] lg:min-h-[760px]">
             <Image
               src={settings.heroImage}
               alt="Famille en pyjamas de Noël"
@@ -35,7 +35,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-brand-evergreen/30 via-transparent to-transparent" />
             <div className="absolute -bottom-28 -left-20 h-96 w-96 rounded-full bg-brand-primary/35 blur-3xl" />
 
-            <div className="relative flex min-h-[680px] max-w-3xl flex-col justify-between gap-12 p-7 sm:p-9 md:p-12 lg:min-h-[760px]">
+            <div className="relative flex min-h-[580px] max-w-3xl flex-col justify-between gap-8 p-6 sm:min-h-[640px] sm:gap-12 sm:p-9 md:p-12 lg:min-h-[760px]">
               <div className="flex items-center gap-5">
                 <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-brand-accent backdrop-blur">
                   Noël 2026
@@ -44,10 +44,10 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.45em] text-brand-accent md:text-sm">{settings.siteName}</p>
-                <h1 className="mt-6 text-5xl font-semibold leading-[0.86] tracking-[-0.07em] sm:text-6xl md:text-8xl lg:text-[7.8rem]">
+                <h1 className="mt-5 text-[2.7rem] font-semibold leading-[0.9] tracking-[-0.065em] sm:mt-6 sm:text-6xl md:text-8xl lg:text-[7.8rem]">
                   Offrir la chaleur. Porter le luxe.
                 </h1>
-                <p className="mt-8 max-w-xl text-base leading-8 text-white/82 md:text-xl">
+                <p className="mt-6 max-w-xl text-sm leading-7 text-white/82 sm:mt-8 sm:text-base sm:leading-8 md:text-xl">
                   Une sélection de pyjamas de Noël pensée pour les moments inoubliables en famille.
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -57,9 +57,9 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
                 {['Idéal à offrir', 'Qualité premium', 'Commande WhatsApp'].map((item) => (
-                  <div key={item} className="rounded-3xl border border-white/10 bg-white/10 p-4 text-sm font-semibold backdrop-blur">
+                  <div key={item} className="rounded-2xl border border-white/10 bg-white/10 p-3 text-xs font-semibold backdrop-blur sm:rounded-3xl sm:p-4 sm:text-sm">
                     {item}
                   </div>
                 ))}

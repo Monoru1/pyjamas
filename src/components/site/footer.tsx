@@ -29,7 +29,7 @@ export function Footer() {
           <div className="flex flex-col gap-4 lg:items-end">
             <nav className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-brand-evergreen">
               {navigationLinks.map(([label, href]) => (
-                <a key={label} href={href} target="_blank" rel="noreferrer" className="transition hover:text-brand-primary">
+                <a key={label} href={href} className="transition hover:text-brand-primary">
                   {label}
                 </a>
               ))}

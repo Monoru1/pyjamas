@@ -16,16 +16,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) notFound();
 
   return (
-    <main className="min-h-screen bg-background px-5 py-10 text-foreground md:px-8">
+    <main className="min-h-screen bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.92fr_1.08fr]">
         <ProductGallery product={product} />
 
         <section className="space-y-8">
-          <div className="rounded-[3rem] border border-brand-primary/10 bg-white/70 p-6 shadow-[0_30px_90px_rgba(80,34,28,0.10)] backdrop-blur md:p-8">
+          <div className="rounded-[2rem] border border-brand-primary/10 bg-white/70 p-5 shadow-[0_30px_90px_rgba(80,34,28,0.10)] backdrop-blur sm:p-6 md:rounded-[3rem] md:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">
               {product.categoryNameFr ?? 'Edition Noel'}
             </p>
-            <h1 className="mt-5 text-5xl font-semibold leading-[0.92] tracking-[-0.06em] md:text-7xl">
+            <h1 className="mt-4 text-4xl font-semibold leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-5xl md:text-7xl">
               {product.nameFr}
             </h1>
             {product.descriptionFr ? (

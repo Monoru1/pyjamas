@@ -16,39 +16,39 @@ export function buildWhatsAppMessage(lines: CartLine[], customer: CheckoutCustom
     const total = line.unitPrice * line.quantity;
 
     return [
-      `${index + 1}. ${line.productName}`,
-      `Réf : ${line.sku}`,
-      line.sizeLabel ? `Taille : ${line.sizeLabel}` : null,
-      line.colorName ? `Couleur : ${line.colorName}` : null,
-      `Quantité : ${line.quantity}`,
-      `Prix : ${formatPrice(line.unitPrice, line.currency)}`,
-      `Sous-total : ${formatPrice(total, line.currency)}`,
+      `🧸 ${index + 1}. ${line.productName}`,
+      `🏷️ Réf : ${line.sku}`,
+      line.sizeLabel ? `📏 Taille : ${line.sizeLabel}` : null,
+      line.colorName ? `🎨 Couleur : ${line.colorName}` : null,
+      `🔢 Quantité : ${line.quantity}`,
+      `💵 Prix : ${formatPrice(line.unitPrice, line.currency)}`,
+      `🧾 Sous-total : ${formatPrice(total, line.currency)}`,
       '',
     ].filter(Boolean);
   });
 
   return [
     separator,
-    '🛍️ Nouvelle commande',
-    'La Maison des Pyjamas',
-    orderNumber ? `Commande : #${orderNumber}` : null,
+    '✨🛍️ NOUVELLE COMMANDE 🛍️✨',
+    '🏠 La Maison des Pyjamas',
+    orderNumber ? `📦 Commande : #${orderNumber}` : null,
     separator,
     '',
     '👤 Client',
-    `Nom : ${customer.name.trim()}`,
-    `Téléphone : ${customer.phone?.trim() || '—'}`,
+    `🙋 Nom : ${customer.name.trim()}`,
+    `📞 Téléphone : ${customer.phone?.trim() || '—'}`,
     '',
     separator,
     '🎁 Articles',
     ...items,
     separator,
-    `Total : ${formatPrice(computeSubtotal(lines), currency)}`,
+    `💰 Total : ${formatPrice(computeSubtotal(lines), currency)}`,
     separator,
     '',
-    '💬 Message client',
+    '💬 PRÉCISIONS DU CLIENT',
     customer.comment?.trim() || '—',
     '',
-    'Merci de me confirmer la disponibilité et les modalités de livraison.',
+    '✅ Merci de me confirmer la disponibilité et la prise en charge de la commande.',
   ].join('\n');
 }
 

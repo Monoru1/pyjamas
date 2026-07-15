@@ -24,16 +24,16 @@ export function CartLines() {
       {lines.map((line) => (
         <article key={line.variantId} className="overflow-hidden rounded-[2.25rem] border border-brand-primary/10 bg-white/85 shadow-[0_20px_70px_rgba(80,34,28,0.08)] backdrop-blur">
           <div className="flex flex-col gap-5 p-5 md:flex-row md:items-center md:justify-between">
-            <div className="flex gap-4">
-              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-3xl bg-brand-soft">
+            <div className="flex min-w-0 gap-3 sm:gap-4">
+              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-brand-soft sm:h-24 sm:w-24 sm:rounded-3xl">
                 {line.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={line.imageUrl} alt={line.productName} className="h-full w-full object-cover" />
                 ) : null}
               </div>
-              <div>
-                <p className="text-xl font-semibold tracking-[-0.03em]">{line.productName}</p>
-                <p className="mt-1 text-sm text-foreground/60">
+              <div className="min-w-0">
+                <p className="text-lg font-semibold tracking-[-0.03em] sm:text-xl">{line.productName}</p>
+                <p className="mt-1 break-words text-xs text-foreground/60 sm:text-sm">
                   {line.colorName ?? 'Couleur'} · {line.sizeLabel ?? 'Taille'} · {line.sku}
                 </p>
                 <p className="mt-3 font-semibold text-brand-primary">
@@ -41,7 +41,7 @@ export function CartLines() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-3 md:justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 md:justify-end">
               <input
                 type="number"
                 min={1}

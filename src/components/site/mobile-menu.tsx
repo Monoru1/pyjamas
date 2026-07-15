@@ -15,20 +15,20 @@ export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="sm:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         aria-label="Ouvrir le menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-brand-primary/10 bg-white text-2xl font-semibold leading-none text-brand-primary shadow-[0_12px_30px_rgba(80,34,28,0.14)]"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-brand-primary/10 bg-white text-xl font-semibold leading-none text-brand-primary shadow-[0_12px_30px_rgba(80,34,28,0.14)] sm:h-12 sm:w-12 sm:text-2xl"
       >
         ☰
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-[9999] min-h-screen overflow-y-auto bg-brand-cream px-6 py-7 text-foreground">
-          <div className="mx-auto flex min-h-screen max-w-md flex-col pb-12">
+        <div className="fixed inset-0 z-[9999] min-h-dvh overflow-y-auto bg-brand-cream px-5 py-5 text-foreground sm:px-6 sm:py-7">
+          <div className="mx-auto flex min-h-[calc(100dvh-2.5rem)] max-w-md flex-col pb-8 sm:min-h-[calc(100dvh-3.5rem)] sm:pb-12">
             <div className="flex items-center justify-between border-b border-brand-primary/15 pb-7">
               <BrandLogo />
               <button
@@ -41,7 +41,7 @@ export function MobileMenu() {
               </button>
             </div>
 
-            <nav className="grid gap-5 border-b border-brand-primary/15 py-11 text-[2.35rem] font-semibold leading-tight tracking-[-0.05em] text-brand-evergreen">
+            <nav className="grid gap-4 border-b border-brand-primary/15 py-8 text-[1.9rem] font-semibold leading-tight tracking-[-0.05em] text-brand-evergreen sm:gap-5 sm:py-11 sm:text-[2.35rem]">
               {links.map(([label, href]) => (
                 <Link key={href} href={href} onClick={() => setIsOpen(false)} className="block w-fit transition hover:text-brand-primary">
                   {label}

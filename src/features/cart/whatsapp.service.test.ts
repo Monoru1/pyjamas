@@ -28,8 +28,8 @@ describe('whatsapp checkout service', () => {
       comment: null,
     }, 'MDP-2026-0001');
 
-    expect(message).toContain('Nouvelle commande');
-    expect(message).toContain('Commande : #MDP-2026-0001');
+    expect(message).toContain('✨🛍️ NOUVELLE COMMANDE 🛍️✨');
+    expect(message).toContain('📦 Commande : #MDP-2026-0001');
     expect(message).toContain('Awa');
     expect(message).toContain('Réf : PYJ-H-VRT-XL');
     expect(message).toContain('Taille : XL');
@@ -41,5 +41,9 @@ describe('whatsapp checkout service', () => {
     expect(buildWhatsAppUrl('+229 90 00 00 00', 'Bonjour & merci')).toBe(
       'https://wa.me/22990000000?text=Bonjour%20%26%20merci',
     );
+  });
+
+  it('keeps emojis encoded in the WhatsApp URL', () => {
+    expect(buildWhatsAppUrl('+229 90 00 00 00', '🛍️ Commande')).toContain('%F0%9F%9B%8D%EF%B8%8F');
   });
 });

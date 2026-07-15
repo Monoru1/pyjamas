@@ -41,14 +41,14 @@ export function VariantPicker({ product }: VariantPickerProps) {
                   : 'border-brand-primary/10 bg-white hover:border-brand-primary/30'
               }`}
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div>
                   <p className="font-semibold">
                     {variant.colorNameFr} - {variant.sizeLabel}
                   </p>
                   <p className="mt-1 text-xs text-foreground/55">Ref : {variant.sku}</p>
                 </div>
-                <div className="text-right">{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <span className="mb-1 inline-flex rounded-full bg-brand-primary px-2 py-1 text-[10px] font-bold text-white">PROMOTION</span> : null}<p className="font-semibold text-brand-primary">{formatPrice(variant.price, variant.currencyCode)}</p>{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <p className="text-xs text-foreground/45 line-through">{formatPrice(variant.compareAtPrice, variant.currencyCode)}</p> : null}</div>
+                <div className="text-left sm:text-right">{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <span className="mb-1 inline-flex rounded-full bg-brand-primary px-2 py-1 text-[10px] font-bold text-white">PROMOTION</span> : null}<p className="font-semibold text-brand-primary">{formatPrice(variant.price, variant.currencyCode)}</p>{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <p className="text-xs text-foreground/45 line-through">{formatPrice(variant.compareAtPrice, variant.currencyCode)}</p> : null}</div>
               </div>
               <p className="mt-2 text-sm text-foreground/60">Stock : {variant.stockQuantity}</p>
             </button>
@@ -56,7 +56,7 @@ export function VariantPicker({ product }: VariantPickerProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 rounded-2xl bg-brand-primary p-5 text-white">
+      <div className="flex flex-col gap-5 rounded-2xl bg-brand-primary p-5 text-white sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div>
           <p className="text-sm text-white/70">Selection actuelle</p>
           <p className="mt-2 text-xl font-semibold">

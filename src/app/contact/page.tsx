@@ -4,14 +4,14 @@ export default async function ContactPage() {
   const settings = await getStoreSettings();
   const socialLinks = [['Instagram', settings.instagramUrl], ['TikTok', settings.tiktokUrl], ['WhatsApp', `https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`]];
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background px-5 py-10 text-foreground md:px-8">
+    <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
       <div className="pointer-events-none absolute -right-24 top-10 h-96 w-96 rounded-full bg-brand-accent/15 blur-3xl" />
       <div className="pointer-events-none absolute -left-24 bottom-10 h-96 w-96 rounded-full bg-brand-primary/10 blur-3xl" />
 
       <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
-        <section className="rounded-[3rem] bg-brand-evergreen p-8 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] md:p-12">
+        <section className="rounded-[2rem] bg-brand-evergreen p-6 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] sm:p-8 md:rounded-[3rem] md:p-12">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Contact</p>
-          <h1 className="mt-5 text-5xl font-semibold leading-[0.92] tracking-[-0.06em] md:text-7xl">
+          <h1 className="mt-4 text-4xl font-semibold leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-5xl md:text-7xl">
             Nous sommes là pour vous accompagner.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-8 text-white/75">
@@ -32,7 +32,7 @@ export default async function ContactPage() {
           </a>
         </section>
 
-        <section className="overflow-hidden rounded-[3rem] border border-brand-primary/10 bg-white shadow-[0_30px_90px_rgba(80,34,28,0.12)]">
+        <section className="overflow-hidden rounded-[2rem] border border-brand-primary/10 bg-white shadow-[0_30px_90px_rgba(80,34,28,0.12)] md:rounded-[3rem]">
           <div className="p-6 md:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">Carte</p>
             <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-brand-evergreen">Trouver la boutique.</h2>
@@ -40,7 +40,7 @@ export default async function ContactPage() {
           <iframe
             title="Carte Google Maps La Maison des Pyjamas"
             src="https://www.google.com/maps?q=La%20Maison%20des%20Pyjamas&output=embed"
-            className="h-[560px] w-full border-0"
+            className="h-[360px] w-full border-0 sm:h-[440px] lg:h-[560px]"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
