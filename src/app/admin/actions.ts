@@ -35,8 +35,12 @@ export async function updateOrderStatus(formData: FormData) {
   const id = String(formData.get('id'));
   const status = String(formData.get('status'));
   const allowed = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
-  if (!allowed.includes(status)) return;
-  await supabase.from('orders').update({ status: status as never }).eq('id', id);
+  if (!id || !allowed.includes(status)) return;
+  const { error } = await supabase.rpc('admin_update_order_status', {
+    p_order_id: id,
+    p_new_status: status as never,
+  });
+  if (error) throw new Error(error.message);
   revalidatePath('/admin');
   revalidatePath('/admin/commandes');
 }

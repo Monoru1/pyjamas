@@ -5,7 +5,7 @@ export function computeSubtotal(lines: CartLine[]) {
   return lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0);
 }
 
-export function buildWhatsAppMessage(lines: CartLine[], customer: CheckoutCustomer) {
+export function buildWhatsAppMessage(lines: CartLine[], customer: CheckoutCustomer, orderNumber?: string) {
   if (lines.length === 0) {
     throw new Error('Cannot build a WhatsApp order message with an empty cart.');
   }
@@ -31,6 +31,7 @@ export function buildWhatsAppMessage(lines: CartLine[], customer: CheckoutCustom
     separator,
     '🛍️ Nouvelle commande',
     'La Maison des Pyjamas',
+    orderNumber ? `Commande : #${orderNumber}` : null,
     separator,
     '',
     '👤 Client',

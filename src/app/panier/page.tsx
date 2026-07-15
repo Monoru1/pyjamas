@@ -20,7 +20,7 @@ export default async function CartPage() {
               Derniere etape avant le sapin.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/72">
-              Verifiez vos pieces, ajoutez vos informations et envoyez une commande claire sur WhatsApp.
+              Vérifiez vos pièces, envoyez votre demande, puis la boutique confirme sa prise en charge sur WhatsApp.
             </p>
           </div>
           <CartLines />

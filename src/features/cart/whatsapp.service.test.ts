@@ -26,9 +26,10 @@ describe('whatsapp checkout service', () => {
       name: 'Awa',
       phone: null,
       comment: null,
-    });
+    }, 'MDP-2026-0001');
 
     expect(message).toContain('Nouvelle commande');
+    expect(message).toContain('Commande : #MDP-2026-0001');
     expect(message).toContain('Awa');
     expect(message).toContain('Réf : PYJ-H-VRT-XL');
     expect(message).toContain('Taille : XL');

@@ -45,6 +45,7 @@ export type Database = {
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };
       is_super_admin: { Args: never; Returns: boolean };
       slugify: { Args: { input: string }; Returns: string };

@@ -14,12 +14,13 @@ export function CustomerForm() {
     <div className="space-y-4 rounded-[2rem] border border-brand-primary/10 bg-white p-6 shadow-sm">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-primary/65">Informations</p>
-        <p className="mt-2 text-sm text-foreground/60">Ces infos seront ajoutees au message WhatsApp.</p>
+        <p className="mt-2 text-sm text-foreground/60">Ces infos servent à enregistrer puis confirmer la demande sur WhatsApp.</p>
       </div>
 
       <label className="grid gap-2 text-sm font-medium">
         Nom
         <input
+          required
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Votre nom"
@@ -30,6 +31,8 @@ export function CustomerForm() {
       <label className="grid gap-2 text-sm font-medium">
         Telephone
         <input
+          required
+          inputMode="tel"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
           placeholder="Votre numero"
