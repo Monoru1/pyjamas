@@ -59,5 +59,12 @@ export function buildWhatsAppUrl(phoneNumber: string, message: string) {
     throw new Error('WhatsApp phone number is missing.');
   }
 
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+  const params = new URLSearchParams({
+    phone: digits,
+    text: message,
+    type: 'phone_number',
+    app_absent: '0',
+  });
+
+  return `https://api.whatsapp.com/send?${params.toString()}`;
 }

@@ -34,7 +34,7 @@ export function CartLines() {
               <div className="min-w-0">
                 <p className="text-lg font-semibold tracking-[-0.03em] sm:text-xl">{line.productName}</p>
                 <p className="mt-1 break-words text-xs text-foreground/60 sm:text-sm">
-                  {line.colorName ?? 'Couleur'} · {line.sizeLabel ?? 'Taille'} · {line.sku}
+                  {line.colorName ?? 'Couleur'} · {line.sizeLabel ?? 'Taille'}
                 </p>
                 <p className="mt-3 font-semibold text-brand-primary">
                   {formatPrice(line.unitPrice, line.currency)}

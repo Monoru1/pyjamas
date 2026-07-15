@@ -25,7 +25,7 @@ export default async function OrdersPage() {
   const supabase = await createClient();
   const { data: orders } = await supabase
     .from('orders')
-    .select('id, order_number, status, total, currency_code, customer_note, created_at, customers(full_name, phone, whatsapp_phone), order_items(product_name, size_label, quantity)')
+    .select('id, order_number, status, total, currency_code, customer_note, created_at, customers(full_name, phone, whatsapp_phone), order_items(product_name, sku, size_label, quantity)')
     .order('created_at', { ascending: false });
 
   return (
@@ -65,7 +65,7 @@ export default async function OrdersPage() {
                     <strong>{formatPrice(Number(order.total), order.currency_code)}</strong>
                   </div>
                   <p className="order-items">
-                    {items.map((item) => `${item.quantity}× ${item.product_name}${item.size_label ? ` · ${item.size_label}` : ''}`).join(' — ') || 'Articles à renseigner'}
+                    {items.map((item) => `${item.quantity}× ${item.product_name}${item.size_label ? ` · ${item.size_label}` : ''} · Réf. ${item.sku}`).join(' — ') || 'Articles à renseigner'}
                   </p>
                   {order.customer_note && <p className="order-note">“{order.customer_note}”</p>}
 

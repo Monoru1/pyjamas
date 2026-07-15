@@ -46,7 +46,6 @@ export function VariantPicker({ product }: VariantPickerProps) {
                   <p className="font-semibold">
                     {variant.colorNameFr} - {variant.sizeLabel}
                   </p>
-                  <p className="mt-1 text-xs text-foreground/55">Ref : {variant.sku}</p>
                 </div>
                 <div className="text-left sm:text-right">{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <span className="mb-1 inline-flex rounded-full bg-brand-primary px-2 py-1 text-[10px] font-bold text-white">PROMOTION</span> : null}<p className="font-semibold text-brand-primary">{formatPrice(variant.price, variant.currencyCode)}</p>{variant.compareAtPrice && variant.compareAtPrice > variant.price ? <p className="text-xs text-foreground/45 line-through">{formatPrice(variant.compareAtPrice, variant.currencyCode)}</p> : null}</div>
               </div>
@@ -62,7 +61,6 @@ export function VariantPicker({ product }: VariantPickerProps) {
           <p className="mt-2 text-xl font-semibold">
             {selected.colorNameFr} - {selected.sizeLabel}
           </p>
-          <p className="mt-1 text-sm text-white/75">{selected.sku}</p>
         </div>
         <AddButton product={product} variant={selected} />
       </div>
