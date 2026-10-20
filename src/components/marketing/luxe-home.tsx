@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowDownRight, ArrowUpRight, Gift, Heart, Play, Sparkles } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarHeart, Gift, Heart, Play, Sparkles } from 'lucide-react';
 import { EmptyProducts } from '@/components/marketing/empty-products';
 import { ProductCard } from '@/features/catalog/components/product-card';
 import type { CatalogProduct } from '@/features/catalog/types';
@@ -115,6 +115,20 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             Votre navigateur ne permet pas de lire cette vidéo.
           </video>
           <div className="christmas-film-label"><Play size={15} aria-hidden="true" /> Nos moments de Noël · Lancer la vidéo</div>
+        </div>
+      </section>
+
+      <section className="xmas-home-event-teaser" aria-labelledby="home-event-title">
+        <div className="xmas-home-event-info">
+          <div className="xmas-event-eyebrow"><CalendarHeart size={19} aria-hidden="true" /> NOUVEAU · RENDEZ-VOUS DE DÉCEMBRE</div>
+          <h2 id="home-event-title">Cette année, Noël <em>se fête ensemble.</em></h2>
+          <p>La Maison des Pyjamas prépare une fête quelques jours avant Noël. Les informations seront confirmées prochainement : vous pouvez déjà demander à être contacté pour des places.</p>
+          <Link href="/fete-de-noel" className="christmas-btn christmas-btn-light">Découvrir la fête <ArrowUpRight size={19} /></Link>
+          <small>Demande sans paiement · places non garanties avant confirmation.</small>
+        </div>
+        <div className="xmas-home-event-photo">
+          <Image src={`${photo}/family-together.jpg`} alt="Famille en pyjamas de Noël assortis" fill sizes="(max-width: 850px) 100vw, 38vw" className="christmas-cover"/>
+          <span className="xmas-home-event-sparkle" aria-hidden="true">✳</span>
         </div>
       </section>
 
