@@ -168,3 +168,8 @@ body { background: #fff9f3; }
  .admin-sidebar .admin-brand .admin-logo-wrap img {height:52px;width:auto;max-width:100%;}
  .admin-content {min-height:calc(100dvh - 68px);}
 }
+
+
+.christmas-hero-reel {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;background:#173d2c;}
+.christmas-photo-video {isolation:isolate;}
+.christmas-video-badge {pointer-events:none;position:absolute;left:10px;bottom:14px;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;background:#fffaf0e8;color:#7e2036;border-radius:50px;font:750 10px/1.3 var(--font-inter),sans-serif;z-index:3;}
