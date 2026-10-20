@@ -27,6 +27,33 @@ type MediaAssetRow = {
   updated_at: string;
 };
 
+type ChristmasEventRequestRow = {
+  id: string;
+  event_key: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  requested_places: number;
+  consent_at: string;
+  status: string;
+  staff_notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type ChristmasEventConfigRow = {
+  event_key: string;
+  display_title: string;
+  event_day: string | null;
+  event_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  ticket_price_xof: number | null;
+  capacity: number | null;
+  information_note: string | null;
+  requests_open: boolean;
+  updated_at: string;
+};
+
 type GenericRow = Record<string, Json>;
 type Table<Row = GenericRow> = {
   Row: Row;
@@ -42,6 +69,8 @@ export type Database = {
       analytics_events: Table;
       banners: Table<BannerRow>;
       categories: Table<CategoryRow>;
+      christmas_event_requests: Table<ChristmasEventRequestRow>;
+      christmas_event_config: Table<ChristmasEventConfigRow>;
       collections: Table<CollectionRow>;
       coupons: Table;
       currencies: Table<CurrencyRow>;
