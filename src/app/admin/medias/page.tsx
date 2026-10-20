@@ -16,7 +16,7 @@ export default async function AdminMediasPage() {
         <div>
           <p>ÉDITION NOËL 2026</p>
           <h1>Studio photos & vidéos.</h1>
-          <span>Une médiathèque simple pour l'équipe. Ajouter, prévisualiser et organiser nos contenus.</span>
+          <span>Une médiathèque simple pour l’équipe. Ajouter, prévisualiser et organiser nos contenus.</span>
         </div>
         <Images size={28} className="text-[#b3203a]" aria-hidden="true" />
       </header>
