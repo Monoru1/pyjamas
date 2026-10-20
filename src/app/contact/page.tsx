@@ -9,10 +9,10 @@ export default async function ContactPage() {
       <div className="pointer-events-none absolute -left-24 bottom-10 h-96 w-96 rounded-full bg-brand-primary/10 blur-3xl" />
 
       <div className="relative mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
-        <section className="rounded-[2rem] bg-brand-evergreen p-6 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] sm:p-8 md:rounded-[3rem] md:p-12">
+        <section className="rounded-[2rem] bg-[#b3203a] p-6 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] sm:p-8 md:rounded-[3rem] md:p-12">
           <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Contact</p>
           <h1 className="mt-4 text-4xl font-semibold leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-5xl md:text-7xl">
-            Nous sommes là pour vous accompagner.
+            La magie de Noël, on la partage.
           </h1>
           <p className="mt-6 max-w-xl text-base leading-8 text-white/75">
             Une taille à confirmer, un cadeau à composer ou une livraison à préparer : contactez la boutique avant votre commande.
