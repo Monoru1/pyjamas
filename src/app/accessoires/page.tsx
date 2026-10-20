@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ProductGrid } from '@/features/catalog/components/product-grid';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
@@ -15,9 +16,9 @@ export default async function AccessoiresPage() {
           <p className="mt-6 max-w-2xl text-base leading-8 text-white/78">
             Chaussons tout doux, plaids chaleureux, pochettes élégantes et coffrets prêts à déposer sous le sapin.
           </p>
-          <a href="/catalogue?type=accessory" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen">
+          <Link href="/catalogue?type=accessory" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen">
             Voir les accessoires
-          </a>
+          </Link>
         </section>
 
         {products.length > 0 ? <ProductGrid products={products} /> : (
