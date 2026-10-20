@@ -63,8 +63,8 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
 
       <section className="christmas-value-strip" aria-label="L'esprit de la maison">
         <div><Heart size={21} aria-hidden="true" /><span>Des moments en famille</span></div>
-        <div><Gift size={21} aria-hidden="true" /><span>Le plaisir d'offrir</span></div>
-        <div><Sparkles size={21} aria-hidden="true" /><span>L'esprit de Noël</span></div>
+        <div><Gift size={21} aria-hidden="true" /><span>Le plaisir d’offrir</span></div>
+        <div><Sparkles size={21} aria-hidden="true" /><span>L’esprit de Noël</span></div>
       </section>
 
       <section id="vedettes" className="christmas-section christmas-products" aria-labelledby="christmas-products-title">
@@ -87,8 +87,8 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
         <div className="christmas-story-editorial">
           <p className="christmas-eyebrow">02 / DERRIÈRE LA MAGIE</p>
           <div className="christmas-story-mark" aria-hidden="true">✳</div>
-          <h2 id="story-heading">Le meilleur de Noël, <em>c'est nous.</em></h2>
-          <p>Les rires, les petits moments, les tenues assorties. C'est ce qu'on aime dans cette saison. Découvrez quelques instants de nos shootings et de notre maison.</p>
+          <h2 id="story-heading">Le meilleur de Noël, <em>c’est nous.</em></h2>
+          <p>Les rires, les petits moments, les tenues assorties. C’est ce qu’on aime dans cette saison. Découvrez quelques instants de nos shootings et de notre maison.</p>
           <Link href="/collections" className="christmas-btn christmas-btn-red">
             Notre édition de Noël <ArrowUpRight size={18} />
           </Link>
