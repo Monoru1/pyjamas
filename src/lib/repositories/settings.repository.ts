@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createPublicClient } from '@/lib/supabase/public';
 import type { Json } from '@/lib/supabase/database.types';
 
@@ -11,6 +12,8 @@ export interface StoreSettings {
   tiktokUrl: string;
   heroImage: string;
   loungeImage: string;
+  heroSideImage: string;
+  heroLowerImage: string;
   featuredVideoUrl: string;
   theme: {
     primary: string;
@@ -31,7 +34,9 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   tiktokUrl: 'https://www.tiktok.com/@lamaison_des_pyjamas?is_from_webapp=1&sender_device=pc',
   heroImage: '/christmas-2026/family-celebration.jpg',
   loungeImage: '/christmas-2026/christmas-boutique.jpg',
-  featuredVideoUrl: '/christmas-2026/christmas-family-reel.mp4',
+  heroSideImage: '/christmas-2026/family-together.jpg',
+  heroLowerImage: '/christmas-2026/family-red-tartan.webp',
+  featuredVideoUrl: '/christmas-2026/christmas-family-film.mp4',
   theme: {
     primary: '#7A1F2B',
     accent: '#D4AF37',
@@ -51,10 +56,10 @@ function asString(value: Json | undefined, fallback: string) {
   return typeof value === 'string' ? value : fallback;
 }
 
-export async function getStoreSettings(): Promise<StoreSettings> {
+export const getStoreSettings = cache(async function getStoreSettings(): Promise<StoreSettings> {
   try {
     const supabase = createPublicClient();
-    const { data, error } = await supabase.from('settings').select('*');
+    const { data, error } = await supabase.from('settings').select('*').in('key', ['site','whatsapp','theme','homepage','social']);
 
     if (error) {
       console.error('Unable to load store settings:', error.message);
@@ -82,6 +87,8 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       heroImage: asString(homepage.heroImage, DEFAULT_STORE_SETTINGS.heroImage),
       loungeImage: asString(homepage.loungeImage, DEFAULT_STORE_SETTINGS.loungeImage),
       featuredVideoUrl: asString(homepage.featuredVideoUrl, DEFAULT_STORE_SETTINGS.featuredVideoUrl),
+      heroSideImage: asString(homepage.heroSideImage, DEFAULT_STORE_SETTINGS.heroSideImage),
+      heroLowerImage: asString(homepage.heroLowerImage, DEFAULT_STORE_SETTINGS.heroLowerImage),
       theme: {
         primary: asString(theme.primary, DEFAULT_STORE_SETTINGS.theme.primary),
         accent: asString(theme.accent, DEFAULT_STORE_SETTINGS.theme.accent),
@@ -91,5 +98,4 @@ export async function getStoreSettings(): Promise<StoreSettings> {
   } catch (error) {
     console.error('Settings repository runtime fallback:', error);
     return DEFAULT_STORE_SETTINGS;
-  }
-}
+  }});

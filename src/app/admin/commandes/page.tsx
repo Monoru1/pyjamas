@@ -1,6 +1,6 @@
 import { updateOrderStatus } from '@/app/admin/actions';
 import { OrdersAutoRefresh } from '@/app/admin/commandes/orders-auto-refresh';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { formatPrice } from '@/lib/utils/money';
 
 const labels: Record<string, string> = {

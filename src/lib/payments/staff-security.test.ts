@@ -1,0 +1,47 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFileSync } from 'node:fs';
+import { beforeAll, afterAll, expect, it } from 'vitest';
+const db=new PGlite();
+const employee='11111111-1111-4111-8111-111111111111';
+const manager='22222222-2222-4222-8222-222222222222';
+beforeAll(async()=>{
+ await db.exec(`create role anon;create role authenticated;create role service_role;
+ create schema auth;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+ create table profiles(id uuid,role text,is_active boolean);
+ insert into profiles values('${employee}','employee',true),('${manager}','admin',true);
+ create table settings(key text,value jsonb);alter table settings enable row level security;
+ create policy "read settings" on settings for select using(true);
+ create policy "admin manage settings" on settings for all to authenticated using(true) with check(true);
+ grant select,update on settings to authenticated;insert into settings values('homepage','{}');
+ create table christmas_event_config(event_key text,requests_open boolean);alter table christmas_event_config enable row level security;
+ create policy "staff edit christmas event" on christmas_event_config for update to authenticated using(true) with check(true);
+ insert into christmas_event_config values('noel-2026',true);
+ create table christmas_event_requests(id uuid default gen_random_uuid(),event_key text,full_name text,phone text,email text,requested_places int,consent_at timestamptz,status text);
+ create table activity_logs(actor_id uuid,action text,entity_type text,entity_id uuid);
+ create table products(id uuid);create table product_variants(id uuid);create table media_assets(id uuid);
+ `);
+ await db.exec(readFileSync('supabase/migrations/20261020140730_staff_permissions_and_event_rate_limit.sql','utf8'));
+},30_000);
+afterAll(async()=>{await db.close();});
+it('allows manager settings changes, denies employee writes and records actor without payload',async()=>{
+ await db.exec(`set request.jwt.claim.sub='${employee}';set role authenticated;`);
+ expect((await db.query('select is_manager() as allowed')).rows[0]).toEqual({allowed:false});
+ expect((await db.query("update settings set value='{}' where key='homepage' returning key")).rows).toHaveLength(0);
+ await db.exec(`reset role;set request.jwt.claim.sub='${manager}';set role authenticated;`);
+ expect((await db.query('select is_manager() as allowed')).rows[0]).toEqual({allowed:true});
+ expect((await db.query("update settings set value='{}' where key='homepage' returning key")).rows).toHaveLength(1);
+ await db.exec('reset role');
+ expect((await db.query('select actor_id from activity_logs')).rows[0]).toEqual({actor_id:manager});
+});
+it('atomically rate-limits event requests and respects closure',async()=>{
+ const submit=()=>db.query("select submit_christmas_request('Fictif Test','00000000','',1,$1)",['a'.repeat(64)]);
+ await submit();await submit();await submit();
+ await expect(submit()).rejects.toThrow('Rate limit');
+ expect((await db.query('select count(*)::int as count from christmas_event_requests')).rows[0]).toEqual({count:3});
+ await db.exec('update christmas_event_config set requests_open=false');
+ await expect(submit()).rejects.toThrow('Requests closed');
+ await db.exec('set role anon');
+ await expect(submit()).rejects.toThrow('permission denied');
+ await db.exec('reset role');
+});

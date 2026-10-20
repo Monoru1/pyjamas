@@ -1,0 +1,17 @@
+ALTER POLICY "admin manage banners" ON public.banners TO authenticated;
+ALTER POLICY "admin manage categories" ON public.categories TO authenticated;
+ALTER POLICY "admin manage collections" ON public.collections TO authenticated;
+ALTER POLICY "admin manage currencies" ON public.currencies TO authenticated;
+ALTER POLICY "admin manage customers" ON public.customers TO authenticated;
+ALTER POLICY "admin manage faq" ON public.faq TO authenticated;
+ALTER POLICY "admin manage homepage_sections" ON public.homepage_sections TO authenticated;
+ALTER POLICY "admin manage languages" ON public.languages TO authenticated;
+ALTER POLICY "admin manage order_items" ON public.order_items TO authenticated;
+ALTER POLICY "admin manage orders" ON public.orders TO authenticated;
+ALTER POLICY "admin manage product_collections" ON public.product_collections TO authenticated;
+ALTER POLICY "admin manage product_images" ON public.product_images TO authenticated;
+ALTER POLICY "admin manage variants" ON public.product_variants TO authenticated;
+ALTER POLICY "admin manage products" ON public.products TO authenticated;
+ALTER POLICY "admin manage reviews" ON public.reviews TO authenticated;
+ALTER POLICY "admin manage settings" ON public.settings TO authenticated;
+ALTER POLICY "admin manage testimonials" ON public.testimonials TO authenticated;

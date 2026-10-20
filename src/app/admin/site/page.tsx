@@ -2,9 +2,10 @@ import Image from 'next/image';
 import { Film, ImagePlus } from 'lucide-react';
 import { updateSiteSettings } from '@/app/admin/actions';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 
-export default async function SiteSettingsPage() {
+export default async function SiteSettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const saved = (await searchParams).saved === '1';
   const supabase = await createClient();
   const [settings, { data: media }] = await Promise.all([
     getStoreSettings(),
@@ -31,6 +32,7 @@ export default async function SiteSettingsPage() {
         </div>
         <ImagePlus size={28} className="text-[#b3203a]" />
       </header>
+      {saved && <p role="status" className="admin-medias-message mb-5">Les visuels ont été enregistrés.</p>}
       <form action={updateSiteSettings} className="space-y-6">
         <section className="admin-panel p-6 md:p-8">
           <div className="admin-panel-title">
@@ -69,6 +71,16 @@ export default async function SiteSettingsPage() {
           </div>
         </section>
 
+        <section className="admin-panel p-6 md:p-8">
+          <h2 className="mb-5 text-2xl">Les deux petites photographies du hero</h2>
+          <div className="grid gap-5 md:grid-cols-2">
+            {([['hero_side_selected', 'Carte supérieure', settings.heroSideImage], ['hero_lower_selected', 'Carte inférieure · autre style de pyjama', settings.heroLowerImage]] as const).map(([name, label, current]) => <label key={name} className="grid gap-3 text-sm font-bold">
+              <span>{label}</span>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-xl"><Image src={current} alt={label} fill sizes="(max-width: 800px) 90vw, 40vw" className="object-contain" /></div>
+              <select name={name} defaultValue="" className="w-full rounded-xl border p-3 font-normal"><option value="">Conserver l’image actuelle</option>{images.map(image => <option key={image.id} value={image.url}>{image.title || 'Image sans titre'}</option>)}</select>
+            </label>)}
+          </div>
+        </section>
         <section className="admin-panel p-6 md:p-8">
           <div className="admin-panel-title">
             <div><p>02 · LE FILM</p><h2>La vidéo de Noël</h2></div>

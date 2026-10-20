@@ -4,6 +4,8 @@ import { ArrowUpRight, CalendarDays, Gift, Heart, MapPin, Music2, Sparkles, Tick
 import { createPublicClient } from '@/lib/supabase/public';
 import { ChristmasEventRequestForm } from './request-form';
 
+export const revalidate = 60;
+
 export const metadata = {
   title: 'La fête de Noël 2026 | La Maison des Pyjamas',
   description: 'Une fête de Noël se prépare à La Maison des Pyjamas. Demandez à être recontacté pour les informations et les places.',
@@ -27,7 +29,7 @@ function formatDay(date: string | null | undefined) {
 export default async function ChristmasEventPage() {
   const config = await getChristmasEventConfig();
   const price = config?.ticket_price_xof == null ? 'À confirmer' : config.ticket_price_xof === 0 ? 'Entrée gratuite' : new Intl.NumberFormat('fr-FR').format(config.ticket_price_xof) + ' FCFA';
-  const open = Boolean(config?.requests_open);
+  const open = Boolean(config?.requests_open && process.env.EVENT_REQUESTS_ENABLED === 'true' && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.EVENT_REQUEST_RATE_SECRET);
 
   return (
     <main className="xmas-event">
@@ -36,7 +38,7 @@ export default async function ChristmasEventPage() {
       </div>
       <section className="xmas-event-hero">
         <div className="xmas-event-hero-copy">
-          <span className="xmas-event-eyebrow"><span aria-hidden="true">✦</span> LA MAISON DES PYJAMAS PRÉPARE SA FÊTE</span>
+          <span className="xmas-event-eyebrow">LA MAISON DES PYJAMAS PRÉPARE SA FÊTE</span>
           <h1>Un Noël <em>à vivre</em> ensemble.</h1>
           <p>Avant Noël, retrouvons-nous pour célébrer les petits bonheurs, l’esprit de famille et cette période qui nous rassemble. Une fête se prépare à la maison !</p>
           <div className="xmas-event-hero-actions">
@@ -47,7 +49,6 @@ export default async function ChristmasEventPage() {
         </div>
         <div className="xmas-event-hero-image">
           <Image src="/christmas-2026/family-celebration.jpg" alt="Famille en pyjamas assortis dans une ambiance de Noël" fill priority sizes="(max-width: 850px) 100vw, 50vw" className="object-cover"/>
-          <span className="xmas-event-seal" aria-hidden="true">FÊTE<br/>DE NOËL<br/>✳</span>
         </div>
       </section>
 

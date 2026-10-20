@@ -173,3 +173,15 @@ body { background: #fff9f3; }
 .christmas-hero-reel {position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;background:#173d2c;}
 .christmas-photo-video {isolation:isolate;}
 .christmas-video-badge {pointer-events:none;position:absolute;left:10px;bottom:14px;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;background:#fffaf0e8;color:#7e2036;border-radius:50px;font:750 10px/1.3 var(--font-inter),sans-serif;z-index:3;}
+
+/* Keep the entire outfit visible in the small campaign frames. */
+.christmas-photo-lower .christmas-cover { object-fit:contain; background:#f0e8db; }
+.christmas-film-card { border-radius:24px; min-height:0; aspect-ratio:4/5; }
+.christmas-film-video { object-fit:contain; }
+.christmas-film-launch {position:absolute;inset:0;display:grid;place-content:center;gap:16px;border:0;background:#102e2222;color:white;cursor:pointer;font:700 15px var(--font-inter),sans-serif;text-shadow:0 1px 8px #000;}
+.christmas-film-launch span {padding:15px 22px;background:#fff9f3;color:#84172e;border-radius:40px;text-shadow:none;}
+.christmas-film-launch:focus-visible {outline:4px solid #f2d39c;outline-offset:-6px;}
+@media(max-width:800px){.christmas-hero-copy{min-height:0;padding:36px 24px}.christmas-hero-footnote{margin-top:24px}.christmas-hero-gallery{min-height:400px}.christmas-hero h1{font-size:clamp(43px,10vw,68px)}}
+@media(max-width:360px){.christmas-hero-gallery{min-height:350px;padding:0 10px 16px;gap:8px}.christmas-hero-actions{gap:18px}.christmas-hero-copy{padding:32px 20px}}
+
+.christmas-photo-side { border-radius:18px; }

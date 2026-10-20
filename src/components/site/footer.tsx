@@ -51,24 +51,20 @@ export function Footer() {
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-brand-evergreen md:text-4xl">Préparer votre passage.</h2>
             </div>
             <p className="max-w-lg text-sm leading-6 text-foreground/58">
-              La carte est intégrée pour retrouver la maison et confirmer les horaires avant votre visite.
+              Contactez la boutique pour confirmer l’adresse et les horaires avant votre visite.
             </p>
           </div>
-          <div className="overflow-hidden rounded-[1.6rem] border border-brand-primary/10 bg-white shadow-[0_14px_55px_rgba(80,34,28,0.07)]">
-            <iframe
-              title="Carte Google Maps La Maison des Pyjamas"
-              src="https://www.google.com/maps?q=La%20Maison%20des%20Pyjamas&output=embed"
-              className="h-64 w-full border-0 md:h-80"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
+          <a className="inline-flex min-h-12 items-center rounded-full border border-brand-primary/20 px-6 text-sm font-semibold text-brand-primary" href="https://www.google.com/maps/search/?api=1&query=La%20Maison%20des%20Pyjamas%20Cotonou" target="_blank" rel="noopener noreferrer">Ouvrir la carte Google Maps</a>
         </section>
 
         <div className="flex flex-col gap-3 pt-6 text-xs text-foreground/45 md:flex-row md:items-center md:justify-between">
           <p>© 2026 La Maison des Pyjamas. Tous droits réservés.</p>
           <div className="flex flex-wrap gap-4">
-            <a href="/contact">Contact</a>
+            <a href="/mentions-legales">Mentions légales</a>
+            <a href="/politique-de-confidentialite">Confidentialité</a>
+            <a href="/cgv">Conditions de vente</a>
+            <a href="/cookies">Cookies</a>
+            <a href="/livraison-et-retours">Livraison et retours</a>
             <a href="/collections">Collections</a>
             <a href="/fete-de-noel">La fête de Noël</a>
           </div>

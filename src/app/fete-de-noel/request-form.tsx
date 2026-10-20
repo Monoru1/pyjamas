@@ -48,7 +48,7 @@ export function ChristmasEventRequestForm({ open }: { open: boolean }) {
             {pending ? <LoaderCircle size={18} className="animate-spin" /> : <ArrowRight size={19} />}
             {pending ? 'Enregistrement…' : state.ok ? 'Demande enregistrée' : 'Demander mes places'}
           </button>
-          <p className="xmas-event-fineprint">Ce formulaire n’est pas un billet. Date, lieu, tarif et capacité restent à confirmer. Aucune somme n’est prélevée.</p>
+          <p className="xmas-event-fineprint">Consultez notre <a className="underline" href="/politique-de-confidentialite">politique de confidentialité</a>. Ce formulaire n’est pas un billet. Date, lieu, tarif et capacité restent à confirmer. Aucune somme n’est prélevée.</p>
         </form>
       )}
     </section>

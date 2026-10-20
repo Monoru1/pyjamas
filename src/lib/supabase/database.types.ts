@@ -65,6 +65,7 @@ type Table<Row = GenericRow> = {
 export type Database = {
   public: {
     Tables: {
+      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string}>;
       activity_logs: Table;
       analytics_events: Table;
       banners: Table<BannerRow>;

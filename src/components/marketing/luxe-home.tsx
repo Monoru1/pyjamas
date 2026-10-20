@@ -1,6 +1,7 @@
 import Image from 'next/image';
+import { CampaignFilm } from '@/components/marketing/campaign-film';
 import Link from 'next/link';
-import { ArrowDownRight, ArrowUpRight, CalendarHeart, Gift, Heart, Play, Sparkles } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarHeart, Gift, Heart, Sparkles } from 'lucide-react';
 import { EmptyProducts } from '@/components/marketing/empty-products';
 import { ProductCard } from '@/features/catalog/components/product-card';
 import type { CatalogProduct } from '@/features/catalog/types';
@@ -26,7 +27,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
 
       <section className="christmas-hero" aria-labelledby="christmas-main-title">
         <div className="christmas-hero-copy">
-          <div className="christmas-kicker"><span className="christmas-star">✦</span> {settings.siteName} · 2026</div>
+          <div className="christmas-kicker">{settings.siteName} · 2026</div>
           <h1 id="christmas-main-title">
             Cette année,<br />
             <em>vivons Noël</em><br />
@@ -42,31 +43,19 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             </a>
           </div>
           <div className="christmas-hero-footnote">
-            <span className="christmas-sparkle">✧</span>
             <span>Une collection à porter, des souvenirs à créer.</span>
           </div>
         </div>
         <div className="christmas-hero-gallery">
           <div className="christmas-photo christmas-photo-main">
             <Image src={leadPhoto} alt="Famille réunie en pyjamas de Noël assortis" fill priority sizes="(max-width: 800px) 75vw, 35vw" className="christmas-cover" />
-            <span className="christmas-photo-caption">Moments ensemble</span>
           </div>
-          <div className="christmas-photo christmas-photo-side christmas-photo-video">
-            <video
-              src={settings.featuredVideoUrl}
-              poster={`${photo}/family-together.jpg`}
-              controls
-              playsInline
-              preload="none"
-              className="christmas-hero-reel"
-              aria-label="Découvrir notre film de Noël en famille"
-            />
-            <span className="christmas-video-badge" aria-hidden="true"><Play size={13} /> Voir le film</span>
+          <div className="christmas-photo christmas-photo-side">
+            <Image src={settings.heroSideImage} alt="Petits et grands réunis en pyjamas de Noël" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
           </div>
           <div className="christmas-photo christmas-photo-lower">
-            <Image src={`${photo}/hero-family.jpg`} alt="Portrait de famille au pied du sapin" fill sizes="(max-width: 800px) 45vw, 19vw" className="christmas-cover" />
+            <Image src={settings.heroLowerImage} alt="Famille en pyjamas à carreaux rouges et blancs" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
           </div>
-          <span className="christmas-sticker" aria-hidden="true">NOËL<br />2026 ✳</span>
         </div>
       </section>
 
@@ -95,7 +84,6 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
       <section className="christmas-story" id="notre-histoire" aria-labelledby="story-heading">
         <div className="christmas-story-editorial">
           <p className="christmas-eyebrow">02 / DERRIÈRE LA MAGIE</p>
-          <div className="christmas-story-mark" aria-hidden="true">✳</div>
           <h2 id="story-heading">Le meilleur de Noël, <em>c’est nous.</em></h2>
           <p>Les rires, les petits moments, les tenues assorties. C’est ce qu’on aime dans cette saison. Découvrez quelques instants de nos shootings et de notre maison.</p>
           <Link href="/collections" className="christmas-btn christmas-btn-red">
@@ -103,18 +91,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
           </Link>
         </div>
         <div className="christmas-film-card">
-          <video
-            className="christmas-film-video"
-            controls
-            playsInline
-            preload="none"
-            poster={`${photo}/family-together.jpg`}
-            aria-label="Vidéo de notre collection Noël en famille"
-          >
-            <source src={settings.featuredVideoUrl} type="video/mp4" />
-            Votre navigateur ne permet pas de lire cette vidéo.
-          </video>
-          <div className="christmas-film-label"><Play size={15} aria-hidden="true" /> Nos moments de Noël · Lancer la vidéo</div>
+          <CampaignFilm src={settings.featuredVideoUrl} poster={`${photo}/family-together.jpg`} />
         </div>
       </section>
 
@@ -128,7 +105,6 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
         </div>
         <div className="xmas-home-event-photo">
           <Image src={`${photo}/family-together.jpg`} alt="Famille en pyjamas de Noël assortis" fill sizes="(max-width: 850px) 100vw, 38vw" className="christmas-cover"/>
-          <span className="xmas-home-event-sparkle" aria-hidden="true">✳</span>
         </div>
       </section>
 

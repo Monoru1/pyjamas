@@ -1,0 +1,25 @@
+name: Reconcile sandbox payments
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+permissions: {}
+jobs:
+  reconcile:
+    if: vars.PAYMENT_RECONCILIATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the server to reconcile provider statuses
+        env:
+          PAYMENT_RECONCILE_URL: ${{ vars.PAYMENT_RECONCILE_URL }}
+          PAYMENT_RECONCILE_SECRET: ${{ secrets.PAYMENT_RECONCILE_SECRET }}
+        run: |
+          node <<'JS'
+          const url = new URL(process.env.PAYMENT_RECONCILE_URL);
+          if (url.protocol !== 'https:' || !url.hostname.endsWith('.netlify.app')) throw Error('Invalid reconciliation destination');
+          const response = await fetch(url, {method:'POST',headers:{authorization:`Bearer ${process.env.PAYMENT_RECONCILE_SECRET}`}, signal:AbortSignal.timeout(120000)});
+          if (!response.ok) throw Error('Reconciliation failed: '+response.status);
+          const result=await response.json();
+          console.log('Reconciliation:',result.checked,'of',result.attempted);
+          if(result.checked!==result.attempted) throw Error('Some transactions require another reconciliation');
+          JS

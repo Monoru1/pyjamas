@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpRight, Gift, Package } from 'lucide-react';
 import { updateCollection } from '@/app/admin/actions';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { formatPrice } from '@/lib/utils/money';
 
 export default async function AdminCollectionsPage() {

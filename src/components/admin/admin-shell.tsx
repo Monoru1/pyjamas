@@ -10,6 +10,7 @@ import { signOutAdmin } from '@/app/admin/actions';
 const sections = [
   { href: '/admin', label: 'Vue d’ensemble', icon: LayoutDashboard },
   { href: '/admin/commandes', label: 'Commandes', icon: ReceiptText },
+  { href: '/admin/paiements', label: 'Paiements de test', icon: ReceiptText },
   { href: '/admin/produits', label: 'Produits & stocks', icon: Package },
   { href: '/admin/medias', label: 'Photos & vidéos', icon: Images },
   { href: '/admin/fete', label: 'La fête de Noël', icon: CalendarHeart },

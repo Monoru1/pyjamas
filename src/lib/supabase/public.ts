@@ -11,5 +11,6 @@ export function createPublicClient() {
   const { supabaseUrl, supabaseKey } = getPublicEnv();
   return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: (input, init) => fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000) }) },
   });
 }

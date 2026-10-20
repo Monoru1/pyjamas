@@ -21,3 +21,18 @@ export async function setMediaStatus(id: string, active: boolean) {
   revalidatePath('/');
   return { error: null };
 }
+
+export async function updateMediaMetadata(_state: { error: string | null; message: string }, form: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !(await supabase.rpc('is_admin')).data) return { error: 'Session autorisée requise.', message: '' };
+  const id = String(form.get('id') ?? '');
+  const title = String(form.get('title') ?? '').trim();
+  const alt = String(form.get('alt_fr') ?? '').trim();
+  if (!/^[a-f0-9-]{36}$/i.test(id) || !title || title.length > 120 || alt.length > 200) return { error: 'Renseignez un titre (120 caractères maximum) et une description de 200 caractères maximum.', message: '' };
+  const { error } = await supabase.from('media_assets').update({ title, alt_fr: alt || null }).eq('id', id);
+  if (error) return { error: 'Le média n’a pas pu être modifié.', message: '' };
+  revalidatePath('/admin/medias');
+  revalidatePath('/admin/site');
+  return { error: null, message: 'Informations du média enregistrées.' };
+}

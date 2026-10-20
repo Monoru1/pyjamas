@@ -1,0 +1,13 @@
+import Link from 'next/link';
+import type { Metadata } from 'next';
+export const metadata: Metadata = { title: "Conditions de vente" + ' · La Maison des Pyjamas' };
+const sections = [["État du service", "La commande actuelle est une demande adressée à la boutique pour vérification. L’envoi de la demande ne signifie pas que la vente, le stock ou la livraison sont confirmés. Le paiement en ligne réel et la billetterie payante restent désactivés pendant la validation du service."], ["Articles et prix", "Les prix affichés sont exprimés en francs CFA (XOF). Les tailles, variantes et disponibilités sont celles du catalogue. La boutique doit confirmer leur exactitude et préciser les frais éventuels avant tout engagement définitif du client."], ["Confirmation et paiement", "La boutique vérifie les articles et les modalités puis contacte le client. Aucun retour de navigateur ou message non vérifié ne constitue une preuve de paiement. Les conditions définitives de formation de la vente, les moyens de paiement autorisés et la prise en charge des frais doivent être approuvés par l’exploitant."], ["Livraison, retours et litiges", "Les zones desservies, délais, frais, modalités de retrait, conditions d’annulation, garanties, retours, remboursements et traitement des litiges restent à préciser par l’exploitant. Aucun délai de rétractation ou de remboursement non validé n’est promis sur cette page. Contactez la boutique avant de confirmer un achat."], ["Fête de Noël", "Une demande de places exprime un intérêt et ne constitue ni une réservation garantie ni un billet payé. La date, le lieu, les tarifs, la capacité et les conditions d’entrée ou d’annulation doivent être validés avant toute ouverture de billetterie."]];
+export default function LegalPage() {
+ return <main className="mx-auto max-w-3xl px-5 py-12 md:py-20">
+ <p className="text-xs font-bold uppercase tracking-widest text-brand-primary">La Maison des Pyjamas · Mise à jour du 20 octobre 2026</p>
+ <h1 className="mt-4 text-4xl md:text-5xl">Conditions de vente</h1>
+ <p role="note" className="my-7 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6">Version préparatoire : les informations juridiques et modalités commerciales manquantes doivent être validées par la propriétaire avant l’ouverture complète du service.</p>
+ <div className="mt-8 space-y-8">{sections.map(([title, text]) => <section key={title}><h2 className="text-2xl">{title}</h2><p className="mt-3 leading-8 text-foreground/75">{text}</p></section>)}</div>
+ <Link className="mt-10 inline-block underline" href="/contact">Contacter la boutique</Link>
+ </main>;
+}
