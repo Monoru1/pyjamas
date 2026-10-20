@@ -1,6 +1,6 @@
+import Link from 'next/link';
 import Image from 'next/image';
 import { EmptyProducts } from '@/components/marketing/empty-products';
-import { BrandLogo } from '@/components/brand/brand-logo';
 import { ProductCard } from '@/features/catalog/components/product-card';
 import type { CatalogProduct } from '@/features/catalog/types';
 import type { StoreSettings } from '@/lib/repositories/settings.repository';
@@ -90,9 +90,9 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
                 Les pièces qui doivent faire ouvrir le panier.
               </h2>
             </div>
-            <a href="/catalogue" className="rounded-full border border-brand-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-brand-primary">
+            <Link href="/catalogue" className="rounded-full border border-brand-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-brand-primary">
               Tout voir
-            </a>
+            </Link>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {products.length > 0 ? products.map((product) => <ProductCard key={product.id} product={product} />) : <EmptyProducts />}

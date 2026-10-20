@@ -24,11 +24,11 @@ export async function updateSession(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims();
   const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
-  const isLoginRoute = request.nextUrl.pathname.startsWith('/admin/login');
+  const isPublicAdminAuthRoute = /^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/.test(request.nextUrl.pathname);
 
   const { data: isAdmin } = data?.claims ? await supabase.rpc('is_admin') : { data: false };
 
-  if (isAdminRoute && !isLoginRoute && !isAdmin) {
+  if (isAdminRoute && !isPublicAdminAuthRoute && !isAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = '/admin/login';
     return NextResponse.redirect(url);
