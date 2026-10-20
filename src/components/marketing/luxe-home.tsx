@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { CampaignFilm } from '@/components/marketing/campaign-film';
 import Link from 'next/link';
 import { ArrowDownRight, ArrowUpRight, CalendarHeart, Gift, Heart, Sparkles } from 'lucide-react';

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { ArrowUpRight, CalendarDays, Gift, Heart, MapPin, Music2, Sparkles, Ticket } from 'lucide-react';
 import { createPublicClient } from '@/lib/supabase/public';
 import { ChristmasEventRequestForm } from './request-form';

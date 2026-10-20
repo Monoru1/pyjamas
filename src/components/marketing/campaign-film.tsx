@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { useState } from 'react';
 
 export function CampaignFilm({ src, poster }: { src: string; poster: string }) {
