@@ -12,7 +12,8 @@ interface CataloguePageProps {
 export default async function CataloguePage({ searchParams }: CataloguePageProps) {
   const products = await listProducts(72);
   const params = await searchParams;
-  const collectionSlug = params?.collection;
+  // The 2026 storefront features only the official Noël collection.
+  const collectionSlug = params?.collection === 'noel' ? params.collection : 'noel';
   const supabase = await createClient();
   const { data: collection } = collectionSlug
     ? await supabase.from('collections').select('name_fr, description_fr').eq('slug', collectionSlug).eq('is_active', true).maybeSingle()
