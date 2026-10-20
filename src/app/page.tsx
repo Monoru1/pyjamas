@@ -1,12 +1,16 @@
 import { LuxeHome } from '@/components/marketing/luxe-home';
-import { listFeaturedProducts } from '@/lib/repositories/catalog.repository';
+import { listProducts } from '@/lib/repositories/catalog.repository';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
+// Cache public HTML at the edge; admin edits revalidate the path when published.
+export const revalidate = 60;
+
 export default async function HomePage() {
-  const [settings, featuredProducts] = await Promise.all([
+  const [settings, products] = await Promise.all([
     getStoreSettings(),
-    listFeaturedProducts(6),
+    listProducts(48),
   ]);
 
-  return <LuxeHome settings={settings} products={featuredProducts} />;
+  const christmasSelection = products.filter(product => product.collectionSlugs.includes('noel')).slice(0, 6);
+  return <LuxeHome settings={settings} products={christmasSelection} />;
 }

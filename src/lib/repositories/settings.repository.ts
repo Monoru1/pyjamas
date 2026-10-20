@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import type { Json } from '@/lib/supabase/database.types';
 
 export interface StoreSettings {
@@ -11,6 +11,7 @@ export interface StoreSettings {
   tiktokUrl: string;
   heroImage: string;
   loungeImage: string;
+  featuredVideoUrl: string;
   theme: {
     primary: string;
     accent: string;
@@ -28,8 +29,9 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   whatsappDefaultMessage: 'Bonjour, je souhaite passer une commande.',
   instagramUrl: 'https://www.instagram.com/lamaisondespyjamas?igsh=MTlicHVteTN0MTJvcw==',
   tiktokUrl: 'https://www.tiktok.com/@lamaison_des_pyjamas?is_from_webapp=1&sender_device=pc',
-  heroImage: 'https://images.unsplash.com/photo-1543589077-47d81606c1bf?auto=format&fit=crop&w=1600&q=85',
-  loungeImage: 'https://images.unsplash.com/photo-1512389142860-9c449e58a543?auto=format&fit=crop&w=1000&q=85',
+  heroImage: '/christmas-2026/family-celebration.jpg',
+  loungeImage: '/christmas-2026/christmas-boutique.jpg',
+  featuredVideoUrl: '/christmas-2026/christmas-family-reel.mp4',
   theme: {
     primary: '#7A1F2B',
     accent: '#D4AF37',
@@ -51,7 +53,7 @@ function asString(value: Json | undefined, fallback: string) {
 
 export async function getStoreSettings(): Promise<StoreSettings> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.from('settings').select('*');
 
     if (error) {
@@ -79,6 +81,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
       tiktokUrl: asString(social.tiktok, DEFAULT_STORE_SETTINGS.tiktokUrl),
       heroImage: asString(homepage.heroImage, DEFAULT_STORE_SETTINGS.heroImage),
       loungeImage: asString(homepage.loungeImage, DEFAULT_STORE_SETTINGS.loungeImage),
+      featuredVideoUrl: asString(homepage.featuredVideoUrl, DEFAULT_STORE_SETTINGS.featuredVideoUrl),
       theme: {
         primary: asString(theme.primary, DEFAULT_STORE_SETTINGS.theme.primary),
         accent: asString(theme.accent, DEFAULT_STORE_SETTINGS.theme.accent),

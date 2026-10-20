@@ -1,0 +1,47 @@
+name: Smoke test Christmas preview
+
+on:
+  push:
+    branches: [feat/christmas-storefront-admin-v2]
+    paths: [.github/workflows/christmas-smoke.yml]
+
+jobs:
+  storefront-http:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Exercise real Netlify preview routes
+        run: |
+          node <<'JS'
+          const origin='https://deploy-preview-2--pyjamas25.netlify.app';
+          const targets=[
+            ['/',200],
+            ['/admin/login',200],
+            ['/admin/forgot-password',200],
+            ['/collections',200],
+            ['/fete-de-noel',200],
+            ['/catalogue?collection=noel',200],
+            ['/christmas-2026/family-celebration.jpg',200],
+            ['/christmas-2026/christmas-family-reel.mp4',200]
+          ];
+          let failed=false;
+          for(const [path,want] of targets){
+            try{
+              const begin=Date.now();
+              const res=await fetch(origin+path,{signal:AbortSignal.timeout(20000),redirect:'manual'});
+              const ms=Date.now()-begin;
+              console.log(path,'status',res.status,'ms',ms);
+              if(res.status!==want){failed=true; console.error('Expected',want,'got',res.status);}
+            }catch(err){failed=true;console.error(path,String(err));}
+          }
+          for(const path of ['/admin','/admin/medias','/admin/fete']) {
+            try{
+              const res=await fetch(origin+path,{signal:AbortSignal.timeout(20000),redirect:'manual'});
+              console.log(path,'status',res.status,'location',res.headers.get('location'));
+              if(![301,302,303,307,308].includes(res.status)||!res.headers.get('location')?.includes('/admin/login')){
+                failed=true; console.error(path,'must redirect unauthenticated visitors to /admin/login');
+              }
+            }catch(err){failed=true;console.error(path,String(err));}
+          }
+          if(failed)process.exit(1);
+          console.log('PASS Noël home, event requests, product routes, assets and staff access control');
+          JS

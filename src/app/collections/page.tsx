@@ -1,56 +1,33 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { ArrowUpRight, Gift, Sparkles } from 'lucide-react';
 
-export default async function CollectionsPage() {
-  const supabase = await createClient();
-  const { data: collections } = await supabase
-    .from('collections')
-    .select('id, slug, name_fr, description_fr, image_url')
-    .eq('is_active', true)
-    .neq('slug', 'promotions')
-    .order('sort_order');
-
+export default function CollectionsPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
-      <div className="pointer-events-none absolute -right-28 top-10 h-96 w-96 rounded-full bg-brand-accent/20 blur-3xl" />
-      <div className="relative mx-auto flex max-w-7xl flex-col gap-8 md:gap-10">
-        <section className="rounded-[2rem] bg-brand-evergreen p-6 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] sm:p-8 md:rounded-[3rem] md:p-12">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-accent sm:text-sm sm:tracking-[0.35em]">Collections</p>
-          <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-5xl md:text-7xl">
-            Choisir un univers, trouver la bonne pièce.
-          </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-white/72 sm:mt-6 sm:text-base sm:leading-8">
-            Les collections sont composées depuis le studio de la maison.
-          </p>
-        </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-4">
-          {collections?.map((collection) => (
-            <Link
-              key={collection.id}
-              href={`/catalogue?collection=${collection.slug}`}
-              className="group relative min-h-[280px] overflow-hidden rounded-[2rem] bg-brand-evergreen p-6 text-white shadow-[0_24px_80px_rgba(80,34,28,0.10)] transition duration-300 hover:-translate-y-1 sm:min-h-[320px] sm:rounded-[2.5rem] sm:p-7 md:p-8"
-            >
-              {collection.image_url ? (
-                <Image
-                  src={collection.image_url}
-                  alt={collection.name_fr}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
-                  className="object-cover opacity-65 transition duration-500 group-hover:scale-105"
-                />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-brand-evergreen via-brand-evergreen/35 to-transparent" />
-              <div className="relative flex h-full flex-col justify-end">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-accent">Collection</p>
-                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em]">{collection.name_fr}</h2>
-                <p className="mt-3 text-sm leading-6 text-white/75">{collection.description_fr || 'Découvrir la sélection.'}</p>
-                <span className="mt-6 inline-flex w-fit rounded-full bg-white/20 px-5 py-3 text-sm font-semibold backdrop-blur">Explorer</span>
-              </div>
-            </Link>
-          ))}
-        </section>
+    <main className="min-h-screen bg-[#fff9f3] pb-24">
+      <section className="mx-auto grid max-w-[1380px] gap-0 px-4 pt-7 sm:px-6 lg:grid-cols-2 lg:gap-0 lg:pt-12">
+        <div className="flex flex-col justify-center rounded-t-[28px] bg-[#0c352c] p-8 text-[#fff9ed] sm:p-12 lg:rounded-l-[32px] lg:rounded-tr-none lg:p-16">
+          <span className="mb-7 inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[.25em] text-[#f2d093]"><Sparkles size={17}/> ÉDITION 2026</span>
+          <h1 className="mb-7 text-5xl font-semibold leading-[1.12] tracking-tight sm:text-6xl">La collection <em className="text-[#f7d5a7]">Noël.</em></h1>
+          <p className="mb-9 max-w-lg text-base leading-8 text-[#f2eee4]">Les tenues à partager, les souvenirs à créer et la chaleur des moments en famille. Toute la magie est réunie dans une seule collection.</p>
+          <Link href="/catalogue?collection=noel" className="inline-flex min-h-13 w-fit items-center gap-3 rounded-full bg-[#b3203a] px-6 py-4 text-sm font-bold text-white">
+            Découvrir la collection <ArrowUpRight size={18}/>
+          </Link>
+          <span className="mt-12 inline-flex items-center gap-3 text-sm text-[#e4c39c]"><Gift size={20}/> Une saison. Mille souvenirs.</span>
+        </div>
+        <div className="relative min-h-[490px] overflow-hidden rounded-b-[28px] bg-[#af263f] lg:min-h-[680px] lg:rounded-r-[32px] lg:rounded-bl-none">
+          <Image
+            src="/christmas-2026/hero-family.jpg"
+            alt="Famille en pyjamas de Noël dans un décor festif"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover"
+          />
+        </div>
+      </section>
+      <div className="mx-auto max-w-[1380px] px-5 pt-12 text-center text-sm text-[#68766b]">
+        Les autres collections saisonnières restent conservées dans notre système de gestion, mais ne sont plus proposées dans la vitrine de Noël.
       </div>
     </main>
   );

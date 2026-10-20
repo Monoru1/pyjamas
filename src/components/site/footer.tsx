@@ -1,9 +1,9 @@
 import { BrandLogo } from '@/components/brand/brand-logo';
 
 const navigationLinks = [
-  ['Collections', '/collections'],
-  ['Catalogue', '/catalogue'],
-  ['Accessoires', '/accessoires'],
+  ['Édition Noël', '/collections'],
+  ['Les pyjamas', '/catalogue?collection=noel'],
+  ['La fête de Noël', '/fete-de-noel'],
   ['Contact', '/contact'],
   ['Panier', '/panier'],
 ];
@@ -16,13 +16,13 @@ const socialLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-brand-primary/10 bg-brand-cream px-5 py-12 md:px-8">
+    <footer className="border-t border-[#b3203a30] bg-[#fff0e9] px-5 py-12 md:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-7 border-b border-brand-primary/10 pb-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <BrandLogo />
             <p className="mt-4 max-w-xl text-sm leading-7 text-foreground/58">
-              Pyjamas de Noël, accessoires cocooning et cadeaux prêts à déposer sous le sapin.
+              Les pyjamas de Noël, la magie en famille et une fête à préparer ensemble.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export function Footer() {
           <div className="flex flex-wrap gap-4">
             <a href="/contact">Contact</a>
             <a href="/collections">Collections</a>
-            <a href="/accessoires">Accessoires</a>
+            <a href="/fete-de-noel">La fête de Noël</a>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import {
   composeProductDetails,
   mapCatalogImage,
@@ -9,7 +9,7 @@ import type { CatalogProduct, ProductDetails } from '@/features/catalog/types';
 
 export async function listFeaturedProducts(limit = 8): Promise<CatalogProduct[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
 
     const { data, error } = await supabase
       .from('product_catalog')
@@ -33,7 +33,7 @@ export async function listFeaturedProducts(limit = 8): Promise<CatalogProduct[]>
 
 export async function listProducts(limit = 24): Promise<CatalogProduct[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
 
     const { data, error } = await supabase
       .from('product_catalog')
@@ -56,7 +56,7 @@ export async function listProducts(limit = 24): Promise<CatalogProduct[]> {
 
 export async function getProductBySlug(slug: string): Promise<ProductDetails | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
 
     const { data: productRow, error: productError } = await supabase
       .from('product_catalog')

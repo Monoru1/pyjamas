@@ -6,6 +6,54 @@ import type { AdminRole, AnalyticsEventType, DiscountType, OrderStatus } from '.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+type MediaAssetRow = {
+  id: string;
+  bucket: string;
+  path: string;
+  url: string;
+  title: string | null;
+  alt_fr: string | null;
+  alt_en: string | null;
+  asset_type: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  width: number | null;
+  height: number | null;
+  tags: string[];
+  metadata: Json;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ChristmasEventRequestRow = {
+  id: string;
+  event_key: string;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  requested_places: number;
+  consent_at: string;
+  status: string;
+  staff_notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type ChristmasEventConfigRow = {
+  event_key: string;
+  display_title: string;
+  event_day: string | null;
+  event_time: string | null;
+  venue_name: string | null;
+  venue_address: string | null;
+  ticket_price_xof: number | null;
+  capacity: number | null;
+  information_note: string | null;
+  requests_open: boolean;
+  updated_at: string;
+};
+
 type GenericRow = Record<string, Json>;
 type Table<Row = GenericRow> = {
   Row: Row;
@@ -21,6 +69,8 @@ export type Database = {
       analytics_events: Table;
       banners: Table<BannerRow>;
       categories: Table<CategoryRow>;
+      christmas_event_requests: Table<ChristmasEventRequestRow>;
+      christmas_event_config: Table<ChristmasEventConfigRow>;
       collections: Table<CollectionRow>;
       coupons: Table;
       currencies: Table<CurrencyRow>;
@@ -28,6 +78,7 @@ export type Database = {
       faq: Table<FaqRow>;
       homepage_sections: Table<HomepageSectionRow>;
       languages: Table<LanguageRow>;
+      media_assets: Table<MediaAssetRow>;
       order_items: Table<OrderItemRow>;
       orders: Table<OrderRow>;
       product_collections: Table<ProductCollectionRow>;
