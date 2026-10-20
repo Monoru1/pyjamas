@@ -175,8 +175,28 @@ export async function updateSiteSettings(formData: FormData) {
     if (error) throw new Error(error.message);
     return supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
   }
-  const heroImage = await uploadHomeImage('hero_image', String(formData.get('hero_image_url') ?? ''));
-  const loungeImage = await uploadHomeImage('lounge_image', String(formData.get('lounge_image_url') ?? ''));
+  async function validatedAssetUrl(field: string, type: 'image' | 'video', fallback: string) {
+    const selected = String(formData.get(field) ?? '').trim();
+    if (!selected) return fallback;
+    // Check the real, active media library; never trust an arbitrary URL from a form.
+    const { data, error } = await supabase.from('media_assets')
+      .select('url').eq('url', selected).eq('asset_type', type).eq('is_active', true).maybeSingle();
+    return !error && data ? data.url : fallback;
+  }
+
+  const proposedHero = await validatedAssetUrl(
+    'hero_image_selected', 'image', String(formData.get('hero_image_url') ?? ''),
+  );
+  const proposedLounge = await validatedAssetUrl(
+    'lounge_image_selected', 'image', String(formData.get('lounge_image_url') ?? ''),
+  );
+  const heroImage = await uploadHomeImage('hero_image', proposedHero);
+  const loungeImage = await uploadHomeImage('lounge_image', proposedLounge);
+  const currentVideo = String(formData.get('featured_video_original') ?? '/christmas-2026/christmas-family-reel.mp4');
+  const featuredVideoUrl = await validatedAssetUrl(
+    'featured_video_url', 'video',
+    currentVideo.startsWith('/christmas-2026/') ? currentVideo : '/christmas-2026/christmas-family-reel.mp4',
+  );
   await supabase.from('settings').upsert([
     {
       key: 'site',
@@ -205,7 +225,7 @@ export async function updateSiteSettings(formData: FormData) {
     },
     {
       key: 'homepage',
-      value: { heroImage, loungeImage },
+      value: { heroImage, loungeImage, featuredVideoUrl },
       description: 'Visuels de la page d’accueil',
     },
   ]);
