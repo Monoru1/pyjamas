@@ -11,7 +11,7 @@ export function TopNav() {
         <div className="hidden flex-1 items-center justify-center gap-8 text-sm font-semibold text-[#164236] lg:flex">
           <Link href="/collections" className="hover:text-[#b3203a]">Noël 2026</Link>
           <Link href="/catalogue?collection=noel" className="hover:text-[#b3203a]">Les pyjamas</Link>
-          <Link href="/#notre-histoire" className="hover:text-[#b3203a]">Notre univers</Link>
+          <Link href="/fete-de-noel" className="rounded-full border border-[#b3203a25] bg-[#fff0e9] px-4 py-2 text-[#a31833] transition hover:bg-[#b3203a] hover:text-white">La fête de Noël</Link>
           <Link href="/contact" className="hover:text-[#b3203a]">Contact</Link>
         </div>
         <div className="flex items-center gap-3">
