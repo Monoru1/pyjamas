@@ -101,6 +101,7 @@ export default async function SiteSettingsPage() {
           </div>
         </section>
 
+        <input type="hidden" name="featured_video_original" value={settings.featuredVideoUrl} />
         <input type="hidden" name="hero_image_url" value={hero} />
         <input type="hidden" name="lounge_image_url" value={lounge} />
         <input type="hidden" name="site_name" value={settings.siteName} />
