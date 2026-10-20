@@ -163,7 +163,7 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
           Les médias affichés dans les pages sont choisis séparément lors de la mise en page.
         </p>
         {assets.length === 0 ? (
-          <div className="admin-empty">Aucun média n’a été ajouté via le studio pour l'instant. Le site utilise déjà une sélection issue des shootings Noël.</div>
+          <div className="admin-empty">Aucun média n’a été ajouté via le studio pour l’instant. Le site utilise déjà une sélection issue des shootings Noël.</div>
         ) : (
           <div className="admin-media-grid">
             {assets.map(asset => (
