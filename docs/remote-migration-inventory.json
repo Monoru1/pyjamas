@@ -248,5 +248,10 @@
     "version": "20261020131307",
     "name": "christmas_event_interest_requests_2026",
     "sha256": "638a16ce31cb045f0b5e8a85bb84a5ed649d31bdd900fbe4caf32ee8df0b9126"
+  },
+  {
+    "version": "20261020141906",
+    "name": "event_interest_closed_guard",
+    "sha256": "372cfb73d05e3b237fc76e8e088911116a598de266d0a1ad68ab7eeee9763430"
   }
 ]

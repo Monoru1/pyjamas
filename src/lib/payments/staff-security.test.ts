@@ -21,7 +21,7 @@ beforeAll(async()=>{
  create table activity_logs(actor_id uuid,action text,entity_type text,entity_id uuid);
  create table products(id uuid);create table product_variants(id uuid);create table media_assets(id uuid);
  `);
- await db.exec(readFileSync('supabase/migrations/20261020140730_staff_permissions_and_event_rate_limit.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261020142238_staff_security_and_interest_limits.sql','utf8'));
 },30_000);
 afterAll(async()=>{await db.close();});
 it('allows manager settings changes, denies employee writes and records actor without payload',async()=>{

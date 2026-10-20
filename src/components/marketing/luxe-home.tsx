@@ -99,7 +99,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
         <div className="xmas-home-event-info">
           <div className="xmas-event-eyebrow"><CalendarHeart size={19} aria-hidden="true" /> NOUVEAU · RENDEZ-VOUS DE DÉCEMBRE</div>
           <h2 id="home-event-title">Cette année, Noël <em>se fête ensemble.</em></h2>
-          <p>La Maison des Pyjamas prépare une fête quelques jours avant Noël. Les informations seront confirmées prochainement : vous pouvez déjà demander à être contacté pour des places.</p>
+          <p>La Maison des Pyjamas prépare une fête quelques jours avant Noël. Les modalités et l’ouverture des demandes de places seront annoncées prochainement.</p>
           <Link href="/fete-de-noel" className="christmas-btn christmas-btn-light">Découvrir la fête <ArrowUpRight size={19} /></Link>
           <small>Demande sans paiement · places non garanties avant confirmation.</small>
         </div>

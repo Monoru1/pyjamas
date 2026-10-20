@@ -24,7 +24,7 @@ beforeAll(async()=>{
  create policy "event guests request places" on christmas_event_requests for insert to anon with check(true);
  insert into products values('${product}','Produit fixture SQL',true,null,'XOF');
  insert into product_variants values('${variant}','${product}','TEST-S',1500,3,true);`);
- await db.exec(readFileSync('supabase/migrations/20261020135649_sandbox_payments_and_event_guard.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261020142232_sandbox_payment_acceptance.sql','utf8'));
 },30_000);
 afterAll(async()=>{await db.close();});
 
