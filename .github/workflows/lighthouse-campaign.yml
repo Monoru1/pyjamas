@@ -1,0 +1,60 @@
+name: Lighthouse Christmas campaign
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/christmas-commerce-hardening]
+    paths: [.github/workflows/lighthouse-campaign.yml]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [before, after]
+        form: [mobile, desktop]
+    env:
+      AUDIT_URL: ${{ matrix.target == 'before' && 'https://pyjamas25.netlify.app' || 'https://deploy-preview-3--pyjamas25.netlify.app' }}
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Wait for the responsive WebP deployment
+        if: matrix.target == 'after'
+        run: |
+          node <<'JS'
+          for(let attempt=0;attempt<30;attempt++){
+            const response=await fetch(process.env.AUDIT_URL+'/christmas-2026/web/family-celebration-320.webp');
+            if(response.ok)process.exit(0);
+            await new Promise(resolve=>setTimeout(resolve,5000));
+          }
+          throw Error('The new campaign assets are not deployed; refusing to audit the previous version.');
+          JS
+      - name: Audit with the requested screen preset
+        env:
+          FORM: ${{ matrix.form }}
+        run: |
+          if [ "$FORM" = desktop ]; then
+            npx --yes lighthouse@13.5.0 "$AUDIT_URL" --preset=desktop --quiet --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=report
+          else
+            npx --yes lighthouse@13.5.0 "$AUDIT_URL" --quiet --chrome-flags="--headless --no-sandbox" --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=report
+          fi
+      - name: Summarize measured scores
+        run: |
+          node <<'JS'
+          const fs=require('node:fs');const report=JSON.parse(fs.readFileSync('report.report.json','utf8'));
+          const metrics={url:report.finalDisplayedUrl,scores:Object.fromEntries(Object.entries(report.categories).map(([key,value])=>[key,Math.round(value.score*100)])),lcpMs:report.audits['largest-contentful-paint'].numericValue,cls:report.audits['cumulative-layout-shift'].numericValue,tbtMs:report.audits['total-blocking-time'].numericValue};
+          fs.writeFileSync('metrics.json',JSON.stringify(metrics,null,2));console.log(JSON.stringify(metrics,null,2));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'```json\n'+JSON.stringify(metrics,null,2)+'\n```\n');
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-${{ matrix.target }}-${{ matrix.form }}
+          path: |
+            report.report.json
+            report.report.html
+            metrics.json
