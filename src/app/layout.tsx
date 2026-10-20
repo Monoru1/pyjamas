@@ -3,6 +3,7 @@ import { Fraunces, Inter } from 'next/font/google';
 import { SiteChrome } from '@/components/site/site-chrome';
 import './globals.css';
 import './christmas-2026.css';
+import './event-2026.css';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
