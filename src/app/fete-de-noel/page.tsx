@@ -52,8 +52,8 @@ export default async function ChristmasEventPage() {
       </section>
 
       <section className="xmas-event-facts" aria-label="Informations pratiques">
-        <div><CalendarDays size={23}/><span>Quand ?</span><strong>{formatDay(config?.event_day)}</strong></div>
-        <div><MapPin size={23}/><span>Où ?</span><strong>{config?.venue_name || 'Lieu à annoncer'}</strong></div>
+        <div><CalendarDays size={23}/><span>Quand ?</span><strong>{formatDay(config?.event_day)}{config?.event_time ? ` à ${config.event_time.slice(0,5)}` : ''}</strong></div>
+        <div><MapPin size={23}/><span>Où ?</span><strong>{config?.venue_name || 'Lieu à annoncer'}{config?.venue_address ? ` — ${config.venue_address}` : ''}</strong></div>
         <div><Ticket size={23}/><span>Entrée</span><strong>{price}</strong></div>
       </section>
 
@@ -62,6 +62,7 @@ export default async function ChristmasEventPage() {
           <p className="christmas-eyebrow">UNE PARENTHÈSE ENCHANTÉE</p>
           <h2>Plus qu’une fête. <em>Un souvenir.</em></h2>
           <p>Des pyjamas de Noël, de belles rencontres et une ambiance festive. La programmation et les informations pratiques seront communiquées par l’organisatrice.</p>
+          {config?.information_note && <p className="xmas-event-config-note">{config.information_note}</p>}
           <div className="xmas-event-values">
             <span><Heart size={19}/> Se retrouver</span>
             <span><Gift size={19}/> Partager</span>
