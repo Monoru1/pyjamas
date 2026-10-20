@@ -19,7 +19,8 @@ export function LoginForm() {
 
     try {
       const form = new FormData(event.currentTarget);
-      const { error: signInError } = await createClient().auth.signInWithPassword({
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: String(form.get('email') ?? '').trim(),
         password: String(form.get('password') ?? ''),
       });
@@ -29,7 +30,14 @@ export function LoginForm() {
         return;
       }
 
-      // The existing server-side proxy + is_admin() RPC enforce the admin role.
+      // Fail clearly if an authenticated account has no active admin profile.
+      // The server-side proxy still enforces the admin role on every request.
+      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
+      if (adminError || !isAdmin) {
+        await supabase.auth.signOut();
+        setError('Ce compte ne dispose pas d’un accès administrateur actif.');
+        return;
+      }
       router.replace('/admin');
       router.refresh();
     } catch {
