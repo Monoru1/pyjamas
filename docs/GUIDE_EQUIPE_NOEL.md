@@ -34,7 +34,7 @@ Une demande WhatsApp n’est pas un paiement. Vérifier le client, les variantes
 
 Suivre ensuite les étapes préparation, prête et livraison. En cas d’annulation d’une commande déjà prise en charge, utiliser le statut d’annulation : ne pas modifier le stock manuellement pour contourner le workflow.
 
-Le flux historique de création de demande WhatsApp doit encore faire l’objet d’une validation atomique et d’un test de doubles clics/requêtes réseau ; ne pas le présenter comme certifié pour le paiement en ligne.
+Le nouveau flux atomique et le contrôle des doubles requêtes sont testés en PostgreSQL embarqué, mais leur déploiement coordonné et leurs essais API réels restent nécessaires. Tant que le responsable technique n’a pas confirmé cette activation, le flux historique demeure en place. Aucun de ces flux ne constitue une preuve de paiement en ligne.
 
 ## Fête de Noël
 

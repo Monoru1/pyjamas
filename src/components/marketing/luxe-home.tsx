@@ -33,7 +33,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             <em>vivons Noël</em><br />
             ensemble.
           </h1>
-          <p>Des pyjamas assortis, des instants précieux et une maison pleine de magie. La collection des retrouvailles est arrivée.</p>
+          <p>Les mêmes carreaux, les mêmes couleurs, et toute la famille réunie. Entrez dans le Noël de La Maison des Pyjamas.</p>
           <div className="christmas-hero-actions">
             <Link href="/catalogue?collection=noel" className="christmas-btn christmas-btn-light">
               Découvrir Noël <ArrowUpRight size={18} />

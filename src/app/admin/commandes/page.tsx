@@ -73,11 +73,13 @@ export default async function OrdersPage() {
                     <div className="flex flex-wrap gap-3">
                       <form action={updateOrderStatus}>
                         <input type="hidden" name="id" value={order.id} />
+                        <input type="hidden" name="expected_status" value={order.status} />
                         <input type="hidden" name="status" value="confirmed" />
                         <button className="admin-action">Prendre en charge</button>
                       </form>
                       <form action={updateOrderStatus}>
                         <input type="hidden" name="id" value={order.id} />
+                        <input type="hidden" name="expected_status" value={order.status} />
                         <input type="hidden" name="status" value="cancelled" />
                         <button className="admin-action secondary">Refuser</button>
                       </form>
@@ -85,6 +87,7 @@ export default async function OrdersPage() {
                   ) : transitions.length ? (
                     <form action={updateOrderStatus}>
                       <input type="hidden" name="id" value={order.id} />
+                        <input type="hidden" name="expected_status" value={order.status} />
                       <select name="status" defaultValue={transitions[0]}>
                         {transitions.map((value) => <option key={value} value={value}>{labels[value]}</option>)}
                       </select>
