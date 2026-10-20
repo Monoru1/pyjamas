@@ -1,0 +1,173 @@
+[
+  {
+    "path": "/",
+    "expected": 200,
+    "status": 200,
+    "ms": 9366,
+    "bytes": 44252,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/catalogue?collection=noel",
+    "expected": 200,
+    "status": 200,
+    "ms": 11580,
+    "bytes": 16833,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/panier",
+    "expected": 200,
+    "status": 200,
+    "ms": 12034,
+    "bytes": 19616,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/fete-de-noel",
+    "expected": 200,
+    "status": 200,
+    "ms": 9240,
+    "bytes": 34175,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/politique-de-confidentialite",
+    "expected": 200,
+    "status": 200,
+    "ms": 11949,
+    "bytes": 25620,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/mentions-legales",
+    "expected": 200,
+    "status": 200,
+    "ms": 304,
+    "bytes": 20723,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/cgv",
+    "expected": 200,
+    "status": 200,
+    "ms": 2172,
+    "bytes": 22101,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/cookies",
+    "expected": 200,
+    "status": 200,
+    "ms": 1958,
+    "bytes": 21777,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/livraison-et-retours",
+    "expected": 200,
+    "status": 200,
+    "ms": 240,
+    "bytes": 19126,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/preview-check",
+    "expected": 200,
+    "status": 200,
+    "ms": 2784,
+    "bytes": 10298,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/catalogue/coffret-cadeau-premium",
+    "expected": 404,
+    "status": 404,
+    "ms": 409,
+    "bytes": 9449,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/catalogue/noel-famille-velours-bordeaux",
+    "expected": 404,
+    "status": 404,
+    "ms": 1049,
+    "bytes": 9463,
+    "location": null,
+    "pass": true
+  },
+  {
+    "path": "/admin",
+    "expected": 307,
+    "status": 307,
+    "ms": 1386,
+    "bytes": 0,
+    "location": "/admin/login",
+    "pass": true
+  },
+  {
+    "path": "/admin/medias",
+    "expected": 307,
+    "status": 307,
+    "ms": 1381,
+    "bytes": 0,
+    "location": "/admin/login",
+    "pass": true
+  },
+  {
+    "path": "/admin/fete",
+    "expected": 307,
+    "status": 307,
+    "ms": 1386,
+    "bytes": 0,
+    "location": "/admin/login",
+    "pass": true
+  },
+  {
+    "path": "/admin/site",
+    "expected": 307,
+    "status": 307,
+    "ms": 73,
+    "bytes": 0,
+    "location": "/admin/login",
+    "pass": true
+  },
+  {
+    "path": "/admin/paiements",
+    "expected": 307,
+    "status": 307,
+    "ms": 125,
+    "bytes": 0,
+    "location": "/admin/login",
+    "pass": true
+  },
+  {
+    "path": "/api/payments/checkout",
+    "status": 503,
+    "expected": 503,
+    "pass": true
+  },
+  {
+    "path": "/api/payments/webhook",
+    "status": 503,
+    "expected": 503,
+    "pass": true
+  },
+  {
+    "path": "/api/payments/reconcile",
+    "status": 401,
+    "expected": 401,
+    "pass": true
+  }
+]
