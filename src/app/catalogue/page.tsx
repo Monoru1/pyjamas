@@ -1,42 +1,26 @@
 import { CatalogueExperience } from '@/features/catalog/components/catalogue-experience';
 import { listProducts } from '@/lib/repositories/catalog.repository';
-import { createClient } from '@/lib/supabase/server';
 
-interface CataloguePageProps {
-  searchParams?: Promise<{
-    collection?: string;
-    type?: string;
-  }>;
-}
+// The store is intentionally a single Noël collection for this season.
+// Avoid dynamic searchParams/cookies so Next.js can prerender this page.
+export const revalidate = 60;
 
-export default async function CataloguePage({ searchParams }: CataloguePageProps) {
-  const products = await listProducts(72);
-  const params = await searchParams;
-  // The 2026 storefront features only the official Noël collection.
-  const collectionSlug = params?.collection === 'noel' ? params.collection : 'noel';
-  const supabase = await createClient();
-  const { data: collection } = collectionSlug
-    ? await supabase.from('collections').select('name_fr, description_fr').eq('slug', collectionSlug).eq('is_active', true).maybeSingle()
-    : { data: null };
-  const title = collection ? collection.name_fr : 'Choisir une pièce douce, belle et prête à offrir.';
-  const description = collection?.description_fr || (collection
-    ? 'Découvrez les articles sélectionnés dans cette collection.'
-    : 'Découvrez les pyjamas, ensembles et accessoires de la maison.');
+export default async function CataloguePage() {
+  const products = (await listProducts(72)).filter(product => product.collectionSlugs.includes('noel'));
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
-      <div className="pointer-events-none absolute -right-24 top-10 h-96 w-96 rounded-full bg-brand-accent/15 blur-3xl" />
+    <main className="relative min-h-screen bg-[#fff9f3] px-4 py-7 text-[#0c352c] sm:px-6 md:px-8 md:py-12">
       <div className="mx-auto flex max-w-7xl flex-col gap-10">
-        <section className="rounded-[2rem] bg-brand-evergreen p-6 text-white shadow-[0_30px_90px_rgba(15,59,46,0.22)] sm:p-8 md:rounded-[3rem] md:p-12">
-          <p className="text-sm font-semibold uppercase tracking-[0.35em] text-brand-accent">Catalogue</p>
-          <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.94] tracking-[-0.055em] sm:mt-5 sm:text-5xl md:text-7xl">
-            {title}
+        <section className="rounded-[2rem] bg-[#0c352c] p-7 text-[#fff8ed] sm:p-10 md:rounded-[3rem] md:p-14">
+          <p className="text-xs font-bold uppercase tracking-[.3em] text-[#f5d59f]">ÉDITION NOËL 2026</p>
+          <h1 className="mt-5 max-w-5xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl md:text-7xl">
+            Le bonheur est encore plus doux <em className="text-[#f8d09c]">ensemble.</em>
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-white/72">
-            {description}
+          <p className="mt-6 max-w-2xl text-base leading-8 text-[#f5eee5]">
+            Explorez notre sélection de Noël, les tailles et couleurs disponibles et les ensembles à partager.
           </p>
         </section>
-        <CatalogueExperience products={products} initialCollection={collectionSlug} collectionName={collection?.name_fr} />
+        <CatalogueExperience products={products} initialCollection="noel" collectionName="Noël 2026" />
       </div>
     </main>
   );
