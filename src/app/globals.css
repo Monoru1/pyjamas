@@ -227,3 +227,31 @@ button, input, select, textarea { max-width:100%; }
   .product-checks { gap:12px; }
   .size-dropdowns details>div { grid-template-columns:1fr; }
 }
+
+
+/* Account recovery for the admin studio; no protected content is shown here. */
+.admin-auth-assistance {
+  margin: 10px 0 0 !important;
+  font-size: 13px !important;
+  line-height: 1.6;
+  letter-spacing: normal !important;
+  text-align: center;
+  color: #5b5049 !important;
+}
+.admin-auth-assistance a,
+.admin-auth-notice a {
+  color: #8f1428;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.admin-auth-notice {
+  margin-top: 26px;
+  padding: 18px 20px;
+  border: 1px solid #e6d8bf;
+  border-radius: 12px;
+  background: #fff6e5;
+  color: #4c4037;
+  font-size: 14px;
+  line-height: 1.65;
+}
