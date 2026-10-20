@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
     try {
       const { error: resetError } = await createClient().auth.resetPasswordForEmail(
         email.trim(),
-        { redirectTo: `${window.location.origin}/admin/reset-password` },
+        { redirectTo: `${window.location.origin}/auth/callback?next=/admin/reset-password` },
       );
 
       if (resetError) {
