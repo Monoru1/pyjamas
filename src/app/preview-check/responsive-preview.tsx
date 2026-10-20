@@ -6,6 +6,6 @@ export function ResponsivePreview(){
  <label>Largeur <select className="border bg-white p-2" value={width} onChange={e=>{setWidth(Number(e.target.value));setMetrics('Chargement…');}}>{[320,360,390,430,768,1024,1440].map(w=><option key={w}>{w}</option>)}</select></label>
  <label>Page <select className="border bg-white p-2" value={path} onChange={e=>{setPath(e.target.value);setMetrics('Chargement…');}}>{['/','/catalogue?collection=noel','/panier','/fete-de-noel','/politique-de-confidentialite','/admin/login'].map(p=><option key={p}>{p}</option>)}</select></label>
  <output aria-live="polite">{metrics}</output></div>
- <iframe key={`${width}:${path}`} title="Prévisualisation responsive" src={path} width={width} height={900} className="border-0 bg-white shadow-lg" onLoad={event=>{const doc=event.currentTarget.contentDocument;if(doc)setMetrics(`Vue ${width} px · largeur de page ${doc.documentElement.scrollWidth} px · ${doc.documentElement.scrollWidth>width?'DÉBORDEMENT':'sans débordement'}`);}}/>
+ <iframe key={`${width}:${path}`} title="Prévisualisation responsive" allowFullScreen src={path} width={width} height={900} className="border-0 bg-white shadow-lg" onLoad={event=>{const doc=event.currentTarget.contentDocument;if(doc)setMetrics(`Vue ${width} px · largeur de page ${doc.documentElement.scrollWidth} px · ${doc.documentElement.scrollWidth>width?'DÉBORDEMENT':'sans débordement'}`);}}/>
  </main>;
 }
