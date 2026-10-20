@@ -14,7 +14,7 @@ export function CampaignFilm({ src, poster }: { src: string; poster: string }) {
   </> : <>
     <Image src={poster} alt="Les coulisses du Noël en famille" fill sizes="(max-width: 800px) 90vw, 45vw" className="christmas-cover" />
     <button className="christmas-film-launch" type="button" onClick={() => setStarted(true)} aria-label="Lire le film complet de Noël">
-      <span>Lire notre film de Noël</span>
+      <span>Lire le film complet de Noël</span>
     </button>
   </>;
 }

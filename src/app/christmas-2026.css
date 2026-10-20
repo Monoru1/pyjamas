@@ -188,7 +188,7 @@ body { background: #fff9f3; }
 
 /* Match the campaign frame to the original portrait instead of cutting out family members. */
 .christmas-hero-gallery { width:100%; min-height:0; aspect-ratio:1.35; align-self:center; }
-.christmas-photo-side .christmas-cover { object-position:center 30%; }
+.christmas-photo-side .christmas-cover { object-position:center top; }
 @media(max-width:800px) { .christmas-hero-gallery { min-height:0; aspect-ratio:1.25; } }
 @media(max-width:800px) {
  .christmas-hero-copy {padding:30px 24px;}

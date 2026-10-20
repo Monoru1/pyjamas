@@ -2,11 +2,11 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  env: { PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false' },
+  env: { PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false', BUILD_COMMIT_REF: process.env.COMMIT_REF || 'local' },
   async headers() {
     const preview = process.env.CONTEXT === 'deploy-preview';
     const securityHeaders = [
-      { key: 'Content-Security-Policy', value: `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors ${preview ? "'self'" : "'none'"}; form-action 'self'; img-src 'self' data: blob: https://pukvrerdloudfiphomsj.supabase.co https://images.unsplash.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: https://pukvrerdloudfiphomsj.supabase.co; font-src 'self' data:; connect-src 'self' https://pukvrerdloudfiphomsj.supabase.co; frame-src 'self' https://www.google.com; upgrade-insecure-requests` },
+      { key: 'Content-Security-Policy', value: `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors ${preview ? "'self'" : "'none'"}; form-action 'self'; img-src 'self' data: blob: https://pukvrerdloudfiphomsj.supabase.co https://images.unsplash.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: https://pukvrerdloudfiphomsj.supabase.co; font-src 'self' data:; connect-src 'self' https://pukvrerdloudfiphomsj.supabase.co; frame-src 'self' https://www.google.com ${preview ? 'https://app.netlify.com' : ''}; upgrade-insecure-requests` },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: preview ? 'SAMEORIGIN' : 'DENY' },

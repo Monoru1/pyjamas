@@ -18,6 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  other: { 'mdp-build': process.env.BUILD_COMMIT_REF || 'local' },
   metadataBase: new URL('https://pyjamas25.netlify.app'),
   title: 'La Maison des Pyjamas',
   description: 'La Maison des Pyjamas — édition Noël 2026. Une sélection chaleureuse de pyjamas à partager en famille.',
