@@ -38,7 +38,7 @@ export default async function ChristmasEventPage() {
         <div className="xmas-event-hero-copy">
           <span className="xmas-event-eyebrow"><span aria-hidden="true">✦</span> LA MAISON DES PYJAMAS PRÉPARE SA FÊTE</span>
           <h1>Un Noël <em>à vivre</em> ensemble.</h1>
-          <p>Avant Noël, retrouvons-nous pour célébrer les petits bonheurs, l'esprit de famille et cette période qui nous rassemble. Une fête se prépare à la maison !</p>
+          <p>Avant Noël, retrouvons-nous pour célébrer les petits bonheurs, l’esprit de famille et cette période qui nous rassemble. Une fête se prépare à la maison !</p>
           <div className="xmas-event-hero-actions">
             <a href="#pre-reservation" className="christmas-btn christmas-btn-light">Demander mes places <ArrowUpRight size={19}/></a>
             <Link href="/catalogue?collection=noel" className="christmas-text-link">Voir les pyjamas <ArrowUpRight size={18}/></Link>
