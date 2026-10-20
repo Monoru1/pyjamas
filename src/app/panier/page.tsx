@@ -1,3 +1,5 @@
+import { createClient } from '@/lib/supabase/server';
+import { SandboxCheckoutButton } from '@/features/cart/components/sandbox-checkout-button';
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
 import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
@@ -6,6 +8,12 @@ import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
 export default async function CartPage() {
   const settings = await getStoreSettings();
+  let showSandbox = false;
+  if (process.env.FEDAPAY_ENABLED === 'true' && process.env.FEDAPAY_ENVIRONMENT === 'sandbox') {
+    const db = await createClient();
+    const { data: { user } } = await db.auth.getUser();
+    if (user) showSandbox = Boolean((await db.rpc('is_admin')).data);
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
@@ -28,6 +36,7 @@ export default async function CartPage() {
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
           <CustomerForm />
           <CartSummary />
+          {showSandbox && <SandboxCheckoutButton />}
           <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
       </div>

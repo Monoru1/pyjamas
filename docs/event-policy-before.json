@@ -1,0 +1,33 @@
+[
+  {
+    "snapshot": {
+      "config": {
+        "capacity": null,
+        "event_day": null,
+        "event_key": "noel-2026",
+        "event_time": null,
+        "updated_at": "2026-10-20T13:55:43.04834+00:00",
+        "venue_name": null,
+        "display_title": "La fête de Noël",
+        "requests_open": false,
+        "venue_address": null,
+        "information_note": "Date, lieu, horaires et tarif à confirmer avec l’organisatrice.",
+        "ticket_price_xof": null
+      },
+      "policy": {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "anon",
+          "authenticated"
+        ],
+        "tablename": "christmas_event_requests",
+        "permissive": "PERMISSIVE",
+        "policyname": "event guests request places",
+        "schemaname": "public",
+        "with_check": "((status = 'requested'::text) AND (staff_notes IS NULL) AND ((requested_places >= 1) AND (requested_places <= 8)) AND (consent_at <= now()))"
+      },
+      "request_count": 0
+    }
+  }
+]

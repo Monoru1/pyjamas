@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { createManagerClient } from '@/lib/supabase/admin';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -36,10 +37,12 @@ export async function updateOrderStatus(formData: FormData) {
   const status = String(formData.get('status'));
   const allowed = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
   if (!id || !allowed.includes(status)) return;
-  const { error } = await supabase.rpc('admin_update_order_status', {
-    p_order_id: id,
-    p_new_status: status as never,
-  });
+  const expected = String(formData.get('expected_status') ?? '');
+  if (!allowed.includes(expected)) throw new Error('Actualisez la commande avant de réessayer.');
+  const result = process.env.OPERATIONS_ATOMIC_ENABLED === 'true'
+    ? await supabase.rpc('admin_transition_order', { p_order_id: id, p_expected_status: expected as never, p_new_status: status as never })
+    : await supabase.rpc('admin_update_order_status', { p_order_id: id, p_new_status: status as never });
+  const { error } = result;
   if (error) throw new Error(error.message);
   revalidatePath('/admin');
   revalidatePath('/admin/commandes');
@@ -50,7 +53,9 @@ export async function updateVariantStock(formData: FormData) {
   const id = String(formData.get('id'));
   const stock = Math.max(0, Number(formData.get('stock')) || 0);
   const price = Math.max(0, Number(formData.get('price')) || 0);
-  await supabase.from('product_variants').update({ stock_quantity: stock, price }).eq('id', id);
+  if (!Number.isInteger(stock) || !Number.isInteger(price)) throw new Error('Le stock et le prix doivent être des nombres entiers.');
+  const { error } = await supabase.from('product_variants').update({ stock_quantity: stock, price }).eq('id', id);
+  if (error) throw new Error('Le stock n’a pas pu être enregistré.');
   revalidatePath('/admin');
   revalidatePath('/admin/produits');
 }
@@ -59,7 +64,8 @@ export async function toggleProduct(formData: FormData) {
   const supabase = await guardAdmin();
   const id = String(formData.get('id'));
   const active = formData.get('active') === 'true';
-  await supabase.from('products').update({ is_active: active }).eq('id', id);
+  const { error } = await supabase.from('products').update({ is_active: active }).eq('id', id);
+  if (error) throw new Error('La disponibilité n’a pas pu être modifiée.');
   revalidatePath('/');
   revalidatePath('/catalogue');
   revalidatePath('/admin');
@@ -118,7 +124,8 @@ export async function deleteVariant(formData: FormData) {
   const supabase = await guardAdmin();
   const id = String(formData.get('id') ?? '');
   if (!id) return;
-  await supabase.from('product_variants').delete().eq('id', id);
+  const { error } = await supabase.from('product_variants').update({ is_active: false }).eq('id', id);
+  if (error) throw new Error('La variante n’a pas pu être archivée.');
   revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/produits');
 }
 
@@ -165,7 +172,7 @@ export async function setPrimaryProductImage(formData: FormData) {
 }
 
 export async function updateSiteSettings(formData: FormData) {
-  const supabase = await guardAdmin();
+  const supabase = await createManagerClient();
   async function uploadHomeImage(field: string, current: string) {
     const file = await validateImage(formData.get(field));
     if (!file) return current;
@@ -184,20 +191,20 @@ export async function updateSiteSettings(formData: FormData) {
     return !error && data ? data.url : fallback;
   }
 
+  const { data: savedHomepage } = await supabase.from('settings').select('value').eq('key', 'homepage').maybeSingle();
+  const saved = (savedHomepage?.value ?? {}) as Record<string, string>;
   const proposedHero = await validatedAssetUrl(
-    'hero_image_selected', 'image', String(formData.get('hero_image_url') ?? ''),
+    'hero_image_selected', 'image', saved.heroImage || '/christmas-2026/family-celebration.jpg',
   );
   const proposedLounge = await validatedAssetUrl(
-    'lounge_image_selected', 'image', String(formData.get('lounge_image_url') ?? ''),
+    'lounge_image_selected', 'image', saved.loungeImage || '/christmas-2026/christmas-boutique.jpg',
   );
   const heroImage = await uploadHomeImage('hero_image', proposedHero);
   const loungeImage = await uploadHomeImage('lounge_image', proposedLounge);
-  const currentVideo = String(formData.get('featured_video_original') ?? '/christmas-2026/christmas-family-reel.mp4');
-  const featuredVideoUrl = await validatedAssetUrl(
-    'featured_video_url', 'video',
-    currentVideo.startsWith('/christmas-2026/') ? currentVideo : '/christmas-2026/christmas-family-reel.mp4',
-  );
-  await supabase.from('settings').upsert([
+  const heroSideImage = await validatedAssetUrl('hero_side_selected', 'image', saved.heroSideImage || '/christmas-2026/family-together.jpg');
+  const heroLowerImage = await validatedAssetUrl('hero_lower_selected', 'image', saved.heroLowerImage || '/christmas-2026/family-red-tartan.webp');
+  const featuredVideoUrl = await validatedAssetUrl('featured_video_url', 'video', saved.featuredVideoUrl || '/christmas-2026/christmas-family-film.mp4');
+  const { error: settingsError } = await supabase.from('settings').upsert([
     {
       key: 'site',
       value: {
@@ -225,13 +232,14 @@ export async function updateSiteSettings(formData: FormData) {
     },
     {
       key: 'homepage',
-      value: { heroImage, loungeImage, featuredVideoUrl },
+      value: { heroImage, heroSideImage, heroLowerImage, loungeImage, featuredVideoUrl },
       description: 'Visuels de la page d’accueil',
     },
   ]);
   revalidatePath('/');
   revalidatePath('/panier');
-  revalidatePath('/admin/site');
+  if (settingsError) throw new Error('Les paramètres n’ont pas pu être enregistrés. Réessayez.');
+  redirect('/admin/site?saved=1');
 }
 
 function toSlug(value: string) {
@@ -331,10 +339,10 @@ export async function createCollection(formData: FormData) {
 
 export async function deleteCollection(formData: FormData) {
   const supabase = await guardAdmin();
-  const id = String(formData.get('id'));
-  const slug = String(formData.get('slug'));
-  if (!id || slug === 'promotions') return;
-  await supabase.from('product_collections').delete().eq('collection_id', id);
-  await supabase.from('collections').delete().eq('id', id);
+  const id = String(formData.get('id') ?? '');
+  const { data: collection } = await supabase.from('collections').select('slug').eq('id', id).maybeSingle();
+  if (!collection || collection.slug === 'promotions') return;
+  const { error } = await supabase.from('collections').update({ is_active: false }).eq('id', id);
+  if (error) throw new Error('La collection n’a pas pu être archivée.');
   revalidatePath('/collections'); revalidatePath('/catalogue'); revalidatePath('/admin/collections');
 }

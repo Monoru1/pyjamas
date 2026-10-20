@@ -1,5 +1,5 @@
 import { removePromotion, setPromotion } from '@/app/admin/actions';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { formatPrice } from '@/lib/utils/money';
 
 export default async function PromotionsPage() {

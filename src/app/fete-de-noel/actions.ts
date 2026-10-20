@@ -1,6 +1,8 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import { headers } from 'next/headers';
+import { createHmac } from 'node:crypto';
 
 export type EventRequestResult = { ok: boolean; message: string };
 
@@ -27,23 +29,21 @@ export async function requestChristmasPlaces(
   if (!data) return { ok: false, message: 'Informations invalides.' };
 
   try {
-    const supabase = await createClient();
-    const { data: config, error: configError } = await supabase.from('christmas_event_config')
-      .select('requests_open').eq('event_key','noel-2026').maybeSingle();
-    if (configError || !config?.requests_open) return { ok: false, message: 'Les demandes sont actuellement fermées. Contactez la boutique pour plus d’informations.' };
-
-    const { error } = await supabase.from('christmas_event_requests').insert({
-      event_key: 'noel-2026',
-      full_name: data.name,
-      phone: data.phone,
-      email: data.email || null,
-      requested_places: data.places,
-      consent_at: new Date().toISOString(),
-      status: 'requested',
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const salt = process.env.EVENT_REQUEST_RATE_SECRET;
+    if (process.env.EVENT_REQUESTS_ENABLED !== 'true' || !url || !key || !salt) return { ok: false, message: 'Les demandes sont actuellement fermées. Contactez la boutique pour plus d’informations.' };
+    const supabase = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+    const requestHeaders = await headers();
+    // Netlify sets this connection header. With no platform IP, share a restrictive unknown bucket.
+    const ip = requestHeaders.get('x-nf-client-connection-ip') || 'unknown';
+    const fingerprint = createHmac('sha256', salt).update(ip).digest('hex');
+    const { error } = await supabase.rpc('submit_christmas_request', {
+      p_name: data.name, p_phone: data.phone, p_email: data.email || '', p_places: data.places, p_fingerprint: fingerprint,
     });
     if (error) {
       // Unique contacts cannot place unlimited duplicate requests.
-      if (error.code === '23505') return { ok: false, message: 'Une demande existe déjà pour ce numéro. Contactez-nous pour la modifier.' };
+      if (error.code === '23505') return { ok: true, message: 'Votre demande a été prise en compte. Contactez la boutique pour toute modification.' };
       console.error('Event request insert failed', error.code);
       return { ok: false, message: 'L’enregistrement est momentanément impossible. Réessayez plus tard.' };
     }

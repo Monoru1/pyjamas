@@ -1,0 +1,51 @@
+{
+  "lighthouse-before-mobile": {
+    "url": "https://pyjamas25.netlify.app/",
+    "scores": {
+      "performance": 81,
+      "accessibility": 96,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "lcpMs": 4058.547,
+    "cls": 0,
+    "tbtMs": 32
+  },
+  "lighthouse-after-desktop": {
+    "url": "https://deploy-preview-3--pyjamas25.netlify.app/",
+    "scores": {
+      "performance": 99,
+      "accessibility": 96,
+      "best-practices": 92,
+      "seo": 63
+    },
+    "lcpMs": 782.335,
+    "cls": 0,
+    "tbtMs": 0
+  },
+  "lighthouse-after-mobile": {
+    "url": "https://deploy-preview-3--pyjamas25.netlify.app/",
+    "scores": {
+      "performance": 81,
+      "accessibility": 96,
+      "best-practices": 92,
+      "seo": 63
+    },
+    "lcpMs": 3325.05,
+    "cls": 0,
+    "tbtMs": 446.5
+  },
+  "lighthouse-before-desktop": {
+    "url": "https://pyjamas25.netlify.app/",
+    "scores": {
+      "performance": 94,
+      "accessibility": 96,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "lcpMs": 1004.139,
+    "cls": 0,
+    "tbtMs": 127.50000000000011,
+    "evidence": "https://github.com/Monoru1/pyjamas/actions/runs/39442304250/job/118695040637"
+  }
+}

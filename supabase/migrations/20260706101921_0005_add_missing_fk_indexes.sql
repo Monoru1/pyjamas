@@ -1,0 +1,9 @@
+CREATE INDEX idx_analytics_events_collection_id ON public.analytics_events (collection_id);
+CREATE INDEX idx_analytics_events_variant_id ON public.analytics_events (variant_id);
+CREATE INDEX idx_order_items_product_id ON public.order_items (product_id);
+CREATE INDEX idx_order_items_variant_id ON public.order_items (variant_id);
+CREATE INDEX idx_orders_currency_code ON public.orders (currency_code);
+CREATE INDEX idx_orders_customer_id ON public.orders (customer_id);
+CREATE INDEX idx_product_collections_collection_id ON public.product_collections (collection_id);
+CREATE INDEX idx_products_currency_code ON public.products (currency_code);
+CREATE INDEX idx_reviews_product_id ON public.reviews (product_id);

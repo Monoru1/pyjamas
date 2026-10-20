@@ -1,0 +1,20 @@
+CREATE TABLE public.media_assets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bucket text NOT NULL DEFAULT 'site-assets',
+  path text NOT NULL,
+  url text NOT NULL,
+  title text,
+  alt_fr text,
+  alt_en text,
+  asset_type text NOT NULL DEFAULT 'image',
+  mime_type text,
+  size_bytes bigint,
+  width integer,
+  height integer,
+  tags text[] NOT NULL DEFAULT '{}',
+  metadata jsonb NOT NULL DEFAULT '{}',
+  is_active boolean NOT NULL DEFAULT true,
+  created_by uuid,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);

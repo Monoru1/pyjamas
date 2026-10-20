@@ -1,0 +1,257 @@
+[
+  {
+    "version": "20260706101648",
+    "name": "0001_baseline_current_schema",
+    "sha256": "dc94ff2834b84755831775adf2c4f11ea0b927b4418f3e613dba6782307ae16a"
+  },
+  {
+    "version": "20260706101900",
+    "name": "0003_noop_test",
+    "sha256": "3ac2831b4379c7b2fe47f7ae92540f3ad83f693f285eaf89b409d97e3f3e391a"
+  },
+  {
+    "version": "20260706101908",
+    "name": "0004_add_parent_index",
+    "sha256": "bf51647cd94e11611ffa7f6c41f9f0fcd6900ab26ba73f884a8806088e0ca91a"
+  },
+  {
+    "version": "20260706101921",
+    "name": "0005_add_missing_fk_indexes",
+    "sha256": "3df6f49c287a12b4f8cc03c63fa3d4c4c7b7f78790bed251e66b4543cbf85e2b"
+  },
+  {
+    "version": "20260706101948",
+    "name": "0006_catalog_search_index",
+    "sha256": "23e19a148e96468ae67e41334e83f4485e81c2cc7190121d878aeac3e12fff9f"
+  },
+  {
+    "version": "20260706102044",
+    "name": "0007_create_media_assets",
+    "sha256": "82940f61f9d9432eb2e5f6b52ec42763383a907d3f163df95bef7a1cdf2c1e56"
+  },
+  {
+    "version": "20260706102049",
+    "name": "0008_secure_media_assets",
+    "sha256": "cf4f1a62a5bc22f857e9d97db24a661255b1c1b8548d69862aa3e58dfd02d6c0"
+  },
+  {
+    "version": "20260706102125",
+    "name": "0010_restrict_public_policy_roles",
+    "sha256": "f0af9f04ab20ca973dc3586f564c3bbc92a61a0524eaee3f258790eb20ed869f"
+  },
+  {
+    "version": "20260706102412",
+    "name": "0011_set_updated_at_search_path",
+    "sha256": "e4d4b6f982d85f95078c0cbdac1d8c80df37fd02621e3a504426c8fe9b2452f4"
+  },
+  {
+    "version": "20260706102418",
+    "name": "0012_slugify_search_path",
+    "sha256": "e8427346149f2933c3c427c73b468736d275505e77f9537096a98412ee4c8508"
+  },
+  {
+    "version": "20260706102441",
+    "name": "0014_revoke_rls_auto_enable_anon",
+    "sha256": "2a458b8534dcfb8613d412dd2519280c5ab85b66ac844c0597d4f671ba077316"
+  },
+  {
+    "version": "20260706102445",
+    "name": "0015_revoke_rls_auto_enable_authenticated",
+    "sha256": "36b71c66629f90ccd51d1e625d62b1713238e6ab90d47cc9eb75f5f4f28bb8d2"
+  },
+  {
+    "version": "20260706102452",
+    "name": "0016_revoke_is_admin_anon",
+    "sha256": "dfd4bb9951d492805bfa6f667db36818daeae8d86dbd0b0beef8167a83199290"
+  },
+  {
+    "version": "20260706102459",
+    "name": "0017_revoke_is_super_admin_anon",
+    "sha256": "62b33323490f0e6ba046ee44f831e9ac6c69198491252afb4747907166f20844"
+  },
+  {
+    "version": "20260706102507",
+    "name": "0018_secure_views_invoker",
+    "sha256": "cf0ac40b2b68ab573b2433ef59a3654e45eb647b4141f7cd1fdf4cd3d462c14f"
+  },
+  {
+    "version": "20260706103103",
+    "name": "0019_products_featured_sort_index",
+    "sha256": "a1527c769e4b1596a117a741bb825d86c3206628edbf28e5e8e5cb42d065010a"
+  },
+  {
+    "version": "20260706103112",
+    "name": "0020_products_created_at_index",
+    "sha256": "f9d1ac44d05ff9779b090b49eccd3252e798f8467463bfa8406c99e2b0faed75"
+  },
+  {
+    "version": "20260706103116",
+    "name": "0021_orders_status_created_index",
+    "sha256": "a941430426841a03625f23c5cf9d251389b5a6a723c5f0d69471a710b8c9acdb"
+  },
+  {
+    "version": "20260706103123",
+    "name": "0022_customers_created_at_index",
+    "sha256": "7023492fa6f157d22e7bde053a93785d17430f9833fe4d9d88c833824d5e8009"
+  },
+  {
+    "version": "20260706103128",
+    "name": "0023_variants_stock_index",
+    "sha256": "2c81e94bd57b741997840196b317ca3a502bd155d88dd1af5ceef1d2f3aeab3f"
+  },
+  {
+    "version": "20260706103132",
+    "name": "0024_products_deleted_at_index",
+    "sha256": "5a4cace12aa598cd2be836035d2353d0ae12d402e6bf38bc4bfb863b088a3e9e"
+  },
+  {
+    "version": "20260706103140",
+    "name": "0025_catalog_check_constraints",
+    "sha256": "088ee08526c67e73b00ebaa36c7d5ba7d83943d05d24b513a2115f0e78b1bcec"
+  },
+  {
+    "version": "20260706103147",
+    "name": "0026_orders_amount_checks",
+    "sha256": "68866e9d19581cb884527f05378303ac731c817cdf16158ea25b86a2ca1745f1"
+  },
+  {
+    "version": "20260706103156",
+    "name": "0027_variant_unique_combo",
+    "sha256": "d669bd1fe6025c7da6a32462b1ade2e7d4c4ed663c62b4cb89c79676a7898d0d"
+  },
+  {
+    "version": "20260706103203",
+    "name": "0028_order_number_unique_index",
+    "sha256": "d59ce299e1fe65d3542d6f5243c78fa4c61312f436baaa4abe2cb7c25702019f"
+  },
+  {
+    "version": "20260706103208",
+    "name": "0029_media_asset_type_check",
+    "sha256": "419d755ba9246ba5c993ae1478479288fd7ea2a4d3a2c0a6ba5cf3f5ff15fce5"
+  },
+  {
+    "version": "20260706103215",
+    "name": "0030_media_width_check",
+    "sha256": "da6093d5cdf42024a2ada2c290ae9f1f5ab1c31183c3f529647b5cf047e86354"
+  },
+  {
+    "version": "20260706103224",
+    "name": "0031_media_height_check",
+    "sha256": "cfb6c81ba516e7ccce5632e6b6d7c4195215fbda8eb20e7a34efb49833292cef"
+  },
+  {
+    "version": "20260706103231",
+    "name": "0032_create_order_status_history",
+    "sha256": "5cd2f96193d18f90821a4a23424f6c3de41aee546f008a8d90c00869dc6645fc"
+  },
+  {
+    "version": "20260706103237",
+    "name": "0033_create_product_audit_view",
+    "sha256": "f7ffd66e3cf2bf04ebf469bf53271923236b24e3bc0223785756d382271794d1"
+  },
+  {
+    "version": "20260706103242",
+    "name": "0034_create_order_overview_view",
+    "sha256": "ded11a5f27a32f5d32c6cb3609ff16165e4961f0dcc051f14fe425428f5a1edc"
+  },
+  {
+    "version": "20260706103338",
+    "name": "0035_dashboard_summary_invoker_recreate",
+    "sha256": "306bdd990b9327f5160ebf2d43db2e217bca5ffd8b19deaff1a6d384ae5a23eb"
+  },
+  {
+    "version": "20260706103347",
+    "name": "0036_admin_overview_permissions",
+    "sha256": "f018b3eb8da1aedf1665564f502192cc46da76f79c80eb6e2042cf3b8a2cb555"
+  },
+  {
+    "version": "20260706103530",
+    "name": "0037_restrict_public_checkout_customers",
+    "sha256": "83b837a1d395fd424d6d35aeb351829d3ec2385590350f669005017c81d73766"
+  },
+  {
+    "version": "20260706103628",
+    "name": "0040_archive_test_table",
+    "sha256": "1becdc1767d9fbdeb7f6bdfe2fac9f699492c0fcf1687fdb02ff3c110f64d4e7"
+  },
+  {
+    "version": "20260706103636",
+    "name": "0041_harden_order_status_history",
+    "sha256": "a25a3d35294534a1f7fc762c9e2d8762b8ff9a462221eeed019d7f9561e908db"
+  },
+  {
+    "version": "20260706103642",
+    "name": "0042_admin_dashboard_grants",
+    "sha256": "9c3e10b00e0a4ce3743ea9be684c1e7606604a6dcbab6d38b6bfc8186f7e214d"
+  },
+  {
+    "version": "20260706103655",
+    "name": "0043_media_assets_update_timestamp",
+    "sha256": "24827e46616122af2a96cae22a459fac932bae5398ea0215a879aa601fcefdae"
+  },
+  {
+    "version": "20260706130459",
+    "name": "0044_seed_christmas_catalog",
+    "sha256": "4746fa50f70ec7f67c5784e6a8d4165ec4c3d7d7e18008973982d85d18770120"
+  },
+  {
+    "version": "20260706134512",
+    "name": "0045_revoke_rls_auto_enable_from_public",
+    "sha256": "a8c9d9e0044ea4f8ac6b6bf726b7b28370ddf9ade493eaceaaef319dcf741ee9"
+  },
+  {
+    "version": "20260707092904",
+    "name": "0046_expand_collections_and_accessories",
+    "sha256": "00b9354ccf27fbde8a9698c1af22af2cf45cc8264e804173a59195884d176b5e"
+  },
+  {
+    "version": "20260707111246",
+    "name": "0046_catalog_expose_collection_slugs",
+    "sha256": "9e4bd21a4ac93638b15550d102cdb4a0f6b25753f5a8e970b09125c8bebd3fa1"
+  },
+  {
+    "version": "20260711213741",
+    "name": "0047_bootstrap_owner_admin",
+    "sha256": "0688d7d20a871d24d0166b04759be25011f6e8bf3ca228d3c048e144c1c27dec"
+  },
+  {
+    "version": "20260712094026",
+    "name": "0048_variant_promotions_catalog_v2",
+    "sha256": "7bfb78ba420b87610511123c6484238f2e9b8cac4634ee4ef5b53e48d90d0d89"
+  },
+  {
+    "version": "20260712213253",
+    "name": "security_hardening",
+    "sha256": "70aff2c3fa2eab57ca7390b22e074bb6e221582dd008411bf62013572d1f36ef"
+  },
+  {
+    "version": "20260712213400",
+    "name": "move_unaccent_extension",
+    "sha256": "4bb6c7ea1ebdc1d4293b2830a3ab7c1283ca0e7a1940f05e9f9f4e246f4c69ea"
+  },
+  {
+    "version": "20260715090848",
+    "name": "order_request_workflow",
+    "sha256": "01475280c983ef506fba2533b349215f6fe6ee0393651823a0a1a3ba189d6cce"
+  },
+  {
+    "version": "20261020123438",
+    "name": "christmas_video_storage_2026",
+    "sha256": "f936c2c1a877c2d7e7cd1762035e601d8b6314c5730f681d84d0836ce06d0b6b"
+  },
+  {
+    "version": "20261020123502",
+    "name": "noel_2026_collection_visibility_archive",
+    "sha256": "a7d6a66b5046574f98fb53015753c67d34a8489a49245df06d38975f49a76d9b"
+  },
+  {
+    "version": "20261020131307",
+    "name": "christmas_event_interest_requests_2026",
+    "sha256": "638a16ce31cb045f0b5e8a85bb84a5ed649d31bdd900fbe4caf32ee8df0b9126"
+  },
+  {
+    "version": "20261020141906",
+    "name": "event_interest_closed_guard",
+    "sha256": "372cfb73d05e3b237fc76e8e088911116a598de266d0a1ad68ab7eeee9763430"
+  }
+]

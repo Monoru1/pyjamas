@@ -1,0 +1,66 @@
+[
+  {
+    "job": "audit (after, desktop)",
+    "jobId": 118698701980,
+    "metrics": {
+      "url": "https://deploy-preview-3--pyjamas25.netlify.app/?ntl-drawer-state=hidden",
+      "scores": {
+        "performance": 100,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 63
+      },
+      "lcpMs": 624.5985000000001,
+      "cls": 0,
+      "tbtMs": 0
+    }
+  },
+  {
+    "job": "audit (before, desktop)",
+    "jobId": 118698702256,
+    "metrics": {
+      "url": "https://pyjamas25.netlify.app/",
+      "scores": {
+        "performance": 95,
+        "accessibility": 96,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "lcpMs": 1200.1100000000001,
+      "cls": 0,
+      "tbtMs": 14
+    }
+  },
+  {
+    "job": "audit (before, mobile)",
+    "jobId": 118698702306,
+    "metrics": {
+      "url": "https://pyjamas25.netlify.app/",
+      "scores": {
+        "performance": 75,
+        "accessibility": 96,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "lcpMs": 4141.9005,
+      "cls": 0,
+      "tbtMs": 391.4999999999998
+    }
+  },
+  {
+    "job": "audit (after, mobile)",
+    "jobId": 118698702424,
+    "metrics": {
+      "url": "https://deploy-preview-3--pyjamas25.netlify.app/?ntl-drawer-state=hidden",
+      "scores": {
+        "performance": 89,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 63
+      },
+      "lcpMs": 2904.365,
+      "cls": 0,
+      "tbtMs": 277.5
+    }
+  }
+]

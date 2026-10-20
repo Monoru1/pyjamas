@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowUpRight, Boxes, Clock3, ShoppingBag } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { formatPrice } from '@/lib/utils/money';
 
 const labels: Record<string, string> = { pending: 'À confirmer', confirmed: 'Confirmée', preparing: 'Préparation', ready: 'Prête', delivered: 'Livrée', cancelled: 'Annulée' };

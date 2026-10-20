@@ -4,6 +4,8 @@ interface BrandLogoProps {
 
 export function BrandLogo({ compact = false }: BrandLogoProps) {
   return (
+    // The logo is a local SVG; an image-transform client adds no benefit here.
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src="/brand/logo-maison-pyjamas.svg"
       alt="La Maison des Pyjamas"

@@ -1,0 +1,1 @@
+alter policy "event guests request places" on public.christmas_event_requests with check (status='requested' and staff_notes is null and requested_places between 1 and 8 and consent_at between now()-interval '5 minutes' and now() and exists(select 1 from public.christmas_event_config c where c.event_key=christmas_event_requests.event_key and c.requests_open));

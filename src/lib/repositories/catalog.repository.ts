@@ -15,6 +15,7 @@ export async function listFeaturedProducts(limit = 8): Promise<CatalogProduct[]>
       .from('product_catalog')
       .select('*')
       .eq('is_active', true)
+      .not('primary_image_url', 'like', 'https://images.unsplash.com/%')
       .eq('is_featured', true)
       .order('sort_order', { ascending: true })
       .limit(limit);
@@ -39,6 +40,7 @@ export async function listProducts(limit = 24): Promise<CatalogProduct[]> {
       .from('product_catalog')
       .select('*')
       .eq('is_active', true)
+      .not('primary_image_url', 'like', 'https://images.unsplash.com/%')
       .order('sort_order', { ascending: true })
       .limit(limit);
 
@@ -63,6 +65,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetails | n
       .select('*')
       .eq('slug', slug)
       .eq('is_active', true)
+      .not('primary_image_url', 'like', 'https://images.unsplash.com/%')
       .maybeSingle();
 
     if (productError) {

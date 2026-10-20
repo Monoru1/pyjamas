@@ -1,0 +1,1 @@
+CREATE INDEX idx_products_search_fr ON public.products USING gin (to_tsvector('french', coalesce(name_fr, '') || ' ' || coalesce(description_fr, '') || ' ' || coalesce(seo_title_fr, '') || ' ' || coalesce(seo_description_fr, '')));

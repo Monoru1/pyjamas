@@ -1,0 +1,62 @@
+{
+  "commit": "598c4cb3120a79ebb777017404bc49bf71976854",
+  "run": "https://github.com/Monoru1/pyjamas/actions/runs/39443951394",
+  "metrics": [
+    {
+      "url": "https://pyjamas25.netlify.app/",
+      "scores": {
+        "performance": 97,
+        "accessibility": 96,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "lcpMs": 1071.111,
+      "cls": 0,
+      "tbtMs": 0,
+      "job": 118700786468,
+      "name": "audit (before, desktop)"
+    },
+    {
+      "url": "https://deploy-preview-3--pyjamas25.netlify.app/?ntl-drawer-state=hidden",
+      "scores": {
+        "performance": 98,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 63
+      },
+      "lcpMs": 697.558,
+      "cls": 0,
+      "tbtMs": 118.5,
+      "job": 118700786696,
+      "name": "audit (after, desktop)"
+    },
+    {
+      "url": "https://deploy-preview-3--pyjamas25.netlify.app/?ntl-drawer-state=hidden",
+      "scores": {
+        "performance": 73,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 63
+      },
+      "lcpMs": 2927.502,
+      "cls": 0,
+      "tbtMs": 973,
+      "job": 118700786710,
+      "name": "audit (after, mobile)"
+    },
+    {
+      "url": "https://pyjamas25.netlify.app/",
+      "scores": {
+        "performance": 83,
+        "accessibility": 96,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "lcpMs": 4041.067499999999,
+      "cls": 0,
+      "tbtMs": 176,
+      "job": 118700787041,
+      "name": "audit (before, mobile)"
+    }
+  ]
+}

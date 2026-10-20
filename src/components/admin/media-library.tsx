@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { MediaMetadataForm } from '@/components/admin/media-metadata-form';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, ImagePlus, LoaderCircle, Video } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -9,6 +10,7 @@ import { setMediaStatus } from '@/app/admin/medias/actions';
 type MediaAsset = {
   id: string;
   title: string | null;
+  alt_fr: string | null;
   url: string;
   asset_type: string;
   mime_type: string | null;
@@ -25,6 +27,8 @@ const VIDEO_LIMIT = 50 * 1024 * 1024;
 export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
   const router = useRouter();
   const [selected, setSelected] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -131,14 +135,17 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
         </div>
         <p className="admin-upload-note mb-5">
           Images : JPG, PNG ou WebP (5 Mo max). Vidéos : MP4 ou WebM (50 Mo max). Pour les rushs plus longs du Drive,
-          prépare un montage léger avant de publier. Les fichiers sont envoyés directement vers Supabase Storage,
-          sans passer par les fonctions Netlify.
+          prépare un montage léger avant de publier. Les fichiers sont enregistrés
+          directement dans la médiathèque de la boutique.
         </p>
         <form onSubmit={upload} className="admin-media-upload">
           <label className="wide">Choisir un fichier
             <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" required
-              onChange={event => setSelected(event.target.files?.[0] ?? null)} />
+              onChange={event => { const file = event.target.files?.[0] ?? null; setSelected(file); setPreview(file ? URL.createObjectURL(file) : ''); }} />
           </label>
+          {selected && preview && <div className="wide overflow-hidden rounded-xl bg-[#123d2f] p-3">{VIDEO_TYPES.has(selected.type) ? <video className="max-h-64 w-full" src={preview} controls preload="metadata" playsInline aria-label="Aperçu avant téléversement"/> :
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="mx-auto max-h-64 object-contain" src={preview} alt="Aperçu avant téléversement"/>}</div>}
           <label>Titre visible dans le studio
             <input value={title} maxLength={120} onChange={event => setTitle(event.target.value)} placeholder="Famille au pied du sapin"/>
           </label>
@@ -174,12 +181,13 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
                   ) : (
                     // Stored public URLs may not be in Next.js remotePatterns during staged onboarding.
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={asset.url} alt={asset.title || 'Photographie de la boutique'} loading="lazy" />
+                    <img src={asset.url} alt={asset.alt_fr || asset.title || 'Photographie de la boutique'} loading="lazy" />
                   )}
                 </div>
                 <div className="admin-media-meta">
                   <strong>{asset.title || 'Sans titre'}</strong>
                   <span>{asset.asset_type === 'video' ? 'Vidéo' : 'Photo'} · {asset.size_bytes ? (asset.size_bytes / 1024 / 1024).toFixed(1) : '?'} Mo</span>
+                  <MediaMetadataForm id={asset.id} title={asset.title} alt={asset.alt_fr} />
                   <div className="admin-media-actions">
                     <button type="button" disabled={changing === asset.id} onClick={() => toggleStatus(asset)}>
                       {asset.is_active ? 'Masquer' : 'Réactiver'}

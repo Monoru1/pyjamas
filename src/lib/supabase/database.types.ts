@@ -65,6 +65,7 @@ type Table<Row = GenericRow> = {
 export type Database = {
   public: {
     Tables: {
+      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string}>;
       activity_logs: Table;
       analytics_events: Table;
       banners: Table<BannerRow>;
@@ -96,6 +97,7 @@ export type Database = {
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };
       is_super_admin: { Args: never; Returns: boolean };

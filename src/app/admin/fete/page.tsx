@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowUpRight, CalendarHeart, ClipboardList } from 'lucide-react';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { updateChristmasEventConfig, updateChristmasRequestStatus } from './actions';
 
 const states: Record<string,string> = {
@@ -59,7 +59,7 @@ export default async function ChristmasEventAdminPage() {
             </label>
             <label className="col-span-full flex items-center gap-3 text-sm font-semibold text-[#163f32]">
               <input name="requests_open" type="checkbox" defaultChecked={config.requests_open} className="h-5 w-5 accent-[#b3203a]"/>
-              Autoriser les demandes de pré-réservation (sans paiement ni confirmation automatique)
+              Autoriser les demandes de places (nécessite aussi la validation de confidentialité et l’activation technique)
             </label>
             <button type="submit" className="admin-primary-button col-span-full min-h-12 md:w-fit">Enregistrer les informations</button>
           </form>

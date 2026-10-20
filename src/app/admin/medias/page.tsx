@@ -1,12 +1,12 @@
 import { Images } from 'lucide-react';
 import { MediaLibrary } from '@/components/admin/media-library';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 
 export default async function AdminMediasPage() {
   const supabase = await createClient();
   const { data: assets, error } = await supabase
     .from('media_assets')
-    .select('id, title, url, asset_type, mime_type, size_bytes, is_active, created_at')
+    .select('id, title, alt_fr, url, asset_type, mime_type, size_bytes, is_active, created_at')
     .order('created_at', { ascending: false })
     .limit(48);
 

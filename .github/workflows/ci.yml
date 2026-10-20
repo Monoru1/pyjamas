@@ -44,4 +44,8 @@ jobs:
         run: npm run typecheck
       - name: Test
         if: ${{ hashFiles('package-lock.json') != '' }}
-        run: npm test -- --run --passWithNoTests
+        run: npm test -- --run
+      - name: Verify recovered migration history
+        run: node scripts/check-migration-history.mjs
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate

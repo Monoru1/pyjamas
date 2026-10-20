@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { createManagerClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 async function authorizedAdmin() {
@@ -25,7 +26,7 @@ function optionalInteger(formData: FormData, key: string, max: number) {
 }
 
 export async function updateChristmasEventConfig(formData: FormData) {
-  const supabase = await authorizedAdmin();
+  const supabase = await createManagerClient();
   if (!supabase) throw new Error('Session administrateur requise.');
   const day = optionalText(formData, 'event_day', 10);
   const time = optionalText(formData, 'event_time', 5);
@@ -46,7 +47,7 @@ export async function updateChristmasEventConfig(formData: FormData) {
     ticket_price_xof: price,
     capacity,
     information_note: optionalText(formData, 'information_note', 1000),
-    requests_open: formData.get('requests_open') === 'on',
+    requests_open: formData.get('requests_open') === 'on' && process.env.EVENT_REQUESTS_ENABLED === 'true',
     updated_at: new Date().toISOString(),
   }).eq('event_key','noel-2026');
   if (error) throw new Error('La configuration de la fête n’a pas pu être enregistrée.');

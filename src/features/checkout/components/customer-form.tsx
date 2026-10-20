@@ -20,7 +20,7 @@ export function CustomerForm() {
       <label className="grid gap-2 text-sm font-medium">
         Nom
         <input
-          required
+          required autoComplete="name" maxLength={80}
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="Votre nom"
@@ -32,6 +32,7 @@ export function CustomerForm() {
         Telephone
         <input
           required
+          type="tel" autoComplete="tel" maxLength={25}
           inputMode="tel"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
@@ -46,10 +47,11 @@ export function CustomerForm() {
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           placeholder="Adresse, precision de taille, livraison..."
-          rows={4}
+          rows={4} maxLength={500}
           className="resize-none rounded-2xl border border-brand-primary/10 px-4 py-3 font-normal outline-none focus:border-brand-primary"
         />
       </label>
+      <p className="text-xs leading-5 text-foreground/65">Consultez notre <a href="/politique-de-confidentialite" className="underline">politique de confidentialité</a>. Vos coordonnées servent à traiter votre demande.</p>
     </div>
   );
 }

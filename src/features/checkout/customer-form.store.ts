@@ -27,7 +27,10 @@ export const useCheckoutCustomerStore = create<CheckoutCustomerState>()(
     {
       name: 'mdp-checkout-customer',
       version: 1,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        localStorage.removeItem('mdp-checkout-customer');
+        return sessionStorage;
+      }),
     },
   ),
 );

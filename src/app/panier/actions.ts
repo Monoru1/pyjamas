@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 export type OrderRequestInput = {
+  idempotencyKey: string;
   customer: {
     name: string;
     phone: string;

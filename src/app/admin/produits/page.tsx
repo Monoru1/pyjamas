@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { archiveProduct, createProduct, createVariant, deleteVariant, setPrimaryProductImage, updateProduct, updateVariantStock, uploadProductImage } from '@/app/admin/actions';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient as createClient } from '@/lib/supabase/admin';
 import { formatPrice } from '@/lib/utils/money';
 
 const adultSizes = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
