@@ -1,4 +1,5 @@
 name: Lighthouse Christmas campaign
+# Keep the same four presets after server/client boundary optimizations.
 on:
   workflow_dispatch:
   push:

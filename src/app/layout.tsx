@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
+import { Footer } from '@/components/site/footer';
+import { TopNav } from '@/components/site/top-nav';
 import { SiteChrome } from '@/components/site/site-chrome';
 import './globals.css';
 import './christmas-2026.css';
@@ -44,7 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="fr" className={`${fraunces.variable} ${inter.variable}`}>
       <body>
-        <SiteChrome>{children}</SiteChrome>
+        <SiteChrome header={<TopNav />} footer={<Footer />}>{children}</SiteChrome>
       </body>
     </html>
   );

@@ -91,7 +91,8 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
           </Link>
         </div>
         <div className="christmas-film-card">
-          <CampaignFilm src={settings.featuredVideoUrl} poster={`${photo}/family-together.jpg`} />
+          <CampaignFilm src={settings.featuredVideoUrl} poster={`${photo}/web/family-together-480.webp`}
+            cover={<Image src={`${photo}/family-together.jpg`} alt="Les coulisses du Noël en famille" fill sizes="(max-width: 800px) 90vw, 45vw" className="christmas-cover" />} />
         </div>
       </section>
 
