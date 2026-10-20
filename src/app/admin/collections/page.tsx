@@ -38,7 +38,7 @@ export default async function AdminCollectionsPage() {
 
       {!christmas ? (
         <div className="admin-panel p-8" role="alert">
-          La collection officielle « noel » est introuvable. Aucun contenu n'a été modifié.
+          La collection officielle « noel » est introuvable. Aucun contenu n’a été modifié.
         </div>
       ) : (
         <section className="admin-panel p-5 md:p-8">
@@ -95,7 +95,7 @@ export default async function AdminCollectionsPage() {
         <summary className="cursor-pointer font-bold text-[#123d30]">
           Consulter les anciennes collections archivées ({(archives ?? []).filter(item => item.slug !== 'promotions').length})
         </summary>
-        <p className="my-4 leading-7 text-[#647469]">Aucune donnée historique n'a été supprimée. Les anciennes collections ne sont pas proposées dans la vitrine Noël.</p>
+        <p className="my-4 leading-7 text-[#647469]">Aucune donnée historique n’a été supprimée. Les anciennes collections ne sont pas proposées dans la vitrine Noël.</p>
         <ul className="grid gap-2 text-[#617269]">
           {(archives ?? []).filter(item => item.slug !== 'promotions').map(item => (
             <li key={item.slug} className="flex justify-between gap-4 border-b border-[#edeae3] py-2">
