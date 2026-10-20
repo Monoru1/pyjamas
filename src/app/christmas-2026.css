@@ -157,3 +157,14 @@ body { background: #fff9f3; }
 @media(prefers-reduced-motion: reduce) {
  .christmas-photo .christmas-cover,.christmas-btn,.christmas-outline-link,.admin-sidebar {transition:none!important;}
 }
+
+
+.employee-store-link {display:inline-flex;align-items:center;justify-content:center;gap:10px;color:#f2d4a4;border:1px solid #ffffff42;border-radius:12px;font-size:12px;font-weight:700;padding:12px;margin-top:auto;text-decoration:none;}
+.employee-backdrop {display:none;}
+@media(max-width:800px) {
+ .employee-backdrop {display:block;position:fixed;inset:0;background:#091e18a8;z-index:210;border:0;}
+ .admin-sidebar .admin-brand {flex:1;min-width:0;}
+ .admin-sidebar .admin-brand .admin-logo-wrap {min-height:54px;}
+ .admin-sidebar .admin-brand .admin-logo-wrap img {height:52px;width:auto;max-width:100%;}
+ .admin-content {min-height:calc(100dvh - 68px);}
+}
