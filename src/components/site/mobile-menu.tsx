@@ -7,7 +7,7 @@ import { BrandLogo } from '@/components/brand/brand-logo';
 const links = [
   ['Édition Noël 2026', '/collections'],
   ['Les pyjamas', '/catalogue?collection=noel'],
-  ['Notre univers', '/#notre-histoire'],
+  ['La fête de Noël', '/fete-de-noel'],
   ['Contact', '/contact'],
 ];
 
