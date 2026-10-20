@@ -14,6 +14,8 @@ interface LuxeHomeProps {
 const photo = '/christmas-2026';
 
 export function LuxeHome({ settings, products }: LuxeHomeProps) {
+  const leadPhoto = settings.heroImage.includes('images.unsplash.com') ? `${photo}/family-celebration.jpg` : settings.heroImage;
+  const boutiquePhoto = settings.loungeImage.includes('images.unsplash.com') ? `${photo}/christmas-boutique.jpg` : settings.loungeImage;
   return (
     <main className="christmas-home" id="haut">
       <div className="christmas-announcement">
@@ -46,7 +48,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
         </div>
         <div className="christmas-hero-gallery">
           <div className="christmas-photo christmas-photo-main">
-            <Image src={`${photo}/family-celebration.jpg`} alt="Famille réunie en pyjamas de Noël assortis" fill priority sizes="(max-width: 800px) 75vw, 35vw" className="christmas-cover" />
+            <Image src={leadPhoto} alt="Famille réunie en pyjamas de Noël assortis" fill priority sizes="(max-width: 800px) 75vw, 35vw" className="christmas-cover" />
             <span className="christmas-photo-caption">Moments ensemble</span>
           </div>
           <div className="christmas-photo christmas-photo-side">
@@ -100,7 +102,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             poster={`${photo}/family-together.jpg`}
             aria-label="Vidéo de notre collection Noël en famille"
           >
-            <source src={`${photo}/christmas-family-reel.mp4`} type="video/mp4" />
+            <source src={settings.featuredVideoUrl} type="video/mp4" />
             Votre navigateur ne permet pas de lire cette vidéo.
           </video>
           <div className="christmas-film-label"><Play size={15} aria-hidden="true" /> Nos moments de Noël · Lancer la vidéo</div>
@@ -109,7 +111,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
 
       <section className="christmas-editorial" aria-labelledby="christmas-shop-title">
         <div className="christmas-editorial-image">
-          <Image src={`${photo}/christmas-boutique.jpg`} alt="La Maison des Pyjamas décorée pour les fêtes" fill sizes="(max-width: 800px) 100vw, 42vw" className="christmas-cover" />
+          <Image src={boutiquePhoto} alt="La Maison des Pyjamas décorée pour les fêtes" fill sizes="(max-width: 800px) 100vw, 42vw" className="christmas-cover" />
         </div>
         <div className="christmas-editorial-copy">
           <p className="christmas-eyebrow">03 / BIENVENUE À LA MAISON</p>
