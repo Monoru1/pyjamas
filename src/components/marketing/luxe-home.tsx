@@ -53,7 +53,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                   <a href="#vedettes" className="magnetic-cta rounded-full bg-brand-primary px-7 py-4 text-center text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-[0_18px_55px_rgba(143,20,40,0.34)]">
                     Découvrir la collection
-                  </Link>
+                  </a>
                 </div>
               </div>
 
@@ -92,7 +92,7 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             </div>
             <Link href="/catalogue" className="rounded-full border border-brand-primary/20 bg-white/70 px-6 py-3 text-sm font-semibold text-brand-primary">
               Tout voir
-            </a>
+            </Link>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {products.length > 0 ? products.map((product) => <ProductCard key={product.id} product={product} />) : <EmptyProducts />}
