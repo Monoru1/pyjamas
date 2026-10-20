@@ -34,6 +34,7 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     if (!selected || busy) return;
     setError('');
     setMessage('');
@@ -96,7 +97,7 @@ export function MediaLibrary({ assets }: { assets: MediaAsset[] }) {
       setTitle('');
       setDescription('');
       setMessage('Média ajouté à la bibliothèque. Tu peux maintenant le retrouver ici.');
-      const fileInput = event.currentTarget.querySelector('input[type=file]') as HTMLInputElement | null;
+      const fileInput = form.querySelector('input[type=file]') as HTMLInputElement | null;
       if (fileInput) fileInput.value = '';
       router.refresh();
     } catch (cause) {
