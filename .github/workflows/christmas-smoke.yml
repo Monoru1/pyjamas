@@ -18,6 +18,7 @@ jobs:
             ['/admin/login',200],
             ['/admin/forgot-password',200],
             ['/collections',200],
+            ['/fete-de-noel',200],
             ['/catalogue?collection=noel',200],
             ['/christmas-2026/family-celebration.jpg',200],
             ['/christmas-2026/christmas-family-reel.mp4',200]
@@ -32,7 +33,7 @@ jobs:
               if(res.status!==want){failed=true; console.error('Expected',want,'got',res.status);}
             }catch(err){failed=true;console.error(path,String(err));}
           }
-          for(const path of ['/admin','/admin/medias']) {
+          for(const path of ['/admin','/admin/medias','/admin/fete']) {
             try{
               const res=await fetch(origin+path,{signal:AbortSignal.timeout(20000),redirect:'manual'});
               console.log(path,'status',res.status,'location',res.headers.get('location'));
@@ -42,5 +43,5 @@ jobs:
             }catch(err){failed=true;console.error(path,String(err));}
           }
           if(failed)process.exit(1);
-          console.log('PASS preview public pages, media and admin protection');
+          console.log('PASS Noël home, event requests, product routes, assets and staff access control');
           JS
