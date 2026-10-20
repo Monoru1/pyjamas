@@ -51,8 +51,17 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             <Image src={leadPhoto} alt="Famille réunie en pyjamas de Noël assortis" fill priority sizes="(max-width: 800px) 75vw, 35vw" className="christmas-cover" />
             <span className="christmas-photo-caption">Moments ensemble</span>
           </div>
-          <div className="christmas-photo christmas-photo-side">
-            <Image src={`${photo}/mother-and-baby.jpg`} alt="Mère et enfant en tenues coordonnées pour Noël" fill sizes="(max-width: 800px) 45vw, 18vw" className="christmas-cover" />
+          <div className="christmas-photo christmas-photo-side christmas-photo-video">
+            <video
+              src={settings.featuredVideoUrl}
+              poster={`${photo}/family-together.jpg`}
+              controls
+              playsInline
+              preload="none"
+              className="christmas-hero-reel"
+              aria-label="Découvrir notre film de Noël en famille"
+            />
+            <span className="christmas-video-badge" aria-hidden="true"><Play size={13} /> Voir le film</span>
           </div>
           <div className="christmas-photo christmas-photo-lower">
             <Image src={`${photo}/hero-family.jpg`} alt="Portrait de famille au pied du sapin" fill sizes="(max-width: 800px) 45vw, 19vw" className="christmas-cover" />
