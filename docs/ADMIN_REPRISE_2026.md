@@ -87,3 +87,13 @@ Le build local et le Deploy Preview utilisent les variables Netlify existantes ;
 - Après validation de la propriétaire, configurer le domaine, les redirections Auth et le CORS du checkout Supabase Edge Function.
 
 Références : https://supabase.com/docs/guides/auth/passwords et https://supabase.com/docs/guides/auth/server-side
+
+
+## Points de sécurité encore ouverts (audit Supabase du 20/10/2026)
+
+L'audit Supabase signale **deux familles d'avertissements**, non modifiées pendant la restauration :
+
+- **Protection contre les mots de passe compromis désactivée**. À activer et tester dans les paramètres Authentication du projet, si disponible sur le plan : https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+- **Trois fonctions SECURITY DEFINER exécutables par `authenticated`** : `is_admin()`, `is_super_admin()`, `admin_update_order_status(...)`. Les deux premières servent aux contrôles d'accès actuels ; **ne pas les révoquer aveuglément**. Auditer leur logique, les permissions et `search_path` avant toute modification : https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
+
+La configuration des URL de redirection et du SMTP **n'a pas pu être modifiée automatiquement** : elle doit être contrôlée dans le dashboard Supabase, puis testée avec le propriétaire avant d'utiliser la récupération de mot de passe en production.
