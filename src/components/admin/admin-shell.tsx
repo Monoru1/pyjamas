@@ -15,6 +15,7 @@ const links = [
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname === '/admin/login') return <>{children}</>;
+  // Password recovery must not render the protected admin navigation.
+  if (/^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/.test(pathname)) return <>{children}</>;
   return <main className="admin-shell"><aside className="admin-sidebar"><Link href="/" className="admin-brand"><span className="admin-logo-wrap"><img src="/brand/logo-maison-pyjamas.svg" alt="La Maison des Pyjamas" /></span><small>STUDIO ADMIN</small></Link><nav>{links.map(({ href, label, icon: Icon }) => <Link key={href} href={href}><Icon size={18} />{label}</Link>)}</nav><form action={signOutAdmin}><button className="admin-signout">Déconnexion</button></form></aside><section className="admin-content">{children}</section></main>;
 }
