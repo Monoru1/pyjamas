@@ -19,6 +19,14 @@ jobs:
           echo "package-lock.json is not committed yet."
           echo "Skipping Node quality gates during repository bootstrap."
           echo "Run npm install locally, commit package-lock.json, then CI will enforce lint/typecheck/tests."
+      - name: Diagnose npm lockfile
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: |
+          pwd
+          ls -lh package.json package-lock.json .npmrc
+          node --version && npm --version
+          npm config get package-lock
+          node -e "const f=require('fs'); const d=JSON.parse(f.readFileSync('package-lock.json','utf8')); console.log('lockfileVersion:',d.lockfileVersion,'packages:',Object.keys(d.packages||{}).length); if (!d.packages || !d.packages['']) process.exit(1)"
       - name: Install dependencies
         if: ${{ hashFiles('package-lock.json') != '' }}
         run: npm ci
