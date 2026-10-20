@@ -190,3 +190,10 @@ body { background: #fff9f3; }
 .christmas-hero-gallery { width:100%; min-height:0; aspect-ratio:1.35; align-self:center; }
 .christmas-photo-side .christmas-cover { object-position:center 30%; }
 @media(max-width:800px) { .christmas-hero-gallery { min-height:0; aspect-ratio:1.25; } }
+@media(max-width:800px) {
+ .christmas-hero-copy {padding:30px 24px;}
+ .christmas-hero h1 {margin-top:18px;}
+ .christmas-hero-copy>p {margin-top:18px;line-height:1.65;}
+ .christmas-hero-actions {margin-top:24px;gap:16px;}
+ .christmas-hero-footnote {display:none;}
+}

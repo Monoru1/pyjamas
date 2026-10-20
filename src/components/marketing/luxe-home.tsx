@@ -38,9 +38,9 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             <Link href="/catalogue?collection=noel" className="christmas-btn christmas-btn-light">
               Découvrir Noël <ArrowUpRight size={18} />
             </Link>
-            <a href="#notre-histoire" className="christmas-text-link">
-              Entrer dans la magie <ArrowDownRight size={18} />
-            </a>
+            <Link href="/fete-de-noel" className="christmas-text-link">
+              La fête de Noël <ArrowDownRight size={18} />
+            </Link>
           </div>
           <div className="christmas-hero-footnote">
             <span>Une collection à porter, des souvenirs à créer.</span>
