@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import type { Json } from '@/lib/supabase/database.types';
 
 export interface StoreSettings {
@@ -53,7 +53,7 @@ function asString(value: Json | undefined, fallback: string) {
 
 export async function getStoreSettings(): Promise<StoreSettings> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.from('settings').select('*');
 
     if (error) {
