@@ -1,9 +1,17 @@
+import Image from 'next/image';
 import { CatalogueExperience } from '@/features/catalog/components/catalogue-experience';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
-// The store is intentionally a single Noël collection for this season.
-// Avoid dynamic searchParams/cookies so Next.js can prerender this page.
 export const revalidate = 60;
+
+// Real campaign photos imported from the shop's own Drive.
+// These are editorial photos, not a substitute for verified product variants.
+const shootingPhotos = [
+  '/christmas-2026/shooting-drive/shoot-01.jpg',
+  '/christmas-2026/shooting-drive/shoot-02.jpg',
+  '/christmas-2026/shooting-drive/shoot-03.jpg',
+  '/christmas-2026/shooting-drive/shoot-04.jpg',
+];
 
 export default async function CataloguePage() {
   const products = (await listProducts(72)).filter(product => product.collectionSlugs.includes('noel'));
@@ -20,6 +28,24 @@ export default async function CataloguePage() {
             Explorez notre sélection de Noël, les tailles et couleurs disponibles et les ensembles à partager.
           </p>
         </section>
+        {products.length === 0 && (
+          <section aria-labelledby="shooting-title" className="space-y-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-[#b3203a]">Notre shooting</p>
+              <h2 id="shooting-title" className="mt-2 font-serif text-3xl sm:text-4xl">Découvrez l’univers de Noël</h2>
+              <p className="mt-2 text-sm text-[#52645d]">
+                Les photos de nos modèles sont disponibles. Les fiches avec tailles et disponibilités sont en préparation.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {shootingPhotos.map((src, index) => (
+                <div key={src} className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-[#f0e5de]">
+                  <Image src={src} alt={`Shooting de Noël, photographie ${index + 1}`} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         <CatalogueExperience products={products} initialCollection="noel" collectionName="Noël 2026" />
       </div>
     </main>
