@@ -1,8 +1,13 @@
 import type { NextConfig } from 'next';
 
+export function deploymentSiteOrigin(env: Record<string, string | undefined>) {
+  const production = 'https://pyjamas25.netlify.app';
+  return env.CONTEXT === 'production' ? env.URL || production : env.DEPLOY_PRIME_URL || env.URL || production;
+}
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  env: { SITE_ORIGIN: process.env.DEPLOY_PRIME_URL || process.env.URL || 'https://pyjamas25.netlify.app', PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false', BUILD_COMMIT_REF: process.env.COMMIT_REF || 'local' },
+  env: { SITE_ORIGIN: deploymentSiteOrigin(process.env), PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false', BUILD_COMMIT_REF: process.env.COMMIT_REF || 'local' },
   async headers() {
     const preview = process.env.CONTEXT === 'deploy-preview';
     const securityHeaders = [
