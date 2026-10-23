@@ -8,7 +8,7 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   if (env.FEDAPAY_ENABLED !== 'true' || env.FEDAPAY_ENVIRONMENT !== 'sandbox'
     || !env.FEDAPAY_SECRET_KEY?.startsWith('sk_sandbox_') || !env.FEDAPAY_WEBHOOK_SECRET
     || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('Paiement de test indisponible.');
-  const origin = env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL;
+  const origin = env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL || process.env.SITE_ORIGIN;
   if (!origin || new URL(origin).protocol !== 'https:') throw new Error('Adresse de retour non configurée.');
   return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET, origin: new URL(origin).origin };
 }

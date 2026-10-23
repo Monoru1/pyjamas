@@ -1,5 +1,6 @@
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
 import { createHash } from 'node:crypto';
+import { trustedSiteOrigin } from '@/lib/security/urls';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase } from '@/lib/payments/server';
@@ -15,7 +16,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     requireJsonRequest(request);
-    const expectedOrigin = new URL(process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL || 'https://pyjamas25.netlify.app').origin;
+    const expectedOrigin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL);
     requireBrowserOrigin(request, expectedOrigin);
     const raw = await readLimitedBody(request, 10000);
     const parsed = schema.safeParse(JSON.parse(raw));

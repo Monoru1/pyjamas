@@ -7,7 +7,7 @@ import { trustedSiteOrigin } from '@/lib/security/urls';
 const publicAdminPages = /^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/;
 
 function loginRedirect() {
-  const url = new URL('/admin/login', trustedSiteOrigin(process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
+  const url = new URL('/admin/login', trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
   url.pathname = '/admin/login';
   url.search = '';
   return NextResponse.redirect(url);
