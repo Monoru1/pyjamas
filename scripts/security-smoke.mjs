@@ -40,7 +40,7 @@ for (const path of ['/', '/collections', '/catalogue', '/contact', '/politique-d
   assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
   assert.ok(response.headers.get('strict-transport-security'));
   if (path === '/collections') assert.ok(html.includes('Lire : Un Noël en famille') && html.includes('films :'));
-  if (path === '/contact') assert.ok(!html.includes('<iframe'), 'Unexpected automatic map embed');
+  if (path === '/contact') assert.ok(html.includes('https://www.google.com/maps?q=') && html.includes('<iframe'), 'Google Maps embed missing');
 }
 await request('/api/payments/status?reference=' + '-'.repeat(36), 400);
 await request('/api/payments/reconcile', 401, { method: 'POST' });
