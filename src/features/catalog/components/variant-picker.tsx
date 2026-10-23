@@ -9,9 +9,24 @@ interface VariantPickerProps {
   product: ProductDetails;
 }
 
+const orderedSizes = [
+  '3-6 mois', '6-9 mois', '9-12 mois', '12-18 mois', '18-24 mois',
+  ...Array.from({ length: 13 }, (_, index) => `${index + 1} ${index === 0 ? 'an' : 'ans'}`),
+  'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Unique',
+];
+
 export function VariantPicker({ product }: VariantPickerProps) {
   const activeVariants = useMemo(
-    () => product.variants.filter((variant) => variant.isActive),
+    () => [...product.variants]
+      .filter((variant) => variant.isActive)
+      .sort((left, right) => {
+        const leftIndex = orderedSizes.indexOf(left.sizeLabel);
+        const rightIndex = orderedSizes.indexOf(right.sizeLabel);
+        if (leftIndex === -1 && rightIndex === -1) return left.sizeLabel.localeCompare(right.sizeLabel, 'fr');
+        if (leftIndex === -1) return 1;
+        if (rightIndex === -1) return -1;
+        return leftIndex - rightIndex;
+      }),
     [product.variants],
   );
   const [selectedId, setSelectedId] = useState(activeVariants[0]?.id ?? '');
