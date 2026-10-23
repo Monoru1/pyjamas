@@ -14,7 +14,7 @@ export function CollectionFilms({ films, children }: { films: CollectionFilm[]; 
     player.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
   return <>
-    <section className="mx-auto grid max-w-[1380px] px-4 pt-7 sm:px-6 lg:grid-cols-2 lg:pt-12">
+    <section className="mx-auto grid max-w-[1380px] px-4 pt-14 sm:px-6 lg:grid-cols-2 lg:pt-20">
       {children}
       <div ref={player} className="relative min-h-[490px] overflow-hidden rounded-b-[28px] bg-[#123d30] lg:min-h-[680px] lg:rounded-r-[32px] lg:rounded-bl-none">
         {film ? started ? <video key={film.src} src={film.src} poster={film.poster} controls autoPlay playsInline preload="none" aria-label={film.title} className="absolute inset-0 h-full w-full object-contain" onError={() => setFailed(true)} /> : <button type="button" className="group absolute inset-0 h-full w-full text-white" onClick={() => setStarted(true)} aria-label={`Lire : ${film.title}`}>
