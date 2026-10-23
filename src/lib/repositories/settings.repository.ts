@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { safeMediaUrl, safeSocialUrl } from '@/lib/security/urls';
 import { createPublicClient } from '@/lib/supabase/public';
 import type { Json } from '@/lib/supabase/database.types';
 
@@ -82,13 +83,13 @@ export const getStoreSettings = cache(async function getStoreSettings(): Promise
         whatsapp.defaultMessage,
         DEFAULT_STORE_SETTINGS.whatsappDefaultMessage,
       ),
-      instagramUrl: asString(social.instagram, DEFAULT_STORE_SETTINGS.instagramUrl),
-      tiktokUrl: asString(social.tiktok, DEFAULT_STORE_SETTINGS.tiktokUrl),
-      heroImage: asString(homepage.heroImage, DEFAULT_STORE_SETTINGS.heroImage),
-      loungeImage: asString(homepage.loungeImage, DEFAULT_STORE_SETTINGS.loungeImage),
-      featuredVideoUrl: asString(homepage.featuredVideoUrl, DEFAULT_STORE_SETTINGS.featuredVideoUrl),
-      heroSideImage: asString(homepage.heroSideImage, DEFAULT_STORE_SETTINGS.heroSideImage),
-      heroLowerImage: asString(homepage.heroLowerImage, DEFAULT_STORE_SETTINGS.heroLowerImage),
+      instagramUrl: safeSocialUrl(social.instagram, 'instagram', DEFAULT_STORE_SETTINGS.instagramUrl),
+      tiktokUrl: safeSocialUrl(social.tiktok, 'tiktok', DEFAULT_STORE_SETTINGS.tiktokUrl),
+      heroImage: safeMediaUrl(homepage.heroImage, DEFAULT_STORE_SETTINGS.heroImage),
+      loungeImage: safeMediaUrl(homepage.loungeImage, DEFAULT_STORE_SETTINGS.loungeImage),
+      featuredVideoUrl: safeMediaUrl(homepage.featuredVideoUrl, DEFAULT_STORE_SETTINGS.featuredVideoUrl),
+      heroSideImage: safeMediaUrl(homepage.heroSideImage, DEFAULT_STORE_SETTINGS.heroSideImage),
+      heroLowerImage: safeMediaUrl(homepage.heroLowerImage, DEFAULT_STORE_SETTINGS.heroLowerImage),
       theme: {
         primary: asString(theme.primary, DEFAULT_STORE_SETTINGS.theme.primary),
         accent: asString(theme.accent, DEFAULT_STORE_SETTINGS.theme.accent),

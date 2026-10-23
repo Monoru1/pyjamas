@@ -1,11 +1,15 @@
-import { CampaignImage as Image } from '@/components/marketing/campaign-image';
+import { CollectionFilms } from '@/components/marketing/collection-films';
+import { listCollectionFilms } from '@/lib/repositories/films.repository';
 import Link from 'next/link';
 import { ArrowUpRight, Gift, Sparkles } from 'lucide-react';
 
-export default function CollectionsPage() {
+export const revalidate = 60;
+
+export default async function CollectionsPage() {
+  const films = await listCollectionFilms();
   return (
     <main className="min-h-screen bg-[#fff9f3] pb-24">
-      <section className="mx-auto grid max-w-[1380px] gap-0 px-4 pt-7 sm:px-6 lg:grid-cols-2 lg:gap-0 lg:pt-12">
+      <CollectionFilms films={films}>
         <div className="flex flex-col justify-center rounded-t-[28px] bg-[#0c352c] p-8 text-[#fff9ed] sm:p-12 lg:rounded-l-[32px] lg:rounded-tr-none lg:p-16">
           <span className="mb-7 inline-flex items-center gap-3 text-xs font-bold uppercase tracking-[.25em] text-[#f2d093]"><Sparkles size={17}/> ÉDITION 2026</span>
           <h1 className="mb-7 text-5xl font-semibold leading-[1.12] tracking-tight sm:text-6xl">La collection <em className="text-[#f7d5a7]">Noël.</em></h1>
@@ -15,20 +19,8 @@ export default function CollectionsPage() {
           </Link>
           <span className="mt-12 inline-flex items-center gap-3 text-sm text-[#e4c39c]"><Gift size={20}/> Une saison. Mille souvenirs.</span>
         </div>
-        <div className="relative min-h-[490px] overflow-hidden rounded-b-[28px] bg-[#af263f] lg:min-h-[680px] lg:rounded-r-[32px] lg:rounded-bl-none">
-          <Image
-            src="/christmas-2026/hero-family.jpg"
-            alt="Famille en pyjamas de Noël dans un décor festif"
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
-          />
-        </div>
-      </section>
-      <div className="mx-auto max-w-[1380px] px-5 pt-12 text-center text-sm text-[#68766b]">
-        Les autres collections saisonnières restent conservées dans notre système de gestion, mais ne sont plus proposées dans la vitrine de Noël.
-      </div>
+      </CollectionFilms>
+
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createManagerClient } from '@/lib/supabase/admin';
+import { safeSocialUrl } from '@/lib/security/urls';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -225,8 +226,8 @@ export async function updateSiteSettings(formData: FormData) {
     {
       key: 'social',
       value: {
-        instagram: String(formData.get('instagram_url') ?? '').trim(),
-        tiktok: String(formData.get('tiktok_url') ?? '').trim(),
+        instagram: safeSocialUrl(formData.get('instagram_url'), 'instagram'),
+        tiktok: safeSocialUrl(formData.get('tiktok_url'), 'tiktok'),
       },
       description: 'Réseaux sociaux de la boutique',
     },

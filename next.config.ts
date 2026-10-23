@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
   async headers() {
     const preview = process.env.CONTEXT === 'deploy-preview';
     const securityHeaders = [
-      { key: 'Content-Security-Policy', value: `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors ${preview ? "'self'" : "'none'"}; form-action 'self'; img-src 'self' data: blob: https://pukvrerdloudfiphomsj.supabase.co https://images.unsplash.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: https://pukvrerdloudfiphomsj.supabase.co; font-src 'self' data:; connect-src 'self' https://pukvrerdloudfiphomsj.supabase.co; frame-src 'self' https://www.google.com ${preview ? 'https://app.netlify.com' : ''}; upgrade-insecure-requests` },
+      { key: 'Content-Security-Policy', value: `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors ${preview ? "'self'" : "'none'"}; form-action 'self'; img-src 'self' data: blob: https://pukvrerdloudfiphomsj.supabase.co https://images.unsplash.com; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: https://pukvrerdloudfiphomsj.supabase.co; font-src 'self' data:; connect-src 'self' https://pukvrerdloudfiphomsj.supabase.co; frame-src ${preview ? "'self' https://app.netlify.com" : "'none'"}; upgrade-insecure-requests` },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+      { key: 'X-DNS-Prefetch-Control', value: 'off' },
+      { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: preview ? 'SAMEORIGIN' : 'DENY' },
@@ -36,4 +39,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default function configuration(phase: string) {
+  if (phase === 'phase-production-build' && (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)) throw new Error('Supabase public configuration is required for a production build.');
+  return nextConfig;
+}

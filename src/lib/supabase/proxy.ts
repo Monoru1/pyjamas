@@ -16,7 +16,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   // Critical: never call Supabase Auth on catalogue/home/media pages.
   if (!pathname.startsWith('/admin') || publicAdminPages.test(pathname)) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   let response = NextResponse.next({ request });

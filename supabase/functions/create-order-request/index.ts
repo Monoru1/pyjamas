@@ -1,4 +1,5 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
+import { readLimitedBody, requireJsonRequest, HttpInputError, UUID_PATTERN } from '../_shared/http.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.2';
 
 type RequestLine = { variantId?: unknown; quantity?: unknown };
@@ -14,6 +15,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Origin': 'https://pyjamas25.netlify.app',
   'Content-Type': 'application/json; charset=utf-8',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
 };
 
 function response(payload: Record<string, unknown>, status = 200) {
@@ -25,11 +29,17 @@ function normalizePhone(value: string) {
 }
 
 Deno.serve(async (request) => {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== 'https://pyjamas25.netlify.app') return response({ error: 'Origine non autorisée.' }, 403);
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return response({ error: 'Méthode non autorisée.' }, 405);
 
   try {
-    const body = (await request.json()) as RequestBody;
+    requireJsonRequest(request);
+    const body = JSON.parse(await readLimitedBody(request, 12000)) as RequestBody;
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return response({ error: 'Requête invalide.' }, 400);
+    if (Object.keys(body).some(key => !['customer', 'lines', 'website', 'idempotencyKey'].includes(key))) return response({ error: 'Champs non autorisés.' }, 400);
+    if (typeof body.idempotencyKey !== 'string' || !UUID_PATTERN.test(body.idempotencyKey)) return response({ error: 'Référence de demande invalide.' }, 400);
     if (body.website) return response({ orderNumber: 'OK' }); // Honeypot: do not create a row.
 
     const name = typeof body.customer?.name === 'string' ? body.customer.name.trim().replace(/\s+/g, ' ') : '';
@@ -44,9 +54,10 @@ Deno.serve(async (request) => {
 
     const quantities = new Map<string, number>();
     for (const line of lines) {
+      if (!line || typeof line !== 'object' || Array.isArray(line) || Object.keys(line).some(key => !['variantId', 'quantity'].includes(key))) return response({ error: 'Ligne invalide.' }, 400);
       const variantId = typeof line.variantId === 'string' ? line.variantId : '';
-      const quantity = Number(line.quantity);
-      if (!/^[0-9a-f-]{36}$/i.test(variantId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+      const quantity = line.quantity;
+      if (!UUID_PATTERN.test(variantId) || typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
         return response({ error: 'Une ligne du panier est invalide.' }, 400);
       }
       quantities.set(variantId, (quantities.get(variantId) ?? 0) + quantity);
@@ -61,7 +72,15 @@ Deno.serve(async (request) => {
     if (!supabaseUrl || !serviceRoleKey) throw new Error('Configuration serveur incomplète.');
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
-    const key = typeof body.idempotencyKey === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.idempotencyKey) ? body.idempotencyKey : crypto.randomUUID();
+    const key = body.idempotencyKey;
+    // A server-keyed contact fingerprint avoids storing raw contact details in the rate counter.
+    // Origin is only a browser control, never authentication or protection against scripted callers.
+    const budgetKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(serviceRoleKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const signature = await crypto.subtle.sign('HMAC', budgetKey, new TextEncoder().encode('order-budget:' + phone));
+    const subject = Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, '0')).join('');
+    const { data: budgetAllowed, error: budgetError } = await admin.rpc('consume_order_request_budget', { p_subject: subject });
+    if (budgetError) return response({ error: 'Service momentanément indisponible.' }, 503);
+    if (!budgetAllowed) return new Response(JSON.stringify({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }), { status: 429, headers: { ...corsHeaders, 'Retry-After': '300' } });
     const normalizedLines = [...quantities].sort(([left], [right]) => left.localeCompare(right)).map(([variantId, quantity]) => ({ variantId, quantity }));
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ name, phone, comment, lines: normalizedLines })));
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
@@ -71,6 +90,8 @@ Deno.serve(async (request) => {
     if (error || !orderNumber) return response({ error: 'Demande impossible : vérifiez les disponibilités ou contactez la boutique avant de réessayer.' }, 409);
     return response({ orderNumber }, 201);
   } catch (error) {
+    if (error instanceof HttpInputError) return response({ error: error.message }, error.status);
+    if (error instanceof SyntaxError) return response({ error: 'JSON invalide.' }, 400);
     console.error('create-order-request failed', error instanceof Error ? error.name : 'unknown');
     return response({ error: 'La commande n’a pas pu être enregistrée. Réessaie dans un instant.' }, 500);
   }

@@ -100,6 +100,7 @@ export type Database = {
       admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };
+      is_manager: { Args: never; Returns: boolean };
       is_super_admin: { Args: never; Returns: boolean };
       slugify: { Args: { input: string }; Returns: string };
     };
