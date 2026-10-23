@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { CatalogueExperience } from '@/features/catalog/components/catalogue-experience';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
@@ -24,7 +24,7 @@ export default async function CataloguePage() {
             Le bonheur est encore plus doux <em className="text-[#f8d09c]">ensemble.</em>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-[#f5eee5]">
-            Explorez notre sélection de Noël, les tailles et couleurs disponibles et les ensembles à partager.
+            Découvrez les modèles du shooting. Prix provisoires ; tailles et disponibilités à confirmer auprès de la boutique.
           </p>
         </section>
         <section aria-labelledby="shooting-title" className="space-y-5">

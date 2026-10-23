@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { Film, ImagePlus } from 'lucide-react';
 import { updateSiteSettings } from '@/app/admin/actions';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';

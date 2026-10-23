@@ -8,7 +8,7 @@ export default async function AdminMediasPage() {
     .from('media_assets')
     .select('id, title, alt_fr, url, asset_type, mime_type, size_bytes, is_active, created_at')
     .order('created_at', { ascending: false })
-    .limit(48);
+    .limit(200);
 
   return (
     <div className="admin-page">

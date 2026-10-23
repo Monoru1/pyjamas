@@ -1,0 +1,75 @@
+[
+  {
+    "slug": "noel-carreaux-rouges",
+    "name": "Pyjama Noël — carreaux rouges",
+    "description": "Haut clair à motif de Noël et pantalon à carreaux rouges, visibles sur le shooting en famille. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 25000,
+    "category": "pyjamas",
+    "photos": [
+      22,
+      20,
+      10,
+      24
+    ]
+  },
+  {
+    "slug": "noel-carreaux-bleus",
+    "name": "Pyjama Noël — carreaux bleus",
+    "description": "Haut vert à motif de Noël et pantalon à carreaux bleus, photographiés en famille. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 25000,
+    "category": "pyjamas",
+    "photos": [
+      23,
+      18,
+      21,
+      11
+    ]
+  },
+  {
+    "slug": "noel-imprime-festif",
+    "name": "Pyjama Noël — imprimé festif",
+    "description": "Ensemble à pantalon clair imprimé de motifs de Noël, présenté avec les hauts rouges, verts et clairs du shooting. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 20000,
+    "category": "pyjamas",
+    "photos": [
+      16,
+      19,
+      2,
+      7
+    ]
+  },
+  {
+    "slug": "noel-bleu-renne",
+    "name": "Pyjama Noël — bleu renne",
+    "description": "Ensemble bleu à motifs de Noël, photographié au pied du sapin. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 28000,
+    "category": "femme",
+    "photos": [
+      25,
+      9
+    ]
+  },
+  {
+    "slug": "noel-bebe-carreaux-rouges",
+    "name": "Pyjama bébé Noël — carreaux rouges",
+    "description": "Modèle bébé à haut clair et pantalon à carreaux rouges, photographié avec sa maman. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 10000,
+    "category": "enfant",
+    "photos": [
+      24,
+      20,
+      0
+    ]
+  },
+  {
+    "slug": "noel-coffret-cadeau",
+    "name": "Coffret cadeau Noël",
+    "description": "Présentation cadeau de La Maison des Pyjamas, photographiée en boutique. Composition du coffret à confirmer. Prix provisoire ; tailles et disponibilités à confirmer auprès de la boutique.",
+    "price": 45000,
+    "category": "coffrets-cadeaux",
+    "photos": [
+      13,
+      17
+    ]
+  }
+]
