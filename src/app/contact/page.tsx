@@ -37,9 +37,15 @@ export default async function ContactPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">Carte</p>
             <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-brand-evergreen">Trouver la boutique.</h2>
           </div>
-          <div className="flex min-h-[360px] flex-col items-center justify-center gap-5 bg-[#f4eee6] p-8 text-center sm:min-h-[440px]">
-            <p className="max-w-md leading-7 text-[#52645d]">La carte s’ouvre uniquement si vous le souhaitez. Contactez la boutique pour confirmer son adresse et ses horaires avant votre visite.</p>
-            <a href="https://www.google.com/maps/search/?api=1&query=La%20Maison%20des%20Pyjamas%20Cotonou" target="_blank" rel="noopener noreferrer" className="rounded-full bg-[#123d30] px-6 py-4 font-semibold text-white">Ouvrir Google Maps</a>
+          <div className="relative min-h-[360px] bg-[#f4eee6] sm:min-h-[440px]">
+            <iframe
+              title="Carte Google Maps — La Maison des Pyjamas à Cotonou"
+              src="https://www.google.com/maps?q=La%20Maison%20des%20Pyjamas%20Cotonou&output=embed"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full border-0"
+            />
           </div>
         </section>
       </div>
