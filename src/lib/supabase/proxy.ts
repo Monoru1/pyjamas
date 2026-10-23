@@ -2,11 +2,12 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getPublicEnv } from '@/lib/env';
 import type { Database } from './database.types';
+import { trustedSiteOrigin } from '@/lib/security/urls';
 
 const publicAdminPages = /^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/;
 
-function loginRedirect(request: NextRequest) {
-  const url = request.nextUrl.clone();
+function loginRedirect() {
+  const url = new URL('/admin/login', trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
   url.pathname = '/admin/login';
   url.search = '';
   return NextResponse.redirect(url);
@@ -16,7 +17,7 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   // Critical: never call Supabase Auth on catalogue/home/media pages.
   if (!pathname.startsWith('/admin') || publicAdminPages.test(pathname)) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   let response = NextResponse.next({ request });
@@ -36,15 +37,15 @@ export async function updateSession(request: NextRequest) {
 
     // A network or expired-session error must never crash the edge function.
     const { data: claims, error: authError } = await supabase.auth.getClaims();
-    if (authError || !claims?.claims) return loginRedirect(request);
+    if (authError || !claims?.claims) return loginRedirect();
 
     const { data: allowed, error: roleError } = await supabase.rpc('is_admin');
-    if (roleError || !allowed) return loginRedirect(request);
+    if (roleError || !allowed) return loginRedirect();
 
     return response;
   } catch (error) {
     // Fail closed: preserve a functioning storefront when Auth is unavailable.
     console.error('Admin session check failed', error instanceof Error ? error.name : 'unknown');
-    return loginRedirect(request);
+    return loginRedirect();
   }
 }

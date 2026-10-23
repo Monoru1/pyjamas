@@ -1,8 +1,9 @@
+import { UUID_PATTERN } from '@/lib/payments/read-body';
 import { paymentDatabase } from '@/lib/payments/server';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get('reference') ?? '';
-  if (!/^[0-9a-f-]{36}$/i.test(token)) return Response.json({ error: 'Référence invalide.' }, { status: 400 });
+  if (!UUID_PATTERN.test(token)) return Response.json({ error: 'Référence invalide.' }, { status: 400 });
   try {
     const db = paymentDatabase();
     const { data, error } = await db.from('payment_attempts').select('id,status,amount_xof,provider_id,updated_at').eq('public_token', token).maybeSingle();

@@ -1,5 +1,6 @@
-import { readLimitedBody } from '@/lib/payments/read-body';
+import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
 import { createHash } from 'node:crypto';
+import { trustedSiteOrigin } from '@/lib/security/urls';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase } from '@/lib/payments/server';
@@ -14,6 +15,12 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
+    requireJsonRequest(request);
+    const expectedOrigin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL);
+    requireBrowserOrigin(request, expectedOrigin);
+    const raw = await readLimitedBody(request, 10000);
+    const parsed = schema.safeParse(JSON.parse(raw));
+    if (!parsed.success) return Response.json({ error: 'Informations de commande invalides.' }, { status: 400 });
     const config = paymentConfiguration();
     if (request.headers.get('origin') !== config.origin) return Response.json({ error: 'Origine non autorisée.' }, { status: 403 });
     // During sandbox acceptance, only authenticated staff may create test transactions.
@@ -21,10 +28,6 @@ export async function POST(request: Request) {
     const { data: { user } } = await auth.auth.getUser();
     const { data: allowed } = user ? await auth.rpc('is_admin') : { data: false };
     if (!allowed) return Response.json({ error: 'Un compte de test autorisé est requis.' }, { status: 403 });
-    const raw = await readLimitedBody(request, 10000);
-    if (raw.length > 10_000) return Response.json({ error: 'Panier trop volumineux.' }, { status: 413 });
-    const parsed = schema.safeParse(JSON.parse(raw));
-    if (!parsed.success) return Response.json({ error: 'Informations de commande invalides.' }, { status: 400 });
     const input = parsed.data;
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const db = paymentDatabase();
@@ -48,7 +51,9 @@ export async function POST(request: Request) {
     const { error: urlError } = await db.from('payment_attempts').update({ checkout_url: url }).eq('id', payment.id);
     if (urlError) throw new Error('Confirmation différée.');
     return Response.json({ url }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (error) {
+    if (error instanceof HttpInputError) return Response.json({ error: error.message }, { status: error.status });
+    if (error instanceof SyntaxError) return Response.json({ error: 'JSON invalide.' }, { status: 400 });
     return Response.json({ error: 'Le paiement de test est indisponible. Aucun paiement réel n’est activé.' }, { status: 503 });
   }
 }
