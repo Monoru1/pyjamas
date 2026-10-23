@@ -52,3 +52,11 @@ it('uses only trusted site origins for auth redirects', () => {
   expect(trustedSiteOrigin()).toBe('https://pyjamas25.netlify.app');
   for (const value of ['https://example.invalid', 'https://pyjamas25.netlify.app.evil.test', 'https://user:pw@pyjamas25.netlify.app', 'http://pyjamas25.netlify.app', 'https://pyjamas25.netlify.app:8443']) expect(trustedSiteOrigin(value)).toBe('https://pyjamas25.netlify.app');
 });
+
+it('uses the public URL in production and the preview alias for deploy previews', async () => {
+  const { deploymentSiteOrigin } = await import('../../../next.config');
+  const settings = { URL: 'https://pyjamas25.netlify.app', DEPLOY_PRIME_URL: 'https://main--pyjamas25.netlify.app', CONTEXT: 'production' };
+  expect(deploymentSiteOrigin(settings)).toBe('https://pyjamas25.netlify.app');
+  expect(deploymentSiteOrigin({ ...settings, CONTEXT: 'deploy-preview', DEPLOY_PRIME_URL: 'https://deploy-preview-5--pyjamas25.netlify.app' })).toBe('https://deploy-preview-5--pyjamas25.netlify.app');
+  expect(deploymentSiteOrigin({ CONTEXT: 'production', DEPLOY_PRIME_URL: settings.DEPLOY_PRIME_URL })).toBe('https://pyjamas25.netlify.app');
+});
