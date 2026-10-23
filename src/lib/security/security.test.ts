@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeMediaUrl, safeSocialUrl } from './urls';
+import { safeMediaUrl, safeSocialUrl, trustedSiteOrigin } from './urls';
 import { privateContentSecurityPolicy, privateResponseHeaders } from './policy';
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, UUID_PATTERN } from '../payments/read-body';
 
@@ -45,4 +45,10 @@ describe('request parsing boundaries', () => {
   it('rejects malformed UUIDs that previously matched 36 arbitrary hyphens',()=>{
     expect(UUID_PATTERN.test('-'.repeat(36))).toBe(false);expect(UUID_PATTERN.test('11111111-1111-4111-8111-111111111111')).toBe(true);
   });
+});
+
+it('uses only trusted site origins for auth redirects', () => {
+  expect(trustedSiteOrigin('https://deploy-preview-5--pyjamas25.netlify.app/path')).toBe('https://deploy-preview-5--pyjamas25.netlify.app');
+  expect(trustedSiteOrigin()).toBe('https://pyjamas25.netlify.app');
+  for (const value of ['https://example.invalid', 'https://pyjamas25.netlify.app.evil.test', 'https://user:pw@pyjamas25.netlify.app', 'http://pyjamas25.netlify.app', 'https://pyjamas25.netlify.app:8443']) expect(trustedSiteOrigin(value)).toBe('https://pyjamas25.netlify.app');
 });

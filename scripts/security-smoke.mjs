@@ -17,7 +17,10 @@ for (const path of ['/admin/login', '/admin/login', '/admin/forgot-password', '/
   const nonce = csp.match(/'nonce-([^']+)'/)?.[1];
   assert.ok(nonce, `${path}: nonce missing`);
   assert.ok(csp.includes("'strict-dynamic'") && !csp.split('script-src ')[1].split(';')[0].includes('unsafe-inline'));
-  const scripts = [...html.matchAll(/<script\b([^>]*)>/g)];
+  // Netlify injects its collaboration drawer only in deploy previews. It has no nonce
+  // and is deliberately blocked on private pages; never relax CSP for that drawer.
+  const scripts = [...html.matchAll(/<script\b([^>]*)>/g)].filter(script =>
+    !(new URL(base).hostname.startsWith('deploy-preview-') && /^ async src="\/\.netlify\/scripts\/cdp"$/.test(script[1])));
   assert.ok(scripts.length > 0 && scripts.every(script => script[1].includes(`nonce="${nonce}"`)), `${path}: script nonce mismatch`);
   assert.ok(response.headers.get('cache-control')?.includes('no-store'));
   if (previousCsp) assert.notEqual(csp, previousCsp, 'Nonce reused between requests');
@@ -26,6 +29,7 @@ for (const path of ['/admin/login', '/admin/login', '/admin/forgot-password', '/
 for (const headers of [{}, { 'x-middleware-subrequest': 'src/proxy:src/proxy:src/proxy:src/proxy:src/proxy' }, { cookie: 'sb-pukvrerdloudfiphomsj-auth-token=invalid' }]) {
   const { response } = await request('/admin', 307, { headers });
   assert.equal(new URL(response.headers.get('location'), base).pathname, '/admin/login');
+  assert.equal(new URL(response.headers.get('location'), base).origin, base);
 }
 const callback = await request('/auth/callback?next=https%3A%2F%2Fexample.invalid', 307);
 assert.equal(new URL(callback.response.headers.get('location'), base).origin, base);
