@@ -1,6 +1,6 @@
 const benefits = [
   ['Cadeau pret', 'Une piece qui se glisse naturellement sous le sapin.'],
-  ['Confort choisi', 'Tailles et couleurs visibles avant de commander.'],
+  ['Confort choisi', 'Tailles et disponibilités confirmées par la boutique.'],
   ['Commande fluide', 'Le panier prepare un message WhatsApp clair.'],
 ];
 

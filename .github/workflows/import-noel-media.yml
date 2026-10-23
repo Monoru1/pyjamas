@@ -1,0 +1,38 @@
+name: Import verified Christmas media
+on:
+  push:
+    branches: [import/noel-media-20261023]
+permissions:
+  contents: write
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Assemble verified files and prepare final tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          for item in json.loads(Path('.media-import/manifest.json').read_text()):
+              dest=Path(item['path'])
+              assert str(dest).startswith('public/christmas-2026/'),dest
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              with dest.open('wb') as out:
+                  for part in item['parts']:out.write(Path(part).read_bytes())
+              actual=subprocess.check_output(['git','hash-object',str(dest)]).decode().strip()
+              assert actual==item['sha'],dest
+          PY
+          node scripts/check-shooting-media.mjs
+          git rm -r .media-import .github/workflows/import-noel-media.yml
+          git add public/christmas-2026
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          tree=$(git write-tree)
+          commit=$(printf '%s\n' 'fix: import verified Christmas shooting and publish authentic catalogue' | git commit-tree "$tree" -p 820db0843ffe2f68b3aa117b22fa24263778da80)
+          git push origin "$commit:refs/heads/import/noel-assembled-20261023"
+          printf 'Prepared verified commit: %s\n' "$commit" >> "$GITHUB_STEP_SUMMARY"

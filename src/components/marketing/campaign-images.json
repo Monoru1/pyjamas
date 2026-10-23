@@ -1,7 +1,7 @@
 {
   "/christmas-2026/family-celebration.jpg": {
-    "width": 938,
-    "height": 1080,
+    "width": 1600,
+    "height": 1364,
     "variants": [
       {
         "width": 320,
@@ -16,14 +16,14 @@
         "src": "/christmas-2026/web/family-celebration-768.webp"
       },
       {
-        "width": 938,
-        "src": "/christmas-2026/web/family-celebration-938.webp"
+        "width": 1600,
+        "src": "/christmas-2026/web/family-celebration-1600.webp"
       }
     ]
   },
   "/christmas-2026/family-together.jpg": {
-    "width": 720,
-    "height": 1080,
+    "width": 1389,
+    "height": 1600,
     "variants": [
       {
         "width": 320,
@@ -34,14 +34,18 @@
         "src": "/christmas-2026/web/family-together-480.webp"
       },
       {
-        "width": 720,
-        "src": "/christmas-2026/web/family-together-720.webp"
+        "width": 768,
+        "src": "/christmas-2026/web/family-together-768.webp"
+      },
+      {
+        "width": 1389,
+        "src": "/christmas-2026/web/family-together-1389.webp"
       }
     ]
   },
   "/christmas-2026/hero-family.jpg": {
-    "width": 720,
-    "height": 1080,
+    "width": 1600,
+    "height": 1364,
     "variants": [
       {
         "width": 320,
@@ -52,14 +56,18 @@
         "src": "/christmas-2026/web/hero-family-480.webp"
       },
       {
-        "width": 720,
-        "src": "/christmas-2026/web/hero-family-720.webp"
+        "width": 768,
+        "src": "/christmas-2026/web/hero-family-768.webp"
+      },
+      {
+        "width": 1600,
+        "src": "/christmas-2026/web/hero-family-1600.webp"
       }
     ]
   },
   "/christmas-2026/mother-and-baby.jpg": {
-    "width": 864,
-    "height": 1080,
+    "width": 1280,
+    "height": 1600,
     "variants": [
       {
         "width": 320,
@@ -74,14 +82,14 @@
         "src": "/christmas-2026/web/mother-and-baby-768.webp"
       },
       {
-        "width": 864,
-        "src": "/christmas-2026/web/mother-and-baby-864.webp"
+        "width": 1280,
+        "src": "/christmas-2026/web/mother-and-baby-1280.webp"
       }
     ]
   },
   "/christmas-2026/christmas-boutique.jpg": {
-    "width": 810,
-    "height": 1080,
+    "width": 1080,
+    "height": 810,
     "variants": [
       {
         "width": 320,
@@ -96,14 +104,14 @@
         "src": "/christmas-2026/web/christmas-boutique-768.webp"
       },
       {
-        "width": 810,
-        "src": "/christmas-2026/web/christmas-boutique-810.webp"
+        "width": 1080,
+        "src": "/christmas-2026/web/christmas-boutique-1080.webp"
       }
     ]
   },
   "/christmas-2026/family-red-tartan.webp": {
-    "width": 1080,
-    "height": 864,
+    "width": 1600,
+    "height": 1280,
     "variants": [
       {
         "width": 320,
@@ -118,8 +126,8 @@
         "src": "/christmas-2026/web/family-red-tartan-768.webp"
       },
       {
-        "width": 1080,
-        "src": "/christmas-2026/web/family-red-tartan-1080.webp"
+        "width": 1600,
+        "src": "/christmas-2026/web/family-red-tartan-1600.webp"
       }
     ]
   }

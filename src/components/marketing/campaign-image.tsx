@@ -7,7 +7,7 @@ const images:Record<string,{width:number;height:number;variants:Array<{width:num
 /** Precompressed campaign assets avoid a cold image-transform function on first visit. */
 export function CampaignImage({src,alt,fill,priority,sizes,className,width,height}:Props){
  const image=images[src];
- if(!image)return <NextImage src={src} alt={alt} fill={fill} priority={priority} sizes={sizes} className={className} width={width} height={height}/>;
+ if(!image)return <NextImage unoptimized={src.startsWith('/christmas-2026/')} src={src} alt={alt} fill={fill} priority={priority} sizes={sizes} className={className} width={width} height={height}/>;
  const fallback=image.variants[image.variants.length-1].src;
  return (
   // The local srcset is generated from the original shooting, with no image transform at request time.

@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import Link from 'next/link';
 import { ArrowUpRight, Gift, Package } from 'lucide-react';
 import { updateCollection } from '@/app/admin/actions';
