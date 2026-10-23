@@ -15,8 +15,8 @@ interface LuxeHomeProps {
 const photo = '/christmas-2026';
 
 export function LuxeHome({ settings, products }: LuxeHomeProps) {
-  const leadPhoto = settings.heroImage.includes('images.unsplash.com') ? `${photo}/family-celebration.jpg` : settings.heroImage;
-  const boutiquePhoto = settings.loungeImage.includes('images.unsplash.com') ? `${photo}/christmas-boutique.jpg` : settings.loungeImage;
+  const leadPhoto = `${photo}/family-celebration.jpg`;
+  const boutiquePhoto = `${photo}/christmas-boutique.jpg`;
   return (
     <main className="christmas-home" id="haut">
       <div className="christmas-announcement">
@@ -51,10 +51,10 @@ export function LuxeHome({ settings, products }: LuxeHomeProps) {
             <Image src={leadPhoto} alt="Famille réunie en pyjamas de Noël assortis" fill priority sizes="(max-width: 800px) 75vw, 35vw" className="christmas-cover" />
           </div>
           <div className="christmas-photo christmas-photo-side">
-            <Image src={settings.heroSideImage} alt="Petits et grands réunis en pyjamas de Noël" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
+            <Image src={`${photo}/mother-and-baby.jpg`} alt="Petits et grands réunis en pyjamas de Noël" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
           </div>
           <div className="christmas-photo christmas-photo-lower">
-            <Image src={settings.heroLowerImage} alt="Famille en pyjamas à carreaux rouges et blancs" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
+            <Image src={`${photo}/family-red-tartan.webp`} alt="Famille en pyjamas à carreaux rouges et blancs" fill sizes="(max-width: 800px) 38vw, 21vw" className="christmas-cover" />
           </div>
         </div>
       </section>
