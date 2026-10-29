@@ -19,7 +19,7 @@ function chain(data:unknown,error:unknown=null) {
 }
 beforeEach(()=>{
  vi.clearAllMocks();mocks.allowed=true;mocks.notifications.mockResolvedValue(0);
- const env={FEDAPAY_ENABLED:'true',FEDAPAY_ENVIRONMENT:'sandbox',FEDAPAY_SECRET_KEY:'sk_sandbox_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture',FEDAPAY_ACCOUNT_ID:'42',PAYMENT_DATABASE_ISOLATED:'true',NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co',PAYMENT_SITE_URL:'https://preview.example.test',PAYMENT_SHIPPING_XOF:'500'};
+ const env={PAYMENT_CHECKOUT_ENABLED:'true',FEDAPAY_ENABLED:'true',FEDAPAY_ENVIRONMENT:'sandbox',FEDAPAY_SECRET_KEY:'sk_sandbox_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture',FEDAPAY_ACCOUNT_ID:'42',PAYMENT_DATABASE_ISOLATED:'true',NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co',PAYMENT_SITE_URL:'https://preview.example.test',PAYMENT_SHIPPING_XOF:'500'};
  for(const [key,value] of Object.entries(env))vi.stubEnv(key,value);
  mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:{...payment},error:null}));
  mocks.db.from.mockImplementation(()=>chain([{id:payment.id}]));
@@ -54,6 +54,11 @@ it('returns the same checkout URL without additional provider work',async()=>{
 it('returns retryable error on provider failure, never pretending payment succeeded',async()=>{
  mocks.provider.mockRejectedValue(new Error('timeout'));
  expect((await checkout(request(input))).status).toBe(503);
+});
+it('suspends new checkouts without disabling server payment configuration',async()=>{
+ vi.stubEnv('PAYMENT_CHECKOUT_ENABLED','false');expect((await checkout(request(input))).status).toBe(503);expect(mocks.provider).not.toHaveBeenCalled();
+ mocks.db.from.mockImplementation(()=>chain({status:'pending',environment:'sandbox',amount_xof:15500}));
+ expect((await status(new Request(`https://preview.example.test/api/payments/status?reference=${payment.public_token}`))).status).toBe(200);
 });
 it('rate-limits checkout before creating a provider transaction',async()=>{
  mocks.db.rpc.mockResolvedValue({data:false,error:null});expect((await checkout(request(input))).status).toBe(429);expect(mocks.provider).not.toHaveBeenCalled();

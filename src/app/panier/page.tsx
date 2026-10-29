@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { CheckoutButton } from '@/features/cart/components/checkout-button';
-import { paymentConfiguration } from '@/lib/payments/fedapay';
+import { checkoutConfiguration } from '@/lib/payments/fedapay';
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
 import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
@@ -11,9 +11,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function CartPage() {
   const settings = await getStoreSettings();
-  let payment: ReturnType<typeof paymentConfiguration> | null = null;
+  let payment: ReturnType<typeof checkoutConfiguration> | null = null;
   try {
-    const config = paymentConfiguration();
+    const config = checkoutConfiguration();
     if (config.environment === 'live') payment = config;
     else {
       const db = await createClient();

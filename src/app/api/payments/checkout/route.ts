@@ -3,7 +3,7 @@ import { createHash, createHmac } from 'node:crypto';
 import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase } from '@/lib/payments/server';
-import { paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse } from '@/lib/payments/fedapay';
+import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   let reference: string | undefined;
   try {
     requireJsonRequest(request);
-    const config = paymentConfiguration();
+    const config = checkoutConfiguration();
     requireBrowserOrigin(request, config.origin);
     const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
     if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });

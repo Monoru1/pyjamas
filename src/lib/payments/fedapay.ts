@@ -23,6 +23,13 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
     apiOrigin: environment === 'live' ? 'https://api.fedapay.com' : 'https://sandbox-api.fedapay.com' };
 }
 
+/** Admission can stop independently while callbacks and reconciliation finish old payments. */
+export function checkoutConfiguration(env: Record<string, string | undefined> = process.env) {
+  const config = paymentConfiguration(env);
+  if (env.PAYMENT_CHECKOUT_ENABLED !== 'true') throw new Error('Nouvelles commandes suspendues.');
+  return config;
+}
+
 export function mapProviderStatus(status: string): PaymentStatus {
   switch (status) {
     case 'approved': case 'transferred': return 'paid';
