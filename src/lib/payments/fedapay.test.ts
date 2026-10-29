@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, verifyWebhook } from './fedapay';
+import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
 
 const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
@@ -76,4 +76,20 @@ it('uses the real build metadata when Netlify does not provide CONTEXT/REVIEW_ID
   vi.stubEnv('CONTEXT','production');expect(paymentConfiguration().liveTest).toBe(true);
   vi.stubEnv('PAYMENT_BUILD_REVIEW_ID','12');expect(()=>paymentConfiguration()).toThrow();
  }finally{vi.unstubAllEnvs();}
+});
+
+it('reports only the mismatched field name while preserving strict merchant and metadata checks', () => {
+  const expected={id:'payment-1',provider_id:113943841,amount_xof:100,purpose:'shop',order_id:'order-1',merchant_account_id:101915};
+  const actual={id:113943841,amount:100,status:'pending',currency:{iso:'XOF'},account_id:101915,merchant_reference:'payment-1',custom_metadata:{payment_id:'payment-1',purpose:'shop',order_id:'order-1'}};
+  expect(validateTransaction(actual,expected)).toBe('pending');
+  for(const [field,mutation] of [
+    ['provider_id',{id:2}],['amount',{amount:101}],['currency',{currency:{iso:'EUR'}}],
+    ['merchant_account_id',{account_id:999}],['merchant_reference',{merchant_reference:'wrong'}],
+    ['payment_id',{custom_metadata:{...actual.custom_metadata,payment_id:'wrong'}}],
+    ['purpose',{custom_metadata:{...actual.custom_metadata,purpose:'wrong'}}],
+    ['order_id',{custom_metadata:{...actual.custom_metadata,order_id:'wrong'}}],
+  ] as const) {
+    try {validateTransaction({...actual,...mutation},expected);throw new Error('Mismatch accepted');}
+    catch(error) {expect(error).toBeInstanceOf(TransactionMismatchError);expect((error as TransactionMismatchError).field).toBe(field);expect((error as Error).message).not.toContain('payment-1');}
+  }
 });
