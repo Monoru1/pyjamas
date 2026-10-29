@@ -74,12 +74,22 @@ export function verifyWebhook(raw: string, header: string | null, secret: string
     && timingSafeEqual(Buffer.from(signature, 'hex'), expected));
 }
 
+export class TransactionMismatchError extends Error {
+  constructor(readonly field: 'provider_id' | 'amount' | 'currency' | 'payment_id' | 'purpose' | 'order_id' | 'merchant_reference' | 'merchant_account_id') {
+    super('Transaction incohérente.');
+    this.name = 'TransactionMismatchError';
+  }
+}
+
 export function validateTransaction(transaction: ProviderTransaction, payment: { id: string; amount_xof: number; provider_id: number; purpose: string; order_id?: string; merchant_account_id?: number }) {
-  if (transaction.id !== payment.provider_id || Number(transaction.amount) !== Number(payment.amount_xof)
-    || transaction.currency?.iso !== 'XOF' || transaction.custom_metadata?.payment_id !== payment.id
-    || transaction.custom_metadata?.purpose !== payment.purpose
-    || (payment.order_id !== undefined && (transaction.custom_metadata?.order_id !== payment.order_id || transaction.merchant_reference !== payment.id))
-    || (payment.merchant_account_id !== undefined && transaction.account_id !== payment.merchant_account_id)) throw new Error('Transaction incohérente.');
+  if (transaction.id !== payment.provider_id) throw new TransactionMismatchError('provider_id');
+  if (Number(transaction.amount) !== Number(payment.amount_xof)) throw new TransactionMismatchError('amount');
+  if (transaction.currency?.iso !== 'XOF') throw new TransactionMismatchError('currency');
+  if (transaction.custom_metadata?.payment_id !== payment.id) throw new TransactionMismatchError('payment_id');
+  if (transaction.custom_metadata?.purpose !== payment.purpose) throw new TransactionMismatchError('purpose');
+  if (payment.order_id !== undefined && transaction.custom_metadata?.order_id !== payment.order_id) throw new TransactionMismatchError('order_id');
+  if (payment.order_id !== undefined && transaction.merchant_reference !== payment.id) throw new TransactionMismatchError('merchant_reference');
+  if (payment.merchant_account_id !== undefined && transaction.account_id !== payment.merchant_account_id) throw new TransactionMismatchError('merchant_account_id');
   return mapProviderStatus(transaction.status);
 }
 
