@@ -1,27 +1,37 @@
 'use client';
 import { useEffect, useState } from 'react';
-const labels: Record<string,string>={pending:'En attente de confirmation',paid:'Paiement de test confirmé',failed:'Paiement refusé',cancelled:'Paiement annulé',expired:'Session expirée',refunded:'Remboursement de test confirmé',partially_refunded:'Remboursement partiel de test'};
-export function PaymentStatus({reference}:{reference:string}) {
-  const [status,setStatus]=useState('pending');
-  const [error,setError]=useState('');
-  useEffect(()=>{
-    const controller=new AbortController();let timer:ReturnType<typeof setTimeout>;let attempts=0;
-    async function refresh(){
-      try{
-        const response=await fetch(`/api/payments/status?reference=${encodeURIComponent(reference)}`,{cache:'no-store',signal:controller.signal});
-        const data=await response.json();
-        if(!response.ok)throw new Error(data.error||'Vérification indisponible.');
-        setStatus(data.status);setError('');
-        if(data.status==='pending' && ++attempts<20) timer=setTimeout(refresh,5000);
-      }catch(cause){if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'Vérification indisponible.');}
+const labels: Record<string,string> = { pending:'En attente de confirmation', paid:'Paiement confirmé', failed:'Paiement refusé — nouvelle tentative possible chez FedaPay', cancelled:'Tentative annulée — nouvelle tentative possible chez FedaPay', expired:'Paiement expiré', refunded:'Paiement remboursé', partially_refunded:'Paiement partiellement remboursé' };
+export function PaymentStatus({ reference }: { reference: string }) {
+  const [result, setResult] = useState<{status:string;mode?:string;liveTest?:boolean;order?:{order_number:string;needs_attention:boolean}}>({ status:'pending' });
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>; let attempts = 0;
+    const token = reference || sessionStorage.getItem('mdp-payment-reference') || '';
+    async function refresh() {
+      try {
+        if (!token) throw new Error('Référence manquante. Consultez le suivi depuis votre panier.');
+        const response = await fetch(`/api/payments/status?reference=${encodeURIComponent(token)}`, { cache:'no-store', signal:controller.signal });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Vérification indisponible.');
+        setResult(data); setError('');
+        const saved = JSON.parse(sessionStorage.getItem('mdp-shop-payment') || 'null');
+        if (data.status === 'paid' && saved?.reference === token) sessionStorage.removeItem('mdp-shop-payment');
+        if (['pending','failed','cancelled'].includes(data.status) && ++attempts < 30) timer = setTimeout(refresh, 5000);
+      } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Vérification indisponible.'); }
     }
-    if(reference)void refresh();
-    return ()=>{controller.abort();clearTimeout(timer);};
-  },[reference]);
+    void refresh();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [reference, retry]);
   return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status">
-    <h2 className="text-2xl">{labels[status]||labels.pending}</h2>
-    <p className="mt-4 leading-7">Il s’agit d’un essai sandbox : aucune commande commerciale ni place à la fête n’est confirmée. Seule une vérification serveur auprès de FedaPay peut confirmer ce test.</p>
-    {(!reference || error) && <p className="mt-4 text-red-800" role="alert">{!reference ? 'Référence manquante.' : error}</p>}
-    {status==='pending' && <p className="mt-4 text-sm">Une notification peut arriver plus tard, même si le navigateur a été fermé. L’équipe peut vérifier le statut depuis son administration.</p>}
+    {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
+    {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
+    <h2 className="text-2xl">{labels[result.status] || labels.pending}</h2>
+    {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
+    <p className="mt-4 leading-7">Seule la vérification serveur auprès de FedaPay confirme le paiement. Le retour du navigateur ne vaut pas confirmation.</p>
+    {result.order?.needs_attention && <p className="mt-3">La boutique doit vérifier votre commande avant son traitement.</p>}
+    {error && <p className="mt-4 text-red-800" role="alert">{error}</p>}
+    <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-5 min-h-11 underline">Actualiser le suivi</button>
+    <p className="mt-3 text-sm">Le panier actuel reste disponible. Un changement de panier ne modifie pas les articles de cette commande.</p>
   </div>;
 }

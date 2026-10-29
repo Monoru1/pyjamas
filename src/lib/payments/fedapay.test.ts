@@ -1,15 +1,22 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, verifyWebhook } from './fedapay';
+import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
 
-const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com' };
+const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
 const header = (raw = body, timestamp = 1000) => `t=${timestamp},s=${createHmac('sha256','wh_test').update(`${timestamp}.${raw}`).digest('hex')}`;
 
 describe('FedaPay fail-closed configuration and webhooks', () => {
-  it('permits configured sandbox only', () => {
+  it('requires isolated sandbox and explicit production approval', () => {
     expect(paymentConfiguration(env).origin).toBe('https://example.com');
     for (const override of [{FEDAPAY_ENVIRONMENT:'live'}, {FEDAPAY_SECRET_KEY:'sk_live_no'}, {FEDAPAY_ENABLED:'false'}, {SUPABASE_SERVICE_ROLE_KEY:''}, {PAYMENT_SITE_URL:'http://example.com'}]) expect(() => paymentConfiguration({...env,...override})).toThrow();
+  });
+  it('accepts live only in production after final approval and rejects sandbox production DB', () => {
+    const live={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_test',CONTEXT:'production',FEDAPAY_LIVE_APPROVED:'true'};
+    expect(paymentConfiguration(live).apiOrigin).toBe('https://api.fedapay.com');
+    expect(()=>paymentConfiguration({...live,CONTEXT:'deploy-preview'})).toThrow();
+    expect(()=>paymentConfiguration({...env,NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'})).toThrow();
+    expect(()=>paymentConfiguration({...env,PAYMENT_SHIPPING_XOF:''})).toThrow();
   });
   it('accepts official s signatures and multiple signatures', () => {
     expect(verifyWebhook(body, header(), 'wh_test',1000)).toBe(true);
@@ -53,4 +60,41 @@ describe('FedaPay fail-closed configuration and webhooks', () => {
     await expect(providerRequest('/payouts',{},fetcher)).rejects.toThrow();
     vi.unstubAllEnvs();
   });
+});
+
+it('allows live acceptance only on PR 11 and the exact isolated database with a strict ceiling',()=>{
+ const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'11',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
+ expect(paymentConfiguration(acceptance)).toMatchObject({liveTest:true,staffOnly:true,testCeiling:100});
+ for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'1001'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
+});
+it('uses the real build metadata when Netlify does not provide CONTEXT/REVIEW_ID at runtime',()=>{
+ try {
+  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',PAYMENT_BUILD_REVIEW_ID:'11',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-11--pyjamas25.netlify.app'};
+  for(const [key,value]of Object.entries(values))vi.stubEnv(key,value);
+  vi.stubEnv('CONTEXT',undefined);vi.stubEnv('REVIEW_ID',undefined);
+  expect(paymentConfiguration().liveTest).toBe(true);
+  vi.stubEnv('CONTEXT','production');expect(paymentConfiguration().liveTest).toBe(true);
+  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID','12');expect(()=>paymentConfiguration()).toThrow();
+ }finally{vi.unstubAllEnvs();}
+});
+
+it('reports only the mismatched field name while preserving strict merchant and metadata checks', () => {
+  const expected={id:'payment-1',provider_id:113943841,amount_xof:100,purpose:'shop',order_id:'order-1',merchant_account_id:101915};
+  const actual={id:113943841,amount:100,status:'pending',currency:{iso:'XOF'},account_id:101915,merchant_reference:'payment-1',custom_metadata:{payment_id:'payment-1',purpose:'shop',order_id:'order-1'}};
+  expect(validateTransaction(actual,expected)).toBe('pending');
+  for(const [field,mutation] of [
+    ['provider_id',{id:2}],['amount',{amount:101}],['currency',{currency:{iso:'EUR'}}],
+    ['merchant_account_id',{account_id:999}],['merchant_reference',{merchant_reference:'wrong'}],
+    ['payment_id',{custom_metadata:{...actual.custom_metadata,payment_id:'wrong'}}],
+    ['purpose',{custom_metadata:{...actual.custom_metadata,purpose:'wrong'}}],
+    ['order_id',{custom_metadata:{...actual.custom_metadata,order_id:'wrong'}}],
+  ] as const) {
+    try {validateTransaction({...actual,...mutation},expected);throw new Error('Mismatch accepted');}
+    catch(error) {expect(error).toBeInstanceOf(TransactionMismatchError);expect((error as TransactionMismatchError).field).toBe(field);expect((error as Error).message).not.toContain('payment-1');}
+  }
+});
+it('validates documented token responses without accepting mixed environments or ambiguous payloads',()=>{
+ const token={token:'fixture',url:'https://checkout.fedapay.com/fixture'};
+ expect(checkoutTokenFromResponse(token,'live')).toBe(token.url);expect(checkoutTokenFromResponse({'v1/token':token},'live')).toBe(token.url);
+ for(const value of [{url:token.url},{...token,url:'https://sandbox-checkout.fedapay.com/fixture'},{...token,url:'https://evil.example/fixture'},{...token,'v1/token':token}])expect(()=>checkoutTokenFromResponse(value,'live')).toThrow();
 });

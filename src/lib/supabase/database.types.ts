@@ -65,7 +65,10 @@ type Table<Row = GenericRow> = {
 export type Database = {
   public: {
     Tables: {
-      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string}>;
+      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string;environment:string;order_id:string|null;last_error:string|null;updated_at:string}>;
+      notification_jobs: Table<{id:string;order_id:string;kind:string;status:string;attempts:number;last_error:string|null;created_at:string}>;
+      payment_events: Table<{id:number;payment_id:string;external_event:string;new_status:string;created_at:string}>;
+      order_status_history: Table<{order_id:string;note:string|null;created_at:string}>;
       activity_logs: Table;
       analytics_events: Table;
       banners: Table<BannerRow>;
@@ -97,6 +100,9 @@ export type Database = {
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_set_available_stock: {Args:{p_id:string;p_expected_stock:number;p_stock:number};Returns:undefined};
+      admin_set_variant_price: {Args:{p_id:string;p_expected_price:number;p_price:number};Returns:undefined};
+      quote_shop_basket: { Args: {p_lines: Json; p_shipping: number}; Returns: Json };
       admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };

@@ -2,7 +2,7 @@
 
 import { useCheckoutCustomerStore } from '@/features/checkout/customer-form.store';
 
-export function CustomerForm() {
+export function CustomerForm({ onlinePayment = false }: { onlinePayment?: boolean }) {
   const name = useCheckoutCustomerStore((state) => state.name);
   const phone = useCheckoutCustomerStore((state) => state.phone);
   const comment = useCheckoutCustomerStore((state) => state.comment);
@@ -10,11 +10,13 @@ export function CustomerForm() {
   const setPhone = useCheckoutCustomerStore((state) => state.setPhone);
   const setComment = useCheckoutCustomerStore((state) => state.setComment);
 
+  const { email, address, city, setDelivery } = useCheckoutCustomerStore();
+
   return (
     <div className="space-y-4 rounded-[2rem] border border-brand-primary/10 bg-white p-6 shadow-sm">
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-primary/65">Informations</p>
-        <p className="mt-2 text-sm text-foreground/60">Ces infos servent à enregistrer puis confirmer la demande sur WhatsApp.</p>
+        <p className="mt-2 text-sm text-foreground/60">Vos coordonnées permettent à la boutique de traiter votre commande.</p>
       </div>
 
       <label className="grid gap-2 text-sm font-medium">
@@ -40,6 +42,19 @@ export function CustomerForm() {
           className="rounded-2xl border border-brand-primary/10 px-4 py-3 font-normal outline-none focus:border-brand-primary"
         />
       </label>
+
+      {onlinePayment && <>
+        <label className="grid gap-2 text-sm font-medium">E-mail
+          <input type="email" required autoComplete="email" maxLength={254} value={email} onChange={e=>setDelivery('email',e.target.value)} className="rounded-2xl border border-brand-primary/10 px-4 py-3" />
+        </label>
+        <label className="grid gap-2 text-sm font-medium">Ville de livraison
+          <input required autoComplete="address-level2" maxLength={80} value={city} onChange={e=>setDelivery('city',e.target.value)} className="rounded-2xl border border-brand-primary/10 px-4 py-3" />
+        </label>
+        <label className="grid gap-2 text-sm font-medium">Adresse et indications de livraison
+          <textarea required autoComplete="street-address" minLength={8} maxLength={300} value={address} onChange={e=>setDelivery('address',e.target.value)} className="rounded-2xl border border-brand-primary/10 px-4 py-3" />
+        </label>
+        <p className="text-xs">Téléphone béninois au format +229 01 suivi de 8 chiffres.</p>
+      </>}
 
       <label className="grid gap-2 text-sm font-medium">
         Commentaire
