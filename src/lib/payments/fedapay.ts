@@ -95,7 +95,8 @@ export function validateTransaction(transaction: ProviderTransaction, payment: {
 
 export async function providerRequest(path: string, init: RequestInit = {}, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
   const { key, apiOrigin } = paymentConfiguration();
-  if (!/^(?:\/transactions(?:\/\d+(?:\/token)?)?|\/currencies\/\d+)$/.test(path)) throw new Error('Requête invalide.');
+  const readOnlyLogs = path === '/logs?per_page=100' && (!init.method || init.method === 'GET');
+  if (!readOnlyLogs && !/^(?:\/transactions(?:\/\d+(?:\/token)?)?|\/currencies\/\d+)$/.test(path)) throw new Error('Requête invalide.');
   const response = await fetcher(`${apiOrigin}/v1${path}`, {
     ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     cache: 'no-store', signal: AbortSignal.timeout(8_000),

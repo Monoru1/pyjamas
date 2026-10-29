@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { paymentDatabase, resolvedTransaction } from '@/lib/payments/server';
+import { paymentDatabase, resolvedTransaction, readProviderInitializationLogs } from '@/lib/payments/server';
 import { paymentConfiguration, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
 import { UUID_PATTERN } from '@/lib/payments/read-body';
 
@@ -23,6 +23,11 @@ export async function GET(request: Request) {
     let mismatch: string | null = null;
     try { validateTransaction(transaction, payment); }
     catch (error) { if (!(error instanceof TransactionMismatchError)) throw error; mismatch = error.field; }
+    let providerLogs: Awaited<ReturnType<typeof readProviderInitializationLogs>> | undefined;
+    if (new URL(request.url).searchParams.get('logs') === '1') {
+      try { providerLogs = await readProviderInitializationLogs(payment.provider_id); }
+      catch { providerLogs = { available: false, entries: [] }; }
+    }
     return Response.json({
       paymentId: payment.id, providerId: transaction.id, status: transaction.status,
       amount: Number(transaction.amount), currency: transaction.currency?.iso,
@@ -45,6 +50,7 @@ export async function GET(request: Request) {
         accountIdType: typeof transaction.account_id,
       },
       localError: payment.last_error,
+      providerLogs,
       providerRequests: 'GET only', financialMutation: false,
     }, { headers });
   } catch {

@@ -3,7 +3,7 @@ vi.mock('server-only',()=>({}));
 const mocks=vi.hoisted(()=>({db:{rpc:vi.fn(),from:vi.fn()},provider:vi.fn()}));
 vi.mock('@supabase/supabase-js',()=>({createClient:()=>mocks.db}));
 vi.mock('./fedapay',async(importOriginal)=>({...await importOriginal<object>(),providerRequest:mocks.provider}));
-import {reconcilePayment} from './server';
+import {reconcilePayment,readProviderInitializationLogs} from './server';
 const payment={id:'local',order_id:'order',provider_id:42,amount_xof:2000,purpose:'shop',environment:'sandbox',merchant_account_id:7};
 const transaction={id:42,amount:2000,status:'approved',account_id:7,merchant_reference:'local',currency:{iso:'XOF'},custom_metadata:{payment_id:'local',order_id:'order',purpose:'shop'}};
 function chain(data:unknown) {const q:Record<string,unknown>={then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};for(const name of ['select','eq','single','is','update'])q[name]=()=>q;return q;}
@@ -22,4 +22,13 @@ it('rejects wrong merchant, reference, metadata, amount and currency without pay
   mocks.db.rpc.mockClear();mocks.provider.mockResolvedValue({...transaction,...change});
   await expect(reconcilePayment('local','event:3')).rejects.toThrow('Transaction incohérente');expect(mocks.db.rpc).not.toHaveBeenCalled();
  }
+});
+it('summarizes only token-request evidence for this provider id without returning secrets or private logs',async()=>{
+ mocks.provider.mockResolvedValue({'v1/logs':[
+  {url:'https://api.fedapay.com/v1/transactions/42/token',method:'POST',status:200,ip_address:'private-ip',body:'private-body',response:JSON.stringify({token:'private-token',url:'https://checkout.fedapay.com/private-token'})},
+  {url:'https://api.fedapay.com/v1/transactions/43/token',method:'POST',status:200,response:'private-other-transaction'},
+ ]});
+ const result=await readProviderInitializationLogs(42);
+ expect(result.entries).toHaveLength(1);expect(result.entries[0]).toMatchObject({status:200,tokenPresent:true,checkoutHost:'checkout.fedapay.com'});
+ expect(JSON.stringify(result)).not.toContain('private');expect(mocks.provider).toHaveBeenCalledWith('/logs?per_page=100');
 });

@@ -18,6 +18,27 @@ export async function resolvedTransaction(providerId: number): Promise<ProviderT
   return transaction;
 }
 
+/** Only sanitized evidence for this transaction; never return log bodies, IPs or tokens. */
+export async function readProviderInitializationLogs(providerId: number) {
+  const payload = await providerRequest('/logs?per_page=100');
+  const rows = (Array.isArray(payload) ? payload : payload['v1/logs'] ?? payload.logs) as Record<string, unknown>[] | undefined;
+  if (!Array.isArray(rows)) return { available: false, entries: [] };
+  const entries = rows.flatMap(log => {
+    let path: string;
+    try { path = new URL(String(log.url), 'https://api.fedapay.com').pathname; } catch { return []; }
+    if (!path.endsWith(`/transactions/${providerId}/token`)) return [];
+    let response: Record<string, unknown> = {};
+    try { response = typeof log.response === 'string' ? JSON.parse(log.response) : log.response as Record<string, unknown> || {}; } catch { /* No raw diagnostic output. */ }
+    let checkoutHost: string | null = null;
+    try { if (typeof response.url === 'string') checkoutHost = new URL(response.url).hostname; } catch { /* Invalid URL is summarized only. */ }
+    return [{ method: log.method === 'POST' ? 'POST' : 'other', status: Number(log.status),
+      tokenPresent: typeof response.token === 'string' && response.token.length > 0,
+      urlPresent: typeof response.url === 'string', checkoutHost,
+      wrappedToken: Boolean(response['v1/token']), timestamp: typeof log.created_at === 'string' ? log.created_at : null }];
+  });
+  return { available: true, entries };
+}
+
 export async function reconcilePayment(id: string, eventId: string, candidateProviderId?: number) {
   const db = paymentDatabase();
   const config = paymentConfiguration();
