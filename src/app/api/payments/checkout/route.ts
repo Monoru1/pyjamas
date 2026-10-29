@@ -1,59 +1,76 @@
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
-import { createHash } from 'node:crypto';
-import { trustedSiteOrigin } from '@/lib/security/urls';
-import { z } from 'zod';
+import { createHash, createHmac } from 'node:crypto';
+import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase } from '@/lib/payments/server';
 import { paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse } from '@/lib/payments/fedapay';
-
 export const runtime = 'nodejs';
-const schema = z.object({
-  idempotencyKey: z.uuid(),
-  customer: z.object({ name: z.string().trim().min(2).max(80), phone: z.string().regex(/^\+?[0-9 ]{8,25}$/) }).strict(),
-  lines: z.array(z.object({ variantId: z.uuid(), quantity: z.number().int().min(1).max(10) }).strict()).min(1).max(20),
-}).strict();
 
 export async function POST(request: Request) {
+  let paymentId: string | undefined;
+  let reference: string | undefined;
   try {
     requireJsonRequest(request);
-    const expectedOrigin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL);
-    requireBrowserOrigin(request, expectedOrigin);
-    const raw = await readLimitedBody(request, 10000);
-    const parsed = schema.safeParse(JSON.parse(raw));
-    if (!parsed.success) return Response.json({ error: 'Informations de commande invalides.' }, { status: 400 });
     const config = paymentConfiguration();
-    if (request.headers.get('origin') !== config.origin) return Response.json({ error: 'Origine non autorisée.' }, { status: 403 });
-    // During sandbox acceptance, only authenticated staff may create test transactions.
-    const auth = await createClient();
-    const { data: { user } } = await auth.auth.getUser();
-    const { data: allowed } = user ? await auth.rpc('is_admin') : { data: false };
-    if (!allowed) return Response.json({ error: 'Un compte de test autorisé est requis.' }, { status: 403 });
+    requireBrowserOrigin(request, config.origin);
+    const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
+    if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });
+    if (config.environment === 'sandbox') {
+      const auth = await createClient();
+      const { data: { user } } = await auth.auth.getUser();
+      const { data: allowed } = user ? await auth.rpc('is_admin') : { data: false };
+      if (!allowed) return Response.json({ error: 'Test réservé à l’équipe.' }, { status: 403 });
+    }
     const input = parsed.data;
-    const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const db = paymentDatabase();
-    const { data, error } = await db.rpc('create_sandbox_payment', { p_key: input.idempotencyKey, p_hash: hash, p_customer: input.customer, p_lines: input.lines });
-    if (error || !data) return Response.json({ error: 'Stock insuffisant, demande modifiée ou paiement déjà en cours.' }, { status: 409 });
-    const payment = data as { id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; creator: boolean };
-    if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url) });
-    // An ambiguous timeout must NEVER result in a second provider transaction.
-    if (!payment.creator) return Response.json({ error: 'Paiement en cours de vérification. Réessayez avec la même demande.' }, { status: 409 });
-    const transaction = transactionFromResponse(await providerRequest('/transactions', { method: 'POST', body: JSON.stringify({
-      description: `TEST · La Maison des Pyjamas · ${payment.id}`,
-      amount: Number(payment.amount_xof), currency: { iso: 'XOF' },
-      callback_url: `${config.origin}/paiement?reference=${payment.public_token}`,
-      custom_metadata: { payment_id: payment.id, purpose: 'shop' },
-      customer: { firstname: input.customer.name, lastname: '', phone_number: { number: input.customer.phone.replace(/\D/g, ''), country: 'BJ' } },
-    }) }));
-    const { error: attachError } = await db.from('payment_attempts').update({ provider_id: transaction.id }).eq('id', payment.id).is('provider_id', null);
-    if (attachError) throw new Error('Confirmation différée.');
-    const token = await providerRequest(`/transactions/${transaction.id}/token`, { method: 'POST', body: '{}' });
-    const url = safeCheckoutUrl(token.url);
-    const { error: urlError } = await db.from('payment_attempts').update({ checkout_url: url }).eq('id', payment.id);
+    const subject = createHmac('sha256', config.webhookSecret).update(input.customer.phone).digest('hex');
+    const { data: budget, error: budgetError } = await db.rpc('consume_order_request_budget', { p_subject: subject });
+    if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
+    input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
+    const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
+    const { data, error } = await db.rpc('create_shop_payment', {
+      p_key: input.idempotencyKey, p_hash: hash, p_customer: input.customer, p_lines: input.lines,
+      p_environment: config.environment, p_account: config.accountId, p_shipping: config.shipping,
+    });
+    if (error || !data) return Response.json({ error: 'Article indisponible, stock insuffisant ou demande modifiée.' }, { status: 409 });
+    const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string };
+    paymentId = payment.id; reference = payment.public_token;
+    const referenceUrl = `/paiement?reference=${payment.public_token}`;
+    if (payment.status === 'paid') return Response.json({ url: `${config.origin}${referenceUrl}`, reference: payment.public_token, internal: true });
+    if (['expired', 'refunded', 'partially_refunded'].includes(payment.status)) return Response.json({ error: 'Cette demande est terminée. Consultez son suivi.', reference: payment.public_token }, { status: 409 });
+    if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url, config.environment), reference: payment.public_token });
+    let providerId = payment.provider_id;
+    if (!providerId) {
+      // Durable compare-and-set: only ONE worker may ever POST /transactions for
+      // this request, including refreshes, concurrent requests and timeouts.
+      const { data: claimed, error: claimError } = await db.from('payment_attempts').update({ initialization_started_at: new Date().toISOString() }).eq('id', payment.id).is('initialization_started_at', null).select('id');
+      if (claimError || claimed?.length !== 1) return Response.json({ error: 'Création en cours de vérification. Conservez cette référence.', reference: payment.public_token }, { status: 409 });
+      const parts = input.customer.name.split(/\s+/);
+      const transaction = transactionFromResponse(await providerRequest('/transactions', { method: 'POST', body: JSON.stringify({
+        description: `${config.environment === 'sandbox' ? 'TEST · ' : ''}La Maison des Pyjamas · ${payment.id}`,
+        amount: Number(payment.amount_xof), currency: { iso: 'XOF' },
+        callback_url: `${config.origin}${referenceUrl}`,
+        merchant_reference: payment.id,
+        custom_metadata: { payment_id: payment.id, purpose: 'shop', order_id: payment.order_id },
+        customer: { firstname: parts[0], lastname: parts.slice(1).join(' ') || parts[0], email: input.customer.email, phone_number: { number: `+${input.customer.phone}`, country: 'bj' } },
+      }) }));
+      providerId = transaction.id;
+      const { data: attached, error: attachError } = await db.from('payment_attempts').update({ provider_id: providerId }).eq('id', payment.id).is('provider_id', null).select('id');
+      if (attachError || attached?.length !== 1) throw new Error('Confirmation différée.');
+    }
+    // Token generation is safely retryable for an already persisted transaction.
+    const token = await providerRequest(`/transactions/${providerId}/token`, { method: 'POST', body: '{}' });
+    const url = safeCheckoutUrl(token.url, config.environment);
+    const { error: urlError } = await db.from('payment_attempts').update({ checkout_url: url, last_error: null }).eq('id', payment.id);
     if (urlError) throw new Error('Confirmation différée.');
-    return Response.json({ url }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ url, reference: payment.public_token }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
+    if (paymentId) {
+      console.error('payment_initialization_failed', { paymentId });
+      await paymentDatabase().from('payment_attempts').update({ last_error: 'initialization_failed' }).eq('id', paymentId);
+    }
     if (error instanceof HttpInputError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof SyntaxError) return Response.json({ error: 'JSON invalide.' }, { status: 400 });
-    return Response.json({ error: 'Le paiement de test est indisponible. Aucun paiement réel n’est activé.' }, { status: 503 });
+    return Response.json({ error: 'Paiement indisponible ou confirmation différée. Réessayez avec la même demande.', reference }, { status: 503 });
   }
 }

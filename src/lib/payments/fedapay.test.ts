@@ -2,14 +2,21 @@ import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, verifyWebhook } from './fedapay';
 
-const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com' };
+const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
 const header = (raw = body, timestamp = 1000) => `t=${timestamp},s=${createHmac('sha256','wh_test').update(`${timestamp}.${raw}`).digest('hex')}`;
 
 describe('FedaPay fail-closed configuration and webhooks', () => {
-  it('permits configured sandbox only', () => {
+  it('requires isolated sandbox and explicit production approval', () => {
     expect(paymentConfiguration(env).origin).toBe('https://example.com');
     for (const override of [{FEDAPAY_ENVIRONMENT:'live'}, {FEDAPAY_SECRET_KEY:'sk_live_no'}, {FEDAPAY_ENABLED:'false'}, {SUPABASE_SERVICE_ROLE_KEY:''}, {PAYMENT_SITE_URL:'http://example.com'}]) expect(() => paymentConfiguration({...env,...override})).toThrow();
+  });
+  it('accepts live only in production after final approval and rejects sandbox production DB', () => {
+    const live={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_test',CONTEXT:'production',FEDAPAY_LIVE_APPROVED:'true'};
+    expect(paymentConfiguration(live).apiOrigin).toBe('https://api.fedapay.com');
+    expect(()=>paymentConfiguration({...live,CONTEXT:'deploy-preview'})).toThrow();
+    expect(()=>paymentConfiguration({...env,NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'})).toThrow();
+    expect(()=>paymentConfiguration({...env,PAYMENT_SHIPPING_XOF:''})).toThrow();
   });
   it('accepts official s signatures and multiple signatures', () => {
     expect(verifyWebhook(body, header(), 'wh_test',1000)).toBe(true);

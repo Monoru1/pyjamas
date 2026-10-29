@@ -21,12 +21,18 @@ const nextStatuses: Record<string, string[]> = {
   cancelled: [],
 };
 
-export default async function OrdersPage() {
+export default async function OrdersPage({searchParams}:{searchParams:Promise<{status?:string;date?:string}>}) {
   const supabase = await createClient();
-  const { data: orders } = await supabase
+  const filters = await searchParams;
+  let query = supabase
     .from('orders')
-    .select('id, order_number, status, total, currency_code, customer_note, created_at, customers(full_name, phone, whatsapp_phone), order_items(product_name, sku, size_label, quantity)')
-    .order('created_at', { ascending: false });
+    .select('id, order_number, status, total, currency_code, customer_note, created_at, payment_state, delivery, needs_attention, source, customers(full_name, phone, whatsapp_phone), order_items(product_name, sku, size_label, quantity)')
+    .order('created_at', { ascending: false }).limit(200);
+  if (filters.status && Object.keys(labels).includes(filters.status)) query = query.eq('status', filters.status as keyof typeof labels as never);
+  if (filters.date && /^\d{4}-\d{2}-\d{2}$/.test(filters.date) && !Number.isNaN(Date.parse(filters.date))) {
+    query = query.gte('created_at', `${filters.date}T00:00:00Z`).lt('created_at', new Date(Date.parse(filters.date)+86400000).toISOString());
+  }
+  const { data: orders, error } = await query;
 
   return (
     <div className="admin-page">
@@ -39,6 +45,11 @@ export default async function OrdersPage() {
         </div>
       </header>
 
+      <form className="mb-5 flex flex-wrap gap-3" method="get">
+        <label>Statut <select name="status" defaultValue={filters.status || ''}><option value="">Tous</option>{Object.entries(labels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+        <label>Date (Bénin / UTC) <input type="date" name="date" defaultValue={filters.date}/></label><button className="admin-action">Filtrer</button>
+      </form>
+      {error && <p role="alert">Chargement impossible. Vérifiez les migrations et les droits.</p>}
       <section className="admin-panel">
         <div className="admin-panel-title">
           <div>
@@ -52,24 +63,28 @@ export default async function OrdersPage() {
             {orders.map((order) => {
               const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
               const items = Array.isArray(order.order_items) ? order.order_items : [];
-              const transitions = nextStatuses[order.status] ?? [];
+              const online = order.source.startsWith('fedapay_');
+              const canFulfill = !online || (order.payment_state === 'paid' && !order.needs_attention);
+              const transitions = canFulfill ? nextStatuses[order.status] ?? [] : [];
 
               return (
                 <article key={order.id}>
                   <div className="order-top">
                     <div>
                       <span>#{order.order_number} · {labels[order.status]}</span>
-                      <h3>{customer?.full_name || 'Client'}</h3>
-                      <p>{customer?.whatsapp_phone || customer?.phone || 'Coordonnées à renseigner'}</p>
+                      <h3>{order.delivery?.name || customer?.full_name || 'Client'}</h3>
+                      <p>{order.delivery?.phone || customer?.whatsapp_phone || customer?.phone || 'Coordonnées à renseigner'}</p>
                     </div>
                     <strong>{formatPrice(Number(order.total), order.currency_code)}</strong>
                   </div>
                   <p className="order-items">
                     {items.map((item) => `${item.quantity}× ${item.product_name}${item.size_label ? ` · ${item.size_label}` : ''} · Réf. ${item.sku}`).join(' — ') || 'Articles à renseigner'}
                   </p>
+                  {online && <p className="order-note">Paiement : {order.payment_state} · {order.source === 'fedapay_sandbox' ? 'TEST SANDBOX' : 'Production'}{order.needs_attention ? ' · INTERVENTION REQUISE' : ''}</p>}
+                  {order.delivery && <p className="order-note">Livraison : {order.delivery.address}, {order.delivery.city} · {order.delivery.email}</p>}
                   {order.customer_note && <p className="order-note">“{order.customer_note}”</p>}
 
-                  {order.status === 'pending' ? (
+                  {!canFulfill ? <p className="order-note">Traitement bloqué : paiement non confirmé ou intervention requise.</p> : order.status === 'pending' ? (
                     <div className="flex flex-wrap gap-3">
                       <form action={updateOrderStatus}>
                         <input type="hidden" name="id" value={order.id} />

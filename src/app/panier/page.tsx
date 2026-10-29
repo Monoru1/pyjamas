@@ -1,19 +1,26 @@
 import { createClient } from '@/lib/supabase/server';
-import { SandboxCheckoutButton } from '@/features/cart/components/sandbox-checkout-button';
+import { CheckoutButton } from '@/features/cart/components/checkout-button';
+import { paymentConfiguration } from '@/lib/payments/fedapay';
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
 import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
 import { CustomerForm } from '@/features/checkout/components/customer-form';
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
+export const dynamic = 'force-dynamic';
+
 export default async function CartPage() {
   const settings = await getStoreSettings();
-  let showSandbox = false;
-  if (process.env.FEDAPAY_ENABLED === 'true' && process.env.FEDAPAY_ENVIRONMENT === 'sandbox') {
-    const db = await createClient();
-    const { data: { user } } = await db.auth.getUser();
-    if (user) showSandbox = Boolean((await db.rpc('is_admin')).data);
-  }
+  let payment: ReturnType<typeof paymentConfiguration> | null = null;
+  try {
+    const config = paymentConfiguration();
+    if (config.environment === 'live') payment = config;
+    else {
+      const db = await createClient();
+      const { data: { user } } = await db.auth.getUser();
+      if (user && (await db.rpc('is_admin')).data) payment = config;
+    }
+  } catch { /* Checkout stays disabled until configuration is complete. */ }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
@@ -28,15 +35,15 @@ export default async function CartPage() {
               Dernière étape avant le sapin.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/72">
-              Vérifiez vos pièces, envoyez votre demande, puis la boutique confirme sa prise en charge sur WhatsApp.
+              {payment ? 'Vérifiez vos pièces et vos coordonnées, puis réglez votre commande avec FedaPay.' : 'Vérifiez vos pièces, envoyez votre demande, puis la boutique confirme sa prise en charge sur WhatsApp.'}
             </p>
           </div>
           <CartLines />
         </section>
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-          <CustomerForm />
+          <CustomerForm onlinePayment={Boolean(payment)} />
           <CartSummary />
-          {showSandbox && <SandboxCheckoutButton />}
+          {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} />}
           <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
       </div>

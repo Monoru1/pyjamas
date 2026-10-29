@@ -12,6 +12,8 @@
     "types:db": "npx supabase gen types typescript --project-id $SUPABASE_PROJECT_REF --schema public > src/lib/supabase/database.types.ts"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "5.2.8",
+    "@fontsource-variable/inter": "5.2.8",
     "@hookform/resolvers": "5.4.0",
     "@supabase/ssr": "0.12.0",
     "@supabase/supabase-js": "2.110.2",
@@ -23,8 +25,9 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-hook-form": "7.81.0",
+    "server-only": "0.0.1",
     "tailwind-merge": "3.6.0",
-    "zod": "4.4.3",
+    "zod": "4.6.7",
     "zustand": "5.0.14"
   },
   "devDependencies": {

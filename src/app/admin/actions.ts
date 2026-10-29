@@ -40,9 +40,7 @@ export async function updateOrderStatus(formData: FormData) {
   if (!id || !allowed.includes(status)) return;
   const expected = String(formData.get('expected_status') ?? '');
   if (!allowed.includes(expected)) throw new Error('Actualisez la commande avant de réessayer.');
-  const result = process.env.OPERATIONS_ATOMIC_ENABLED === 'true'
-    ? await supabase.rpc('admin_transition_order', { p_order_id: id, p_expected_status: expected as never, p_new_status: status as never })
-    : await supabase.rpc('admin_update_order_status', { p_order_id: id, p_new_status: status as never });
+  const result = await supabase.rpc('admin_transition_order', { p_order_id: id, p_expected_status: expected as never, p_new_status: status as never });
   const { error } = result;
   if (error) throw new Error(error.message);
   revalidatePath('/admin');

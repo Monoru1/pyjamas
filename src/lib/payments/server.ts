@@ -1,24 +1,42 @@
+import 'server-only';
 import { createClient } from '@supabase/supabase-js';
-import { paymentConfiguration, providerRequest, transactionFromResponse, validateTransaction } from './fedapay';
+import { paymentConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
 
 export function paymentDatabase() {
   paymentConfiguration();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) throw new Error('Service indisponible.');
-  // Deliberately server-only: this module is imported exclusively by route handlers.
-  return createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-export async function reconcilePayment(id: string, eventId: string) {
+export async function resolvedTransaction(providerId: number): Promise<ProviderTransaction> {
+  const transaction = transactionFromResponse(await providerRequest(`/transactions/${providerId}`));
+  // FedaPay may return currency_id rather than an expanded currency. Resolve it,
+  // never assume that a numeric id means XOF.
+  if (!transaction.currency?.iso && Number.isSafeInteger(transaction.currency_id) && transaction.currency_id! > 0) {
+    const resource = await providerRequest(`/currencies/${transaction.currency_id}`);
+    transaction.currency = (resource['v1/currency'] ?? resource) as { iso: string };
+  }
+  return transaction;
+}
+
+export async function reconcilePayment(id: string, eventId: string, candidateProviderId?: number) {
   const db = paymentDatabase();
-  const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose').eq('id', id).single();
-  if (error || !payment?.provider_id) throw new Error('Paiement introuvable.');
-  const transaction = transactionFromResponse(await providerRequest(`/transactions/${payment.provider_id}`));
-  const state = validateTransaction(transaction, payment);
-  const { error: applyError } = await db.rpc('apply_sandbox_payment', {
+  const config = paymentConfiguration();
+  const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id').eq('id', id).eq('environment', config.environment).single();
+  if (error || !payment?.order_id || (!payment.provider_id && !candidateProviderId)) throw new Error('Paiement introuvable.');
+  const providerId = payment.provider_id ?? candidateProviderId!;
+  const transaction = await resolvedTransaction(providerId);
+  const state = validateTransaction(transaction, { ...payment, provider_id: providerId });
+  // Recover a signed webhook arriving after a provider-create timeout. Binding is
+  // allowed only after an authenticated GET and all local/merchant checks.
+  if (!payment.provider_id) {
+    const { data: attached, error: attachError } = await db.from('payment_attempts').update({ provider_id: providerId }).eq('id', id).is('provider_id', null).select('id');
+    if (attachError || attached?.length !== 1) throw new Error('Association différée.');
+  }
+  const { error: applyError } = await db.rpc('apply_shop_payment', {
     p_id: id, p_provider_id: transaction.id, p_amount: Number(transaction.amount),
-    p_status: state, p_event: eventId,
+    p_account: transaction.account_id, p_environment: config.environment,
+    p_status: state, p_event: `${config.environment}:${eventId}`,
   });
-  if (applyError) throw new Error('La confirmation du paiement est momentanément indisponible.');
+  if (applyError) throw new Error('Confirmation différée.');
   return state;
 }

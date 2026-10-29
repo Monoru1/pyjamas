@@ -1,16 +1,26 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'partially_refunded';
-export type ProviderTransaction = { id: number; amount: number | string; status: string; currency: { iso: string }; custom_metadata?: { payment_id?: string; purpose?: string } };
+export type ProviderTransaction = { id: number; amount: number | string; status: string; currency?: { iso: string }; currency_id?: number; account_id?: number; merchant_reference?: string; custom_metadata?: { payment_id?: string; purpose?: string; order_id?: string } };
 
 export function paymentConfiguration(env: Record<string, string | undefined> = process.env) {
-  // Live is deliberately unsupported until the merchant's validation and full sandbox acceptance.
-  if (env.FEDAPAY_ENABLED !== 'true' || env.FEDAPAY_ENVIRONMENT !== 'sandbox'
-    || !env.FEDAPAY_SECRET_KEY?.startsWith('sk_sandbox_') || !env.FEDAPAY_WEBHOOK_SECRET
-    || !env.SUPABASE_SERVICE_ROLE_KEY) throw new Error('Paiement de test indisponible.');
-  const origin = env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL || process.env.SITE_ORIGIN;
-  if (!origin || new URL(origin).protocol !== 'https:') throw new Error('Adresse de retour non configurée.');
-  return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET, origin: new URL(origin).origin };
+  const environment = env.FEDAPAY_ENVIRONMENT;
+  if (env.FEDAPAY_ENABLED !== 'true' || !['sandbox', 'live'].includes(environment || '')
+    || !env.FEDAPAY_SECRET_KEY?.startsWith(`sk_${environment}_`) || !env.FEDAPAY_WEBHOOK_SECRET
+    || !env.SUPABASE_SERVICE_ROLE_KEY || !/^[1-9][0-9]*$/.test(env.FEDAPAY_ACCOUNT_ID || '')
+    || !Number.isSafeInteger(Number(env.FEDAPAY_ACCOUNT_ID))) throw new Error('Paiement indisponible.');
+  // Never let acceptance tests reserve the production catalogue's inventory.
+  if (environment === 'sandbox' && (env.PAYMENT_DATABASE_ISOLATED !== 'true'
+    || !env.NEXT_PUBLIC_SUPABASE_URL || new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname === 'pukvrerdloudfiphomsj.supabase.co')) throw new Error('Base de test isolée requise.');
+  if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || env.CONTEXT !== 'production')) throw new Error('Production non validée.');
+  const origin = env.CONTEXT === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL);
+  if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
+  const shipping = Number(env.PAYMENT_SHIPPING_XOF);
+  if (!env.PAYMENT_SHIPPING_XOF || !Number.isSafeInteger(shipping) || shipping < 0 || shipping > 1_000_000) throw new Error('Tarif de livraison non configuré.');
+  return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET,
+    origin: new URL(origin).origin, environment: environment as 'sandbox' | 'live',
+    accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping,
+    apiOrigin: environment === 'live' ? 'https://api.fedapay.com' : 'https://sandbox-api.fedapay.com' };
 }
 
 export function mapProviderStatus(status: string): PaymentStatus {
@@ -38,19 +48,21 @@ export function verifyWebhook(raw: string, header: string | null, secret: string
     && timingSafeEqual(Buffer.from(signature, 'hex'), expected));
 }
 
-export function validateTransaction(transaction: ProviderTransaction, payment: { id: string; amount_xof: number; provider_id: number; purpose: string }) {
+export function validateTransaction(transaction: ProviderTransaction, payment: { id: string; amount_xof: number; provider_id: number; purpose: string; order_id?: string; merchant_account_id?: number }) {
   if (transaction.id !== payment.provider_id || Number(transaction.amount) !== Number(payment.amount_xof)
     || transaction.currency?.iso !== 'XOF' || transaction.custom_metadata?.payment_id !== payment.id
-    || transaction.custom_metadata?.purpose !== payment.purpose) throw new Error('Transaction incohérente.');
+    || transaction.custom_metadata?.purpose !== payment.purpose
+    || (payment.order_id !== undefined && (transaction.custom_metadata?.order_id !== payment.order_id || transaction.merchant_reference !== payment.id))
+    || (payment.merchant_account_id !== undefined && transaction.account_id !== payment.merchant_account_id)) throw new Error('Transaction incohérente.');
   return mapProviderStatus(transaction.status);
 }
 
 export async function providerRequest(path: string, init: RequestInit = {}, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
-  const { key } = paymentConfiguration();
-  if (!/^\/transactions(?:\/\d+(?:\/token)?)?$/.test(path)) throw new Error('Requête invalide.');
-  const response = await fetcher(`https://sandbox-api.fedapay.com/v1${path}`, {
+  const { key, apiOrigin } = paymentConfiguration();
+  if (!/^(?:\/transactions(?:\/\d+(?:\/token)?)?|\/currencies\/\d+)$/.test(path)) throw new Error('Requête invalide.');
+  const response = await fetcher(`${apiOrigin}/v1${path}`, {
     ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    cache: 'no-store', signal: AbortSignal.timeout(15_000),
+    cache: 'no-store', signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error('Le service de paiement est momentanément indisponible.');
   return response.json();
@@ -63,9 +75,9 @@ export function transactionFromResponse(payload: Record<string, unknown>): Provi
   return transaction;
 }
 
-export function safeCheckoutUrl(value: unknown) {
+export function safeCheckoutUrl(value: unknown, environment: 'sandbox' | 'live' = 'sandbox') {
   if (typeof value !== 'string') throw new Error('Lien de paiement manquant.');
   const url = new URL(value);
-  if (url.protocol !== 'https:' || url.hostname !== 'sandbox-checkout.fedapay.com' || url.username || url.password) throw new Error('Lien de paiement non autorisé.');
+  if (url.protocol !== 'https:' || url.hostname !== (environment === 'live' ? 'checkout.fedapay.com' : 'sandbox-checkout.fedapay.com') || url.port || url.username || url.password) throw new Error('Lien de paiement non autorisé.');
   return url.href;
 }
