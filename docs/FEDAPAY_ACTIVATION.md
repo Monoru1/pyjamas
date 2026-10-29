@@ -139,3 +139,25 @@ Le flux API/Bearer utilise le propre compte marchand : aucune application OAuth 
 ## Mise à jour recette — identifiant marchand (29 octobre 2026)
 
 L'identifiant numérique `101915` a été observé dans cinq logs API Live du compte FedaPay par le propriétaire (méthodes GET/POST/DELETE ; réponses 200/403). Il est distinct de la référence dashboard `acc_2847692982`. La variable Netlify `FEDAPAY_ACCOUNT_ID` a été surchargée à `101915` **uniquement dans le contexte deploy-preview** ; la production est inchangée. Le compte staff recette est actif avec rôle admin (vérification SQL). `FEDAPAY_ENABLED=false`, `PAYMENT_CHECKOUT_ENABLED=false` et `PAYMENT_LIVE_TEST_ENABLED=false` restent en place. Ce commit documentaire déclenche un nouveau build de la PR pour appliquer les variables mises à jour ; il ne constitue pas une validation d'encaissement Live.
+
+
+## Passation Codex — état vérifié au 29 octobre 2026
+
+### État confirmé
+- PR #11, branche `feat/fedapay-production-readiness`, commit `03182d100026d8f5329e1072d7440632753ec6de` : CI GitHub **success**, déploiement Netlify **ready**.
+- Recette isolée Supabase `oxhymanjibveayhcaqvj`, production `pukvrerdloudfiphomsj` non modifiée.
+- Compte administrateur de recette connecté et page `/admin/paiements` accessible.
+- Produit technique `recette-fedapay-100-xof`, variante `RECETTE-FEDAPAY-100`, prix 100 XOF, avec image ; produit réservé à la recette.
+- Transaction FedaPay Live **113943841** créée par le checkout, montant **100 XOF**, marchand **101915**, état **pending** au dernier contrôle. `POST /v1/transactions` et `GET /v1/transactions/113943841` ont répondu 200. La réponse expose `currency_id=1` ; `GET /v1/currencies/1` renvoie `iso=XOF`. Référence et champs de métadonnées présents ; leurs valeurs exactes n'ont pas été comparées.
+- Le checkout répond 503 et l'enregistrement local indique `initialization_failed` après création du provider ID. Aucun lien de checkout confirmé, aucun encaissement vérifié. **Ne pas créer de seconde transaction avant diagnostic.**
+- Code à examiner : `src/app/api/payments/checkout/route.ts`, `src/lib/payments/server.ts`, `src/lib/payments/fedapay.ts`. Étapes suspectes : `validateTransaction(await resolvedTransaction(providerId), ...)`, `POST /transactions/{id}/token`, `safeCheckoutUrl` ou persistance `checkout_url`. Les logs actuels ne détaillent pas l'étape fautive. Ajouter une instrumentation **sans secrets, données client ni URL de paiement**, puis tester la reprise idempotente de la transaction existante.
+- Un test de panier à 25 000 XOF a été bloqué comme attendu par le plafond privé 100 XOF. En mode commercial normal, le serveur doit calculer et facturer le total réel du panier.
+- Le CSS admin paiements et la page de suivi ont été améliorés ; vérifier visuellement responsive et états vides.
+- Médiathèque de recette vide (`media_assets`), vidéos à restaurer depuis les sources approuvées ; vérifier Google Maps sur la page contact et l'adresse réelle avant publication.
+
+### Garde-fous non négociables
+- Ne pas modifier ni activer la production sans approbation explicite ; ne pas fusionner PR #11 avant tests complets.
+- Ne pas supprimer les validations de montant, devise XOF, compte marchand, métadonnées, signature webhook et idempotence.
+- Ne pas exposer les clés API, secrets webhook, données client, numéros de carte ou liens de paiement dans les logs.
+- Les autorisations privées Live sont temporaires : contrôler leur expiration avant tout nouveau test ; ne pas réutiliser une autorisation expirée.
+- Vérifier un paiement de 100 XOF de bout en bout, webhook signé, rapprochement, état commande, notifications et absence de double débit avant activation commerciale.
