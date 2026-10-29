@@ -4,7 +4,7 @@ import { createQuoteToken, verifyQuoteToken, reservedPaymentQuote, type ShopQuot
 import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase, resolvedTransaction } from '@/lib/payments/server';
-import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction } from '@/lib/payments/fedapay';
+import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     return Response.json({ url, reference: payment.public_token }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (paymentId) {
-      console.error('payment_initialization_failed', { paymentId, stage: initializationStage, errorType: error instanceof Error ? error.name : 'unknown' });
+      console.error('payment_initialization_failed', { paymentId, stage: initializationStage, errorType: error instanceof Error ? error.name : 'unknown', mismatchField: error instanceof TransactionMismatchError ? error.field : undefined });
       await paymentDatabase().from('payment_attempts').update({ last_error: `initialization_failed:${initializationStage}` }).eq('id', paymentId);
     }
     if (error instanceof HttpInputError) return Response.json({ error: error.message }, { status: error.status });
