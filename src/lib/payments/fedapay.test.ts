@@ -61,3 +61,9 @@ describe('FedaPay fail-closed configuration and webhooks', () => {
     vi.unstubAllEnvs();
   });
 });
+
+it('allows live acceptance only on PR 11 and the exact isolated database with a strict ceiling',()=>{
+ const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'11',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
+ expect(paymentConfiguration(acceptance)).toMatchObject({liveTest:true,staffOnly:true,testCeiling:100});
+ for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'1001'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
+});

@@ -12,14 +12,24 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   // Never let acceptance tests reserve the production catalogue's inventory.
   if (environment === 'sandbox' && (env.PAYMENT_DATABASE_ISOLATED !== 'true'
     || !env.NEXT_PUBLIC_SUPABASE_URL || new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname === 'pukvrerdloudfiphomsj.supabase.co')) throw new Error('Base de test isolée requise.');
-  if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || env.CONTEXT !== 'production')) throw new Error('Production non validée.');
+  const liveTest = environment === 'live' && env.PAYMENT_LIVE_TEST_ENABLED === 'true';
   const origin = env.CONTEXT === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL);
   if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
+  const testCeiling = Number(env.PAYMENT_LIVE_TEST_MAX_XOF);
+  if (liveTest) {
+    if (env.CONTEXT !== 'deploy-preview' || env.REVIEW_ID !== '11'
+      || new URL(origin).origin !== 'https://deploy-preview-11--pyjamas25.netlify.app'
+      || env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
+      || env.PAYMENT_DATABASE_ISOLATED !== 'true' || env.FEDAPAY_LIVE_APPROVED === 'true'
+      || !Number.isSafeInteger(testCeiling) || testCeiling < 1 || testCeiling > 1000
+      || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || '')) throw new Error('Recette Live non autorisée.');
+  } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || env.CONTEXT !== 'production')) throw new Error('Production non validée.');
   const shipping = Number(env.PAYMENT_SHIPPING_XOF);
   if (!env.PAYMENT_SHIPPING_XOF || !Number.isSafeInteger(shipping) || shipping < 0 || shipping > 1_000_000) throw new Error('Tarif de livraison non configuré.');
   return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET,
     origin: new URL(origin).origin, environment: environment as 'sandbox' | 'live',
-    accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping,
+    accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping, liveTest, staffOnly: environment === 'sandbox' || liveTest,
+    testCeiling: liveTest ? testCeiling : undefined, authorizationId: liveTest ? env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID : undefined,
     apiOrigin: environment === 'live' ? 'https://api.fedapay.com' : 'https://sandbox-api.fedapay.com' };
 }
 

@@ -2,6 +2,7 @@ import { z } from 'zod';
 // Benin's current national format: +229 01 followed by eight digits.
 export const checkoutSchema = z.object({
   idempotencyKey: z.uuid(),
+  quoteToken: z.string().max(1000).optional(),
   customer: z.object({
     name: z.string().trim().min(2).max(80),
     phone: z.string().trim().max(25).transform(value => value.replace(/[ +()-]/g, '')).pipe(z.string().regex(/^22901[0-9]{8}$/)),

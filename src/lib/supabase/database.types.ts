@@ -100,6 +100,9 @@ export type Database = {
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_set_available_stock: {Args:{p_id:string;p_expected_stock:number;p_stock:number};Returns:undefined};
+      admin_set_variant_price: {Args:{p_id:string;p_expected_price:number;p_price:number};Returns:undefined};
+      quote_shop_basket: { Args: {p_lines: Json; p_shipping: number}; Returns: Json };
       admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };

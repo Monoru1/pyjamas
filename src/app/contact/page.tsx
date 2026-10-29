@@ -1,5 +1,7 @@
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ContactPage() {
   const settings = await getStoreSettings();
   const socialLinks = [['Instagram', settings.instagramUrl], ['TikTok', settings.tiktokUrl], ['WhatsApp', `https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`]];

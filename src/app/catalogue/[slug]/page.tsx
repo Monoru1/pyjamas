@@ -5,6 +5,8 @@ import { VariantPicker } from '@/features/catalog/components/variant-picker';
 import { getProductBySlug } from '@/lib/repositories/catalog.repository';
 import { formatPrice } from '@/lib/utils/money';
 
+export const dynamic = 'force-dynamic';
+
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }

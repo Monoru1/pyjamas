@@ -47,16 +47,23 @@ export async function updateOrderStatus(formData: FormData) {
   revalidatePath('/admin/commandes');
 }
 
+function refreshCatalog() {
+  revalidatePath('/');revalidatePath('/catalogue');revalidatePath('/collections');revalidatePath('/accessoires');revalidatePath('/catalogue/[slug]','page');revalidatePath('/panier');revalidatePath('/admin/produits');
+}
 export async function updateVariantStock(formData: FormData) {
-  const supabase = await guardAdmin();
-  const id = String(formData.get('id'));
-  const stock = Math.max(0, Number(formData.get('stock')) || 0);
-  const price = Math.max(0, Number(formData.get('price')) || 0);
-  if (!Number.isInteger(stock) || !Number.isInteger(price)) throw new Error('Le stock et le prix doivent être des nombres entiers.');
-  const { error } = await supabase.from('product_variants').update({ stock_quantity: stock, price }).eq('id', id);
-  if (error) throw new Error('Le stock n’a pas pu être enregistré.');
-  revalidatePath('/admin');
-  revalidatePath('/admin/produits');
+  const supabase=await guardAdmin();
+  const stock=Number(formData.get('stock'));const expected=Number(formData.get('expected_stock'));
+  if(!formData.has('stock')||!formData.has('expected_stock')||!Number.isInteger(stock)||stock<0||!Number.isInteger(expected))throw new Error('Stock invalide.');
+  const {error}=await supabase.rpc('admin_set_available_stock',{p_id:String(formData.get('id')),p_expected_stock:expected,p_stock:stock});
+  if(error)throw new Error('Le stock a changé ou n’a pas pu être enregistré. Actualisez la page.');
+  refreshCatalog();
+}
+export async function updateVariantPrice(formData:FormData) {
+  const supabase=await guardAdmin();const price=Number(formData.get('price'));const expected=Number(formData.get('expected_price'));
+  if(!formData.has('price')||!formData.has('expected_price')||!Number.isSafeInteger(price)||price<=0||!Number.isFinite(expected))throw new Error('Prix invalide.');
+  const {error}=await supabase.rpc('admin_set_variant_price',{p_id:String(formData.get('id')),p_expected_price:expected,p_price:price});
+  if(error)throw new Error('Le prix a changé ou n’a pas pu être enregistré. Actualisez la page.');
+  refreshCatalog();
 }
 
 export async function toggleProduct(formData: FormData) {
@@ -290,7 +297,7 @@ export async function setPromotion(formData: FormData) {
   if (!promotion) return;
   await supabase.from('product_variants').update({ price: promotionPrice, compare_at_price: variant.compare_at_price ?? variant.price }).eq('id', variantId);
   await supabase.from('product_collections').upsert({ product_id: variant.product_id, collection_id: promotion.id });
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+  refreshCatalog(); revalidatePath('/admin/promotions');
 }
 
 export async function removePromotion(formData: FormData) {
@@ -303,7 +310,7 @@ export async function removePromotion(formData: FormData) {
     const { count } = await supabase.from('product_variants').select('id', { count: 'exact', head: true }).eq('product_id', variant.product_id).not('compare_at_price', 'is', null);
     if (!count) await supabase.from('product_collections').delete().eq('product_id', variant.product_id).eq('collection_id', promotion.id);
   }
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+  refreshCatalog(); revalidatePath('/admin/promotions');
 }
 
 export async function updateCollection(formData: FormData) {

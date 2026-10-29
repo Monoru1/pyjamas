@@ -2,13 +2,14 @@
 import { pathToFileURL } from 'node:url';
 
 export function checkPaymentReadiness(env, target) {
-  if (!['sandbox', 'live'].includes(target)) throw new Error('Use --sandbox or --live.');
+  if (!['sandbox', 'live', 'live-test'].includes(target)) throw new Error('Use --sandbox, --live or --live-test.');
+  const providerEnvironment = target === 'live-test' ? 'live' : target;
   const checks = [];
   const check = (name, ok) => checks.push({ name, ok: Boolean(ok) });
   const required = ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'FEDAPAY_SECRET_KEY', 'FEDAPAY_WEBHOOK_SECRET', 'FEDAPAY_ACCOUNT_ID', 'PAYMENT_SITE_URL', 'PAYMENT_RECONCILE_SECRET', 'PAYMENT_SHIPPING_XOF'];
   for (const name of required) check(`${name} configured`, typeof env[name] === 'string' && env[name].trim().length > 0);
-  check('provider environment matches target', env.FEDAPAY_ENVIRONMENT === target);
-  check('secret key environment matches target', env.FEDAPAY_SECRET_KEY?.startsWith(`sk_${target}_`));
+  check('provider environment matches target', env.FEDAPAY_ENVIRONMENT === providerEnvironment);
+  check('secret key environment matches target', env.FEDAPAY_SECRET_KEY?.startsWith(`sk_${providerEnvironment}_`));
   check('merchant account is a positive safe integer', /^[1-9][0-9]*$/.test(env.FEDAPAY_ACCOUNT_ID || '') && Number.isSafeInteger(Number(env.FEDAPAY_ACCOUNT_ID)));
   check('shipping is explicitly configured as integer XOF', /^\d+$/.test(env.PAYMENT_SHIPPING_XOF || '') && Number.isSafeInteger(Number(env.PAYMENT_SHIPPING_XOF)) && Number(env.PAYMENT_SHIPPING_XOF) <= 1_000_000);
   check('reconciliation secret has sufficient length', (env.PAYMENT_RECONCILE_SECRET?.length || 0) >= 32);
@@ -22,6 +23,13 @@ export function checkPaymentReadiness(env, target) {
     check('isolated sandbox database explicitly confirmed', env.PAYMENT_DATABASE_ISOLATED === 'true');
     check('sandbox does not use production database', database && database.hostname !== 'pukvrerdloudfiphomsj.supabase.co');
     check('live approval stays disabled in sandbox', env.FEDAPAY_LIVE_APPROVED !== 'true');
+  } else if (target === 'live-test') {
+    check('private Live test explicitly enabled', env.PAYMENT_LIVE_TEST_ENABLED === 'true');
+    check('only Netlify PR 11 preview', env.CONTEXT === 'deploy-preview' && env.REVIEW_ID === '11' && site?.origin === 'https://deploy-preview-11--pyjamas25.netlify.app');
+    check('exact isolated recipe database', env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co' && env.PAYMENT_DATABASE_ISOLATED === 'true');
+    check('public live approval stays disabled', env.FEDAPAY_LIVE_APPROVED !== 'true');
+    check('strict test ceiling between 1 and 1000 XOF', /^\d+$/.test(env.PAYMENT_LIVE_TEST_MAX_XOF || '') && Number.isSafeInteger(Number(env.PAYMENT_LIVE_TEST_MAX_XOF)) && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) >= 1 && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) <= 1000);
+    check('one owner authorization identifier configured', /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || ''));
   } else {
     check('Netlify production context', env.CONTEXT === 'production');
     check('explicit final live approval', env.FEDAPAY_LIVE_APPROVED === 'true');
@@ -33,8 +41,8 @@ export function checkPaymentReadiness(env, target) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const flags = process.argv.slice(2);
-  if (flags.length !== 1 || !['--sandbox', '--live'].includes(flags[0])) {
-    console.error('Usage: npm run payments:check -- --sandbox|--live');
+  if (flags.length !== 1 || !['--sandbox', '--live', '--live-test'].includes(flags[0])) {
+    console.error('Usage: npm run payments:check -- --sandbox|--live|--live-test');
     process.exitCode = 2;
   } else {
     const target = flags[0].slice(2);

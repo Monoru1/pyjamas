@@ -30,3 +30,8 @@ it('does not print any configured key or reconciliation secret to CLI output',()
  for(const name of ['FEDAPAY_SECRET_KEY','FEDAPAY_WEBHOOK_SECRET','SUPABASE_SERVICE_ROLE_KEY','PAYMENT_RECONCILE_SECRET'])expect(r.stdout+r.stderr).not.toContain(fixture[name]);
  expect(r.stdout).toContain('external acceptance evidence is still required');
 });
+it('permits only the explicitly authorized isolated PR 11 Live recipe',()=>{
+ const liveTest={...fixture,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture-secret',CONTEXT:'deploy-preview',REVIEW_ID:'11',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'00000000-0000-4000-8000-000000000001'};
+ expect(checkPaymentReadiness(liveTest,'live-test').ready).toBe(true);
+ for(const override of [{CONTEXT:'production'},{REVIEW_ID:'12'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'1001'},{PAYMENT_LIVE_TEST_MAX_XOF:'0'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{NEXT_PUBLIC_SUPABASE_URL:fixture.NEXT_PUBLIC_SUPABASE_URL},{FEDAPAY_LIVE_APPROVED:'true'}])expect(checkPaymentReadiness({...liveTest,...override},'live-test').ready).toBe(false);
+});

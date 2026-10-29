@@ -1,0 +1,74 @@
+-- RECETTE ONLY: synthetic fixtures and all mutations are rolled back in a subtransaction.
+create or replace function pg_temp.check_recette() returns jsonb language plpgsql as $$
+declare staff uuid:=gen_random_uuid(); pid uuid:=gen_random_uuid(); vid uuid:=gen_random_uuid(); other_vid uuid:=gen_random_uuid();
+ lines jsonb; quote jsonb; payment jsonb; second_payment jsonb; permit_id uuid; k uuid:=gen_random_uuid();
+ checks text[]:='{}'; ok boolean; affected integer; n integer; price numeric; stock integer;
+begin
+ begin
+  if not exists(select 1 from products) or not exists(select 1 from pg_proc where proname='quote_shop_basket' and pronamespace='public'::regnamespace) then raise exception 'Missing recette prerequisites'; end if;
+  insert into auth.users(id) values(staff);
+  insert into public.profiles(id,role,is_active) values(staff,'admin',true);
+  insert into products(id,slug,name_fr,base_price,currency_code,is_active) values(pid,'fixture-'||pid,'Fixture technique temporaire',100,'XOF',true);
+  insert into product_variants(id,product_id,sku,color_name_fr,size_label,price,stock_quantity) values(vid,pid,'TEST-'||vid,'Fixture','S',100,10),(other_vid,pid,'TEST-'||other_vid,'Fixture','M',150,10);
+  lines:=jsonb_build_array(jsonb_build_object('variantId',vid,'quantity',1));
+  perform set_config('request.jwt.claim.sub',staff::text,true);
+  execute 'set local role authenticated';
+  if not public.is_admin() then raise exception 'Staff lookup failed'; end if;
+  perform public.admin_set_variant_price(vid,100,110);
+  if (select base_price from products where id=pid)<>110 then raise exception 'Derived product price not synchronized'; end if;
+  perform public.admin_set_available_stock(vid,10,9);
+  if (select v.price from product_variants v where id=vid)<>110 then raise exception 'Stock update overwrote price'; end if;
+  ok:=false;begin perform public.admin_set_variant_price(vid,100,120); exception when others then ok:=SQLERRM like 'Price changed%';end;
+  if not ok then raise exception 'Stale price overwrite not rejected';end if;
+  update product_variants set price=90,compare_at_price=110 where id=vid;
+  update product_variants set compare_at_price=500 where id=other_vid;
+  if (select min_variant_price from product_catalog where id=pid)<>90 or (select min_variant_compare_at_price from product_catalog where id=pid)<>110 then raise exception 'Promotion display inconsistent';end if;
+  checks:=checks||array['staff authorization','variant price update','derived catalogue price','stock-only update preserves price','stale admin price rejected','promotion matches cheapest variant'];
+  execute 'reset role';perform set_config('request.jwt.claim.sub','',true);execute 'set local role anon';
+  quote:=public.quote_shop_basket(lines,0);
+  if (quote->>'amount_xof')::int<>90 then raise exception 'Anonymous quote incorrect';end if;
+  update product_variants set stock_quantity=999 where id=vid;get diagnostics affected=row_count;
+  if affected<>0 then raise exception 'Anonymous inventory write allowed';end if;
+  ok:=false;begin perform public.create_shop_payment(gen_random_uuid(),'h','{}',lines,'sandbox',42,0);exception when insufficient_privilege then ok:=true;end;
+  if not ok then raise exception 'Anonymous payment RPC allowed';end if;
+  checks:=checks||array['anonymous catalogue/quote access','anonymous stock writes denied','anonymous payment RPC denied'];
+  execute 'reset role';perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);execute 'set local role authenticated';
+  if public.is_admin() then raise exception 'Ordinary user treated as staff';end if;
+  ok:=false;begin perform public.admin_set_available_stock(vid,9,99);exception when others then ok:=SQLERRM like 'Staff access%';end;
+  if not ok then raise exception 'Ordinary user stock update allowed';end if;
+  checks:=checks||array['ordinary user staff/stock access denied'];
+  execute 'reset role';perform set_config('request.jwt.claim.sub','',true);
+  payment:=public.create_shop_payment(k,'h',jsonb_build_object('name','Fixture Test','phone','2290100000000','email','fixture@example.invalid','address','Adresse fictive test','city','Cotonou'),lines,'sandbox',42,0,quote->'items');
+  if (select stock_quantity from product_variants where id=vid)<>8 then raise exception 'Reservation failed';end if;
+  if (public.create_shop_payment(k,'h',jsonb_build_object('name','Fixture Test'),lines,'sandbox',42,0,quote->'items')->>'id')<>(payment->>'id') then raise exception 'Duplicate order created';end if;
+  update product_variants set price=95 where id=vid;
+  if (select unit_price from order_items where order_id=(payment->>'order_id')::uuid)<>90 then raise exception 'Historical price changed';end if;
+  ok:=false;begin perform public.create_shop_payment(gen_random_uuid(),'h',jsonb_build_object('name','Fixture Test','phone','2290100000000','email','fixture@example.invalid','address','Adresse fictive test','city','Cotonou'),lines,'sandbox',42,0,quote->'items');exception when others then ok:=SQLERRM='PRICE_CHANGED';end;
+  if not ok then raise exception 'Price change during checkout not rejected';end if;
+  checks:=checks||array['atomic reservation','checkout idempotence','historical snapshots immutable','price race rollback'];
+  update payment_attempts set provider_id=900000001 where id=(payment->>'id')::uuid;
+  perform apply_shop_payment((payment->>'id')::uuid,900000001,90,42,'sandbox','paid','fixture:paid');
+  perform apply_shop_payment((payment->>'id')::uuid,900000001,90,42,'sandbox','paid','fixture:paid');
+  if (select count(*) from notification_jobs where order_id=(payment->>'order_id')::uuid)<>2 then raise exception 'Notification outbox not idempotent';end if;
+  if (select count(*) from inventory_movements where payment_id=(payment->>'id')::uuid and kind='commit')<>1 then raise exception 'Duplicate inventory commit';end if;
+  quote:=public.quote_shop_basket(lines,0);
+  second_payment:=public.create_shop_payment(gen_random_uuid(),'h',jsonb_build_object('name','Fixture Test','phone','2290100000000','email','fixture@example.invalid','address','Adresse fictive test','city','Cotonou'),lines,'sandbox',42,0,quote->'items');
+  update payment_attempts set provider_id=900000002 where id=(second_payment->>'id')::uuid;
+  perform apply_shop_payment((second_payment->>'id')::uuid,900000002,95,42,'sandbox','cancelled','fixture:cancel');
+  if (select stock_quantity from product_variants where id=vid)<>7 then raise exception 'Retryable cancellation released stock';end if;
+  perform apply_shop_payment((second_payment->>'id')::uuid,900000002,95,42,'sandbox','expired','fixture:expire');
+  perform apply_shop_payment((second_payment->>'id')::uuid,900000002,95,42,'sandbox','expired','fixture:expire-again');
+  if (select stock_quantity from product_variants where id=vid)<>8 then raise exception 'Expiry release not exactly once';end if;
+  checks:=checks||array['duplicate payment event ignored','notification outbox exactly once','retryable cancellation holds stock','expiry releases once'];
+  insert into live_test_authorizations(staff_user_id,merchant_account_id,amount_xof,expires_at) values(staff,42,95,now()+interval '5 minutes') returning id into permit_id;
+  payment:=public.create_authorized_live_test_payment(permit_id,staff,gen_random_uuid(),'h',jsonb_build_object('name','Fixture Test','phone','2290100000000','email','fixture@example.invalid','address','Adresse fictive test','city','Cotonou'),lines,42,0,quote->'items',100);
+  ok:=false;begin perform public.create_authorized_live_test_payment(permit_id,staff,gen_random_uuid(),'h',jsonb_build_object('name','Fixture Test','phone','2290100000000','email','fixture@example.invalid','address','Adresse fictive test','city','Cotonou'),lines,42,0,quote->'items',100);exception when others then ok:=SQLERRM='Authorization already used';end;
+  if not ok then raise exception 'Owner intent reused';end if;
+  checks:=checks||array['owner authorization bound to one payment','second financial intent denied'];
+  -- This exception rolls back ALL fixture data, including synthetic approvals/users.
+  raise exception using errcode='ZX001',message='ROLLBACK_FIXTURES';
+ exception when sqlstate 'ZX001' then
+  return jsonb_build_object('passed',true,'checks',checks,'count',cardinality(checks),'all_fixture_mutations_rolled_back',true,'provider_requests',0);
+ end;
+end $$;
+select pg_temp.check_recette() as nonfinancial_result;

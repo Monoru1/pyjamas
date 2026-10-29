@@ -1,9 +1,10 @@
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
 import { createHash, createHmac } from 'node:crypto';
+import { createQuoteToken, verifyQuoteToken, type ShopQuote } from '@/lib/payments/quotes';
 import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
-import { paymentDatabase } from '@/lib/payments/server';
-import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse } from '@/lib/payments/fedapay';
+import { paymentDatabase, resolvedTransaction } from '@/lib/payments/server';
+import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
@@ -15,10 +16,12 @@ export async function POST(request: Request) {
     requireBrowserOrigin(request, config.origin);
     const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
     if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });
-    if (config.environment === 'sandbox') {
+    let staffId: string | undefined;
+    if (config.staffOnly) {
       const auth = await createClient();
       const { data: { user } } = await auth.auth.getUser();
       const { data: allowed } = user ? await auth.rpc('is_admin') : { data: false };
+      staffId = user?.id;
       if (!allowed) return Response.json({ error: 'Test réservé à l’équipe.' }, { status: 403 });
     }
     const input = parsed.data;
@@ -28,17 +31,22 @@ export async function POST(request: Request) {
     if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
-    const { data, error } = await db.rpc('create_shop_payment', {
-      p_key: input.idempotencyKey, p_hash: hash, p_customer: input.customer, p_lines: input.lines,
-      p_environment: config.environment, p_account: config.accountId, p_shipping: config.shipping,
-    });
+    const {data:quoteData,error:quoteError}=await db.rpc('quote_shop_basket',{p_lines:input.lines,p_shipping:config.shipping});
+    if(quoteError || !quoteData)return Response.json({error:'Article indisponible. Actualisez votre panier.'},{status:409});
+    const quote=quoteData as ShopQuote;
+    if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
+    if(config.liveTest && quote.amount_xof>config.testCeiling!)return Response.json({error:'Montant supérieur au plafond de recette autorisé.'},{status:403});
+    const args={p_key:input.idempotencyKey,p_hash:hash,p_customer:input.customer,p_lines:input.lines,p_account:config.accountId,p_shipping:config.shipping,p_expected_items:quote.items};
+    const {data,error}=config.liveTest
+      ? await db.rpc('create_authorized_live_test_payment',{...args,p_authorization:config.authorizationId,p_staff:staffId,p_ceiling:config.testCeiling})
+      : await db.rpc('create_shop_payment',{...args,p_environment:config.environment});
     if (error || !data) return Response.json({ error: 'Article indisponible, stock insuffisant ou demande modifiée.' }, { status: 409 });
     const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string };
     paymentId = payment.id; reference = payment.public_token;
+    if(Number(payment.amount_xof)!==Number(quote.amount_xof))return Response.json({error:'Une commande antérieure est déjà figée à un autre montant. Consultez son suivi avant de recommencer.',reference},{status:409});
     const referenceUrl = `/paiement?reference=${payment.public_token}`;
     if (payment.status === 'paid') return Response.json({ url: `${config.origin}${referenceUrl}`, reference: payment.public_token, internal: true });
     if (['expired', 'refunded', 'partially_refunded'].includes(payment.status)) return Response.json({ error: 'Cette demande est terminée. Consultez son suivi.', reference: payment.public_token }, { status: 409 });
-    if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url, config.environment), reference: payment.public_token });
     let providerId = payment.provider_id;
     if (!providerId) {
       // Durable compare-and-set: only ONE worker may ever POST /transactions for
@@ -58,6 +66,10 @@ export async function POST(request: Request) {
       const { data: attached, error: attachError } = await db.from('payment_attempts').update({ provider_id: providerId }).eq('id', payment.id).is('provider_id', null).select('id');
       if (attachError || attached?.length !== 1) throw new Error('Confirmation différée.');
     }
+    // Verify the actual recipient and immutable amount BEFORE offering a payment
+    // link. A mismatched API key must never redirect a tester to another merchant.
+    validateTransaction(await resolvedTransaction(providerId), { id: payment.id, provider_id: providerId, amount_xof: payment.amount_xof, purpose: 'shop', order_id: payment.order_id, merchant_account_id: config.accountId });
+    if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url, config.environment), reference: payment.public_token });
     // Token generation is safely retryable for an already persisted transaction.
     const token = await providerRequest(`/transactions/${providerId}/token`, { method: 'POST', body: '{}' });
     const url = safeCheckoutUrl(token.url, config.environment);

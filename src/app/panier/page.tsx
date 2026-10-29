@@ -14,7 +14,7 @@ export default async function CartPage() {
   let payment: ReturnType<typeof checkoutConfiguration> | null = null;
   try {
     const config = checkoutConfiguration();
-    if (config.environment === 'live') payment = config;
+    if (!config.staffOnly) payment = config;
     else {
       const db = await createClient();
       const { data: { user } } = await db.auth.getUser();
@@ -43,7 +43,7 @@ export default async function CartPage() {
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
           <CustomerForm onlinePayment={Boolean(payment)} />
           <CartSummary />
-          {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} />}
+          {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} liveTest={payment.liveTest} />}
           <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
       </div>

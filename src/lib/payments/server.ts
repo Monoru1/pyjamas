@@ -23,6 +23,7 @@ export async function reconcilePayment(id: string, eventId: string, candidatePro
   const config = paymentConfiguration();
   const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id').eq('id', id).eq('environment', config.environment).single();
   if (error || !payment?.order_id || (!payment.provider_id && !candidateProviderId)) throw new Error('Paiement introuvable.');
+  if (config.liveTest && (Number(payment.amount_xof) > config.testCeiling! || payment.merchant_account_id !== config.accountId)) throw new Error('Recette hors autorisation.');
   const providerId = payment.provider_id ?? candidateProviderId!;
   const transaction = await resolvedTransaction(providerId);
   const state = validateTransaction(transaction, { ...payment, provider_id: providerId });

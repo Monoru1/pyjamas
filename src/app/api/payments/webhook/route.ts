@@ -6,8 +6,10 @@ export async function POST(request: Request) {
   try {
     requireJsonRequest(request);
     const raw = await readLimitedBody(request, 64000);
+    const signingSecret=process.env.FEDAPAY_WEBHOOK_SECRET;
+    if(!signingSecret)return Response.json({error:'Signature non configurée.'},{status:503});
+    if (!verifyWebhook(raw, request.headers.get('x-fedapay-signature'), signingSecret)) return Response.json({ error: 'Signature invalide.' }, { status: 400 });
     const config = paymentConfiguration();
-    if (!verifyWebhook(raw, request.headers.get('x-fedapay-signature'), config.webhookSecret)) return Response.json({ error: 'Signature invalide.' }, { status: 400 });
     const event = JSON.parse(raw) as { id?: unknown; name?: unknown; entity?: { id?: unknown; custom_metadata?: { payment_id?: unknown } } };
     if (!Number.isSafeInteger(event.id) || !Number.isSafeInteger(event.entity?.id)) return Response.json({ error: 'Événement invalide.' }, { status: 400 });
     if (typeof event.name !== 'string' || !event.name.startsWith('transaction.')) return Response.json({ received: true });

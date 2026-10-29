@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 const labels: Record<string,string> = { pending:'En attente de confirmation', paid:'Paiement confirmé', failed:'Paiement refusé — nouvelle tentative possible chez FedaPay', cancelled:'Tentative annulée — nouvelle tentative possible chez FedaPay', expired:'Paiement expiré', refunded:'Paiement remboursé', partially_refunded:'Paiement partiellement remboursé' };
 export function PaymentStatus({ reference }: { reference: string }) {
-  const [result, setResult] = useState<{status:string;mode?:string;order?:{order_number:string;needs_attention:boolean}}>({ status:'pending' });
+  const [result, setResult] = useState<{status:string;mode?:string;liveTest?:boolean;order?:{order_number:string;needs_attention:boolean}}>({ status:'pending' });
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -24,6 +24,7 @@ export function PaymentStatus({ reference }: { reference: string }) {
     return () => { controller.abort(); clearTimeout(timer); };
   }, [reference, retry]);
   return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status">
+    {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
     {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
     <h2 className="text-2xl">{labels[result.status] || labels.pending}</h2>
     {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
