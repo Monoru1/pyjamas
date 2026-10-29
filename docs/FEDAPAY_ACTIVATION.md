@@ -135,3 +135,7 @@ Consultée le 29 octobre 2026 :
 - https://docs-v1.fedapay.com/development/webhooks
 
 Le flux API/Bearer utilise le propre compte marchand : aucune application OAuth nécessaire ou créée. La clé publique FedaPay n’est pas nécessaire à cette redirection générée côté serveur.
+
+## Mise à jour recette — identifiant marchand (29 octobre 2026)
+
+L'identifiant numérique `101915` a été observé dans cinq logs API Live du compte FedaPay par le propriétaire (méthodes GET/POST/DELETE ; réponses 200/403). Il est distinct de la référence dashboard `acc_2847692982`. La variable Netlify `FEDAPAY_ACCOUNT_ID` a été surchargée à `101915` **uniquement dans le contexte deploy-preview** ; la production est inchangée. Le compte staff recette est actif avec rôle admin (vérification SQL). `FEDAPAY_ENABLED=false`, `PAYMENT_CHECKOUT_ENABLED=false` et `PAYMENT_LIVE_TEST_ENABLED=false` restent en place. Ce commit documentaire déclenche un nouveau build de la PR pour appliquer les variables mises à jour ; il ne constitue pas une validation d'encaissement Live.
