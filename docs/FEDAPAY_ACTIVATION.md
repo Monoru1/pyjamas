@@ -38,10 +38,11 @@ Compte staff **préparé**, pas encore connectable : créer/inviter un utilisate
 - Panier : POST /api/payments/quote relit la base, actualise Zustand et présente le nouveau total avant une deuxième confirmation explicite.
 - Devis signé cinq minutes ; nouvelle lecture et comparaison des prix sous verrou SQL avant création. Prix ou panier modifié = 409 et nouvelle confirmation, avant tout appel FedaPay.
 - Les snapshots des anciennes commandes restent inchangés. Une intention existante à un autre total n’est pas facturée silencieusement.
+- Après actualisation, la reprise relit le snapshot de sa propre commande réservée : même si la dernière unité n’est plus dans le stock public, le total figé est présenté à nouveau, puis le même paiement peut être repris sans double réservation/création.
 
 ## Mode Live privé implémenté, non activé
 
-Aucun CONTEXT falsifié. Conditions simultanées :
+Aucun CONTEXT falsifié. Next conserve uniquement les métadonnées non secrètes réellement fournies au build Netlify (contexte, REVIEW_ID, origine), car ces variables ne sont pas garanties dans les fonctions à l’exécution. Ne pas saisir PAYMENT_BUILD_* manuellement. Voir https://docs.netlify.com/build/functions/environment-variables/. Conditions simultanées :
 
 1. CONTEXT=deploy-preview, REVIEW_ID=11, origine exacte https://deploy-preview-11--pyjamas25.netlify.app.
 2. URL Supabase exacte de recette et PAYMENT_DATABASE_ISOLATED=true.
@@ -100,13 +101,15 @@ Pas de schedule Netlify en preview : déclencher manuellement POST /api/payments
 ## Tests et limites
 
 - ESLint, TypeScript, build Next.js optimisé avec base recette : réussis.
-- **91 tests automatisés / 14 fichiers : réussis**, dont devis changé/périmé, cap Live, accès staff, non-divulgation des secrets, signatures invalides, refus de lien vers un marchand incohérent et reprise des paiements/notifications.
+- **94 tests automatisés / 14 fichiers : réussis**, dont devis changé/périmé, cap Live, accès staff, non-divulgation des secrets, signatures invalides, refus de lien vers un marchand incohérent, reprise après réservation de la dernière unité et reprise des paiements/notifications.
 - **20 assertions PostgreSQL recette : réussies**, fixtures annulées : prix admin, résumé, promotion de la bonne taille, stock sans écriture de prix, RLS anon/staff/non-staff, réservation, idempotence, snapshots immuables, course de prix, doublon événement/outbox, annulation, expiration, intention financière unique.
 - Audit npm de production : zéro vulnérabilité.
 - Advisors sécurité : aucune erreur ; quatre WARN pour RPC SECURITY DEFINER héritées (is_admin, is_manager, is_super_admin, transition logistique), avec contrôles d’identité. INFO budget sans politique publique, intentionnel.
 - Advisors performance : FK payment_events.payment_id indexée ; restent 14 politiques permissives multiples héritées et un index historique en double. 38 index inutilisés attendus sur base neuve ; aucun index supprimé.
 
 Limites : SQL dans une seule session, pas de charge multi-connexions ; aucune transaction fournisseur ou livraison FedaPay authentique ; aucune réception réelle d’e-mail. Interface staff à connecter après création Auth. Contrôles preview et mobile : voir le rapport de readiness.
+
+Preview du commit d29bf8a : CI quality et déploiement Netlify réussis, scan Netlify 441 fichiers sans secret détecté. HTTP réel : accueil/catalogue/panier 200, admin anonyme 307 vers connexion, référence invalide 400, webhook invalide 400, admission désactivée 503, réconciliation sans secret 401. Ce 503 est un refus intentionnel, pas un paiement lancé. Contrôle mobile : accueil 390 px, miniature 1/4 vers 2/4, taille M, panier 320 px sans débordement, quantité 2 et total 50 000 FCFA. Aucun formulaire de commande soumis. Le complément de reprise est vérifié par la suite de 94 tests avant publication. Le panier à deux unités a persisté après actualisation complète, puis a été vidé sans créer de commande.
 
 ## Scénario unique proposé — non lancé, à approuver
 

@@ -3,6 +3,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'partially_refunded';
 export type ProviderTransaction = { id: number; amount: number | string; status: string; currency?: { iso: string }; currency_id?: number; account_id?: number; merchant_reference?: string; custom_metadata?: { payment_id?: string; purpose?: string; order_id?: string } };
 
+/** Real Netlify build metadata, captured by Next config for its server bundle. */
+export function paymentDeployment(env:Record<string,string|undefined>=process.env) {
+  const built=env===process.env;
+  return {context:(built&&process.env.PAYMENT_BUILD_CONTEXT)||env.CONTEXT,
+    reviewId:(built&&process.env.PAYMENT_BUILD_REVIEW_ID)||env.REVIEW_ID,
+    previewOrigin:(built&&process.env.PAYMENT_BUILD_ORIGIN)||env.DEPLOY_PRIME_URL};
+}
+
 export function paymentConfiguration(env: Record<string, string | undefined> = process.env) {
   const environment = env.FEDAPAY_ENVIRONMENT;
   if (env.FEDAPAY_ENABLED !== 'true' || !['sandbox', 'live'].includes(environment || '')
@@ -13,17 +21,18 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   if (environment === 'sandbox' && (env.PAYMENT_DATABASE_ISOLATED !== 'true'
     || !env.NEXT_PUBLIC_SUPABASE_URL || new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname === 'pukvrerdloudfiphomsj.supabase.co')) throw new Error('Base de test isolée requise.');
   const liveTest = environment === 'live' && env.PAYMENT_LIVE_TEST_ENABLED === 'true';
-  const origin = env.CONTEXT === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (env.DEPLOY_PRIME_URL || env.PAYMENT_SITE_URL);
+  const deployment=paymentDeployment(env);
+  const origin = deployment.context === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (deployment.previewOrigin || env.PAYMENT_SITE_URL);
   if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
   const testCeiling = Number(env.PAYMENT_LIVE_TEST_MAX_XOF);
   if (liveTest) {
-    if (env.CONTEXT !== 'deploy-preview' || env.REVIEW_ID !== '11'
+    if (deployment.context !== 'deploy-preview' || deployment.reviewId !== '11'
       || new URL(origin).origin !== 'https://deploy-preview-11--pyjamas25.netlify.app'
       || env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
       || env.PAYMENT_DATABASE_ISOLATED !== 'true' || env.FEDAPAY_LIVE_APPROVED === 'true'
       || !Number.isSafeInteger(testCeiling) || testCeiling < 1 || testCeiling > 1000
       || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || '')) throw new Error('Recette Live non autorisée.');
-  } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || env.CONTEXT !== 'production')) throw new Error('Production non validée.');
+  } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || deployment.context !== 'production')) throw new Error('Production non validée.');
   const shipping = Number(env.PAYMENT_SHIPPING_XOF);
   if (!env.PAYMENT_SHIPPING_XOF || !Number.isSafeInteger(shipping) || shipping < 0 || shipping > 1_000_000) throw new Error('Tarif de livraison non configuré.');
   return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET,

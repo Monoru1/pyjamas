@@ -67,3 +67,13 @@ it('allows live acceptance only on PR 11 and the exact isolated database with a 
  expect(paymentConfiguration(acceptance)).toMatchObject({liveTest:true,staffOnly:true,testCeiling:100});
  for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'1001'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
 });
+it('uses the real build metadata when Netlify does not provide CONTEXT/REVIEW_ID at runtime',()=>{
+ try {
+  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',PAYMENT_BUILD_REVIEW_ID:'11',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-11--pyjamas25.netlify.app'};
+  for(const [key,value]of Object.entries(values))vi.stubEnv(key,value);
+  vi.stubEnv('CONTEXT',undefined);vi.stubEnv('REVIEW_ID',undefined);
+  expect(paymentConfiguration().liveTest).toBe(true);
+  vi.stubEnv('CONTEXT','production');expect(paymentConfiguration().liveTest).toBe(true);
+  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID','12');expect(()=>paymentConfiguration()).toThrow();
+ }finally{vi.unstubAllEnvs();}
+});

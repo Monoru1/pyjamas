@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { createQuoteToken } from './quotes';
-import { createHmac } from 'node:crypto';
+import { createHmac, createHash } from 'node:crypto';
+import { checkoutSchema } from './checkout-input';
 const mocks=vi.hoisted(()=>({db:{rpc:vi.fn(),from:vi.fn()},resolved:vi.fn(),reconcile:vi.fn(),provider:vi.fn(),allowed:true,notifications:vi.fn()}));
 vi.mock('@/lib/payments/server',()=>({paymentDatabase:()=>mocks.db,reconcilePayment:mocks.reconcile,resolvedTransaction:mocks.resolved}));
 vi.mock('@/lib/payments/notifications',()=>({processNotificationJobs:mocks.notifications}));
@@ -109,4 +110,17 @@ it('live preview rejects anonymous staff access and an amount above the owner ce
 });
 it('rejects an invalid webhook even when new payment processing is disabled',async()=>{
  vi.stubEnv('FEDAPAY_ENABLED','false');expect((await webhook(signedEvent(false))).status).toBe(400);expect(mocks.reconcile).not.toHaveBeenCalled();
+});
+it('reconfirms and resumes the same reserved last unit after refresh without rereading available stock or creating a charge',async()=>{
+ const parsed=checkoutSchema.parse(input);
+ const hash=createHash('sha256').update(JSON.stringify({customer:parsed.customer,lines:parsed.lines})).digest('hex');
+ mocks.db.from.mockImplementation(()=>chain({...payment,request_hash:hash,environment:'sandbox',merchant_account_id:42,items:quote.items}));
+ mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?null:{...payment,provider_id:42},error:null}));
+ const review=await checkout(request({...input,quoteToken:undefined}));
+ expect(review.status).toBe(409);const data=await review.json();expect(data.quote.reserved).toBe(true);expect(data.quote.amount_xof).toBe(15500);
+ expect(mocks.provider).not.toHaveBeenCalled();
+ expect((await checkout(request({...input,quoteToken:data.quoteToken}))).status).toBe(200);
+ expect(mocks.db.rpc.mock.calls.some(([name])=>name==='quote_shop_basket')).toBe(false);
+ expect(mocks.provider.mock.calls.map(([path])=>path)).toEqual(['/transactions/42/token']);
+ mocks.provider.mockClear();expect((await checkout(request({...input,customer:{...input.customer,name:'Other Name'}}))).status).toBe(409);expect(mocks.provider).not.toHaveBeenCalled();
 });

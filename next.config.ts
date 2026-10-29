@@ -7,7 +7,9 @@ export function deploymentSiteOrigin(env: Record<string, string | undefined>) {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  env: { SITE_ORIGIN: deploymentSiteOrigin(process.env), PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false', BUILD_COMMIT_REF: process.env.COMMIT_REF || 'local' },
+  // Only public deploy metadata is embedded, never payment or database secrets.
+  // Netlify does not guarantee CONTEXT/REVIEW_ID in the function runtime.
+  env: { SITE_ORIGIN: deploymentSiteOrigin(process.env), PREVIEW_QA_BUILD: process.env.CONTEXT === 'deploy-preview' ? 'true' : 'false', BUILD_COMMIT_REF: process.env.COMMIT_REF || 'local', PAYMENT_BUILD_CONTEXT: process.env.CONTEXT || '', PAYMENT_BUILD_REVIEW_ID: process.env.REVIEW_ID || '', PAYMENT_BUILD_ORIGIN: process.env.DEPLOY_PRIME_URL || '' },
   async headers() {
     const preview = process.env.CONTEXT === 'deploy-preview';
     const securityHeaders = [

@@ -31,6 +31,8 @@ Actions administrateur de prix et stock séparées, anciennes valeurs contrôlé
 
 Devis serveur signé cinq minutes, actualisation des prix du panier puis confirmation explicite du nouveau total. Relecture serveur et contrôle de la même grille de prix sous verrou SQL au checkout. Prix modifié = refus/reconfirmation avant création fournisseur. Aucune valeur de montant fournie par le client n’est acceptée.
 
+Après actualisation d’une intention déjà réservée, la revue utilise le snapshot de cette commande et exige sa confirmation. Elle peut reprendre la dernière unité déjà réservée sans refaire une vérification de stock public ni créer un autre paiement. Le changement de coordonnées/panier ne peut pas réutiliser cette intention.
+
 Aucun prix commercial modifié ; les 53 prix/promotions/stocks production ont été relus et correspondent au snapshot initial. Les résumés importés étaient déjà cohérents. Les commandes historiques ne sont pas recalculées.
 
 ### FedaPay Live privé
@@ -65,7 +67,7 @@ Migration commerce antérieure 20261029093122_fedapay_commerce.sql réutilisée 
 |---|---|
 | ESLint | Réussi |
 | TypeScript | Réussi |
-| Vitest | 91 tests / 14 fichiers réussis |
+| Vitest | 94 tests / 14 fichiers réussis |
 | Build Next.js optimisé, variables publiques recette | Réussi |
 | npm audit production | 0 vulnérabilité |
 | Assertions PostgreSQL recette | 20 réussies, mutations synthétiques annulées |
@@ -79,6 +81,8 @@ Couverture automatisée : un/multiples articles et tailles, épuisement, quantit
 Les 20 assertions cloud testent le schéma complet et les vrais rôles PostgreSQL ; les tests PGlite supplémentaires utilisent des fixtures. Aucun test de charge à connexions concurrentes, aucune transaction fournisseur, aucun encaissement sandbox/Live, aucune réception réelle d’e-mail. Les événements signés de tests ne constituent pas une livraison authentique FedaPay.
 
 Validation navigateur avant ce complément : menu et panier à 390/320 px, tailles S à 3XL, miniature passant de 1/4 à 2/4, ajout M, actualisation persistante, quantité 2 puis suppression. Vérification de la nouvelle preview après déploiement consignée dans le complément final. Connexion staff et checkout financier non testés dans le navigateur tant que le compte/secrets manquent.
+
+Complément réellement déployé d29bf8a : CI quality réussie, Netlify ready, headers/redirections réussis, scan Netlify de 441 fichiers sans secret détecté. Accueil/catalogue/panier 200 ; admin anonyme 307 vers /admin/login ; référence invalide 400 ; webhook invalide 400 ; checkout désactivé 503 ; réconciliation non autorisée 401. Pas de paiement initié. Accueil 390 px et panier 320 px sans débordement ; miniature 2/4, sélection M à 25 000 FCFA et quantité 2 donnant 50 000 FCFA vérifiées sur le catalogue recette. Aucun formulaire WhatsApp/commande envoyé. Le correctif de reprise de dernière unité est couvert par les 94 tests avant publication. Le panier à deux unités a persisté après actualisation complète, puis a été vidé sans créer de commande.
 
 ## 5. Netlify et webhook
 

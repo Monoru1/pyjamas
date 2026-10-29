@@ -1,5 +1,12 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-export type ShopQuote = { amount_xof:number; shipping_xof:number; currency:'XOF'; items:{variantId:string;quantity:number;unitPrice:number;name:string;maxStock:number}[] };
+export type ShopQuote = { amount_xof:number; shipping_xof:number; currency:'XOF'; reserved?:boolean; items:{variantId:string;quantity:number;unitPrice:number;name:string;maxStock:number}[] };
+/** A retry resumes the already reserved order, including its immutable prices. */
+export function reservedPaymentQuote(payment:{amount_xof:number;items:ShopQuote['items']}):ShopQuote {
+  const items=payment.items.map(i=>({...i,unitPrice:Number(i.unitPrice),maxStock:i.quantity}));
+  const shipping=Number(payment.amount_xof)-items.reduce((sum,i)=>sum+i.unitPrice*i.quantity,0);
+  if(!items.length||!Number.isSafeInteger(shipping)||shipping<0)throw new Error('Snapshot de commande invalide.');
+  return {amount_xof:Number(payment.amount_xof),shipping_xof:shipping,currency:'XOF',reserved:true,items};
+}
 export function quoteFingerprint(quote: ShopQuote) {
   return createHash('sha256').update(JSON.stringify({currency:quote.currency,amount:quote.amount_xof,shipping:quote.shipping_xof,items:[...quote.items].sort((a,b)=>a.variantId.localeCompare(b.variantId)).map(i=>({id:i.variantId,quantity:i.quantity,price:i.unitPrice}))})).digest('hex');
 }

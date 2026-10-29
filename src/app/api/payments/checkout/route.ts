@@ -1,6 +1,6 @@
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
 import { createHash, createHmac } from 'node:crypto';
-import { createQuoteToken, verifyQuoteToken, type ShopQuote } from '@/lib/payments/quotes';
+import { createQuoteToken, verifyQuoteToken, reservedPaymentQuote, type ShopQuote } from '@/lib/payments/quotes';
 import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase, resolvedTransaction } from '@/lib/payments/server';
@@ -31,10 +31,20 @@ export async function POST(request: Request) {
     if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
-    const {data:quoteData,error:quoteError}=await db.rpc('quote_shop_basket',{p_lines:input.lines,p_shipping:config.shipping});
-    if(quoteError || !quoteData)return Response.json({error:'Article indisponible. Actualisez votre panier.'},{status:409});
-    const quote=quoteData as ShopQuote;
-    if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
+    const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items').eq('idempotency_key',input.idempotencyKey).maybeSingle();
+    if(lookupError)throw new Error('Recherche de commande indisponible.');
+    let quote:ShopQuote;
+    if(existing && !Array.isArray(existing)) {
+      if(existing.request_hash!==hash || existing.environment!==config.environment || existing.merchant_account_id!==config.accountId)return Response.json({error:'Cette demande est déjà liée à une autre commande.'},{status:409});
+      // Its final unit may already be reserved by THIS order. Do not check the
+      // remaining public stock or reprice an immutable order when resuming it.
+      quote=reservedPaymentQuote(existing);
+    } else {
+      const {data:quoteData,error:quoteError}=await db.rpc('quote_shop_basket',{p_lines:input.lines,p_shipping:config.shipping});
+      if(quoteError || !quoteData)return Response.json({error:'Article indisponible. Actualisez votre panier.'},{status:409});
+      quote=quoteData as ShopQuote;
+    }
+    if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:quote.reserved?'Vérifiez puis confirmez le montant figé de votre commande réservée.':'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
     if(config.liveTest && quote.amount_xof>config.testCeiling!)return Response.json({error:'Montant supérieur au plafond de recette autorisé.'},{status:403});
     const args={p_key:input.idempotencyKey,p_hash:hash,p_customer:input.customer,p_lines:input.lines,p_account:config.accountId,p_shipping:config.shipping,p_expected_items:quote.items};
     const {data,error}=config.liveTest
