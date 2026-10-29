@@ -11,6 +11,7 @@ import { POST as checkout } from '@/app/api/payments/checkout/route';
 import { POST as webhook } from '@/app/api/payments/webhook/route';
 import { POST as reconcile } from '@/app/api/payments/reconcile/route';
 import { GET as status } from '@/app/api/payments/status/route';
+import { GET as inspect } from '@/app/api/payments/inspect/route';
 const payment={id:'11111111-1111-4111-8111-111111111111',order_id:'22222222-2222-4222-8222-222222222222',public_token:'33333333-3333-4333-8333-333333333333',amount_xof:15500,provider_id:null as number|null,checkout_url:null as string|null,status:'pending'};
 const quote={amount_xof:15500,shipping_xof:500,currency:'XOF' as const,items:[{variantId:'55555555-5555-4555-8555-555555555555',quantity:1,unitPrice:15000,name:'Fixture',maxStock:5}]};
 const input={quoteToken:createQuoteToken(quote,'fixture-reconcile-secret-32-characters'),idempotencyKey:'44444444-4444-4444-8444-444444444444',customer:{name:'Fixture Test',phone:'+229 01 00 00 00 00',email:'test@example.test',address:'Adresse fictive 123',city:'Cotonou'},lines:[{variantId:'55555555-5555-4555-8555-555555555555',quantity:1}]};
@@ -110,6 +111,17 @@ it('live preview rejects anonymous staff access and an amount above the owner ce
 });
 it('rejects an invalid webhook even when new payment processing is disabled',async()=>{
  vi.stubEnv('FEDAPAY_ENABLED','false');expect((await webhook(signedEvent(false))).status).toBe(400);expect(mocks.reconcile).not.toHaveBeenCalled();
+});
+it('requires staff for read-only provider inspection and reports comparisons without private fields',async()=>{
+ const req=()=>new Request(`https://preview.example.test/api/payments/inspect?payment=${payment.id}`);
+ mocks.allowed=false;expect((await inspect(req())).status).toBe(403);expect(mocks.resolved).not.toHaveBeenCalled();
+ mocks.allowed=true;
+ mocks.db.from.mockImplementation(()=>chain({...payment,provider_id:42,purpose:'shop',merchant_account_id:42}));
+ mocks.resolved.mockResolvedValue({id:42,amount:15500,status:'pending',currency:{iso:'XOF'},account_id:42,merchant_reference:null,custom_metadata:{payment_id:payment.id,order_id:payment.order_id,purpose:'shop'},customer:{email:'private@example.invalid'},transaction_key:'private-provider-token'});
+ const response=await inspect(req());const result=await response.json();
+ expect(response.status).toBe(200);expect(result.firstMismatch).toBe('merchant_reference');expect(result.checks.paymentReference).toBe(true);expect(result.financialMutation).toBe(false);
+ expect(JSON.stringify(result)).not.toContain('private@example.invalid');expect(JSON.stringify(result)).not.toContain('private-provider-token');
+ expect(mocks.provider).not.toHaveBeenCalled();expect(mocks.db.rpc).not.toHaveBeenCalled();
 });
 it('reconfirms and resumes the same reserved last unit after refresh without rereading available stock or creating a charge',async()=>{
  const parsed=checkoutSchema.parse(input);
