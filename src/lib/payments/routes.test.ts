@@ -27,7 +27,7 @@ beforeEach(()=>{
  for(const [key,value] of Object.entries(env))vi.stubEnv(key,value);
  mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?quote:{...payment},error:null}));
  mocks.db.from.mockImplementation(()=>chain([{id:payment.id}]));
- mocks.provider.mockImplementation(async(path:string)=>path.endsWith('/token')?{url:'https://sandbox-checkout.fedapay.com/fixture'}:{id:42});
+ mocks.provider.mockImplementation(async(path:string)=>path.endsWith('/token')?{token:'fixture',url:'https://sandbox-checkout.fedapay.com/fixture'}:{id:42});
  mocks.resolved.mockResolvedValue({id:42,amount:15500,status:'pending',currency:{iso:'XOF'},account_id:42,merchant_reference:payment.id,custom_metadata:{payment_id:payment.id,order_id:payment.order_id,purpose:'shop'}});
 });
 afterEach(()=>vi.unstubAllEnvs());

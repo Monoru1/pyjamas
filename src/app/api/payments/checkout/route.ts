@@ -3,8 +3,9 @@ import { createHash, createHmac } from 'node:crypto';
 import { createQuoteToken, verifyQuoteToken, reservedPaymentQuote, type ShopQuote } from '@/lib/payments/quotes';
 import { checkoutSchema } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
-import { paymentDatabase, resolvedTransaction } from '@/lib/payments/server';
-import { checkoutConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
+import { paymentDatabase } from '@/lib/payments/server';
+import { initializeStoredCheckout, CheckoutInitializationError } from '@/lib/payments/initialization';
+import { checkoutConfiguration, providerRequest, transactionFromResponse, TransactionMismatchError } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
@@ -77,24 +78,14 @@ export async function POST(request: Request) {
       const { data: attached, error: attachError } = await db.from('payment_attempts').update({ provider_id: providerId }).eq('id', payment.id).is('provider_id', null).select('id');
       if (attachError || attached?.length !== 1) throw new Error('Confirmation différée.');
     }
-    // Verify the actual recipient and immutable amount BEFORE offering a payment
-    // link. A mismatched API key must never redirect a tester to another merchant.
-    initializationStage = 'verify_provider_transaction';
-    validateTransaction(await resolvedTransaction(providerId), { id: payment.id, provider_id: providerId, amount_xof: payment.amount_xof, purpose: 'shop', order_id: payment.order_id, merchant_account_id: config.accountId });
-    if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url, config.environment), reference: payment.public_token });
-    // Token generation is safely retryable for an already persisted transaction.
-    initializationStage = 'request_checkout_token';
-    const token = await providerRequest(`/transactions/${providerId}/token`, { method: 'POST', body: '{}' });
-    initializationStage = 'validate_checkout_url';
-    const url = safeCheckoutUrl(token.url, config.environment);
-    initializationStage = 'persist_checkout_url';
-    const { error: urlError } = await db.from('payment_attempts').update({ checkout_url: url, last_error: null }).eq('id', payment.id);
-    if (urlError) throw new Error('Confirmation différée.');
-    return Response.json({ url, reference: payment.public_token }, { headers: { 'Cache-Control': 'no-store' } });
+    initializationStage = 'resume_existing_transaction';
+    const initialized = await initializeStoredCheckout({ ...payment, provider_id: providerId }, config);
+    return Response.json({ url: initialized.url, reference: payment.public_token, internal: initialized.internal }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (paymentId) {
-      console.error('payment_initialization_failed', { paymentId, stage: initializationStage, errorType: error instanceof Error ? error.name : 'unknown', mismatchField: error instanceof TransactionMismatchError ? error.field : undefined });
-      await paymentDatabase().from('payment_attempts').update({ last_error: `initialization_failed:${initializationStage}` }).eq('id', paymentId);
+      const code = error instanceof CheckoutInitializationError ? error.code : `initialization_failed:${initializationStage}`;
+      console.error('payment_initialization_failed', { paymentId, stage: initializationStage, code, errorType: error instanceof Error ? error.name : 'unknown', mismatchField: error instanceof TransactionMismatchError ? error.field : undefined });
+      await paymentDatabase().from('payment_attempts').update({ last_error: code }).eq('id', paymentId);
     }
     if (error instanceof HttpInputError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof SyntaxError) return Response.json({ error: 'JSON invalide.' }, { status: 400 });

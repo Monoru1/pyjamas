@@ -81,6 +81,10 @@ export class TransactionMismatchError extends Error {
   }
 }
 
+export class ProviderHttpError extends Error {
+  constructor(readonly status: number) { super('Service de paiement indisponible.'); this.name = 'ProviderHttpError'; }
+}
+
 export function validateTransaction(transaction: ProviderTransaction, payment: { id: string; amount_xof: number; provider_id: number; purpose: string; order_id?: string; merchant_account_id?: number }) {
   if (transaction.id !== payment.provider_id) throw new TransactionMismatchError('provider_id');
   if (Number(transaction.amount) !== Number(payment.amount_xof)) throw new TransactionMismatchError('amount');
@@ -101,8 +105,15 @@ export async function providerRequest(path: string, init: RequestInit = {}, fetc
     ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     cache: 'no-store', signal: AbortSignal.timeout(8_000),
   });
-  if (!response.ok) throw new Error('Le service de paiement est momentanément indisponible.');
+  if (!response.ok) throw new ProviderHttpError(response.status);
   return response.json();
+}
+
+export function checkoutTokenFromResponse(payload: Record<string, unknown>, environment: 'sandbox' | 'live') {
+  const token = (payload['v1/token'] ?? payload) as Record<string, unknown>;
+  if (!token || Array.isArray(token) || typeof token.token !== 'string' || !token.token.length
+    || (payload['v1/token'] && payload.url)) throw new Error('Réponse du lien de paiement invalide.');
+  return safeCheckoutUrl(token.url, environment);
 }
 
 export function transactionFromResponse(payload: Record<string, unknown>): ProviderTransaction {

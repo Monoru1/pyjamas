@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
+import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
 
 const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
@@ -92,4 +92,9 @@ it('reports only the mismatched field name while preserving strict merchant and 
     try {validateTransaction({...actual,...mutation},expected);throw new Error('Mismatch accepted');}
     catch(error) {expect(error).toBeInstanceOf(TransactionMismatchError);expect((error as TransactionMismatchError).field).toBe(field);expect((error as Error).message).not.toContain('payment-1');}
   }
+});
+it('validates documented token responses without accepting mixed environments or ambiguous payloads',()=>{
+ const token={token:'fixture',url:'https://checkout.fedapay.com/fixture'};
+ expect(checkoutTokenFromResponse(token,'live')).toBe(token.url);expect(checkoutTokenFromResponse({'v1/token':token},'live')).toBe(token.url);
+ for(const value of [{url:token.url},{...token,url:'https://sandbox-checkout.fedapay.com/fixture'},{...token,url:'https://evil.example/fixture'},{...token,'v1/token':token}])expect(()=>checkoutTokenFromResponse(value,'live')).toThrow();
 });
