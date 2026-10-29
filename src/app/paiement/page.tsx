@@ -20,7 +20,7 @@ export default async function PaymentPage({ searchParams }: { searchParams: Prom
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/80">Votre commande, en toute sérénité</p>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">Suivi de votre paiement</h1>
           <p className="mt-4 max-w-xl text-sm leading-7 text-white/85 sm:text-base">
-            Nous vérifions directement votre règlement auprès de FedaPay. Conservez cette page jusqu'à la confirmation.
+            Nous vérifions directement votre règlement auprès de FedaPay. Conservez cette page jusqu’à la confirmation.
           </p>
         </header>
         <PaymentStatus reference={reference} />
