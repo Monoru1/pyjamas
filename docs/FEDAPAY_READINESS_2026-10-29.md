@@ -1,5 +1,7 @@
 # La Maison des Pyjamas — préparation FedaPay, 29 octobre 2026
 
+**Complément compte Live confirmé :** voir `docs/FEDAPAY_ACTIVATION.md` pour OAuth, URL exactes, modèles Netlify et nouveau contrôle sans paiement. Le complément porte la suite à 84 tests réussis ; tentative de préparation Netlify refusée en 403, aucune variable modifiée.
+
 **Verdict : NO-GO pour l’encaissement public.** Le code est implémenté et testé ; les clés et les essais réels fournisseur manquent. Aucun paiement réel n’a été annoncé ni effectué. La migration et la production n’ont pas été modifiées pendant cette intervention.
 
 - PR : https://github.com/Monoru1/pyjamas/pull/11
