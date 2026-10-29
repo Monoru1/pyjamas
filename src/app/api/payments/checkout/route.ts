@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   let paymentId: string | undefined;
   let reference: string | undefined;
+  let initializationStage = 'request';
   try {
     requireJsonRequest(request);
     const config = checkoutConfiguration();
@@ -78,18 +79,22 @@ export async function POST(request: Request) {
     }
     // Verify the actual recipient and immutable amount BEFORE offering a payment
     // link. A mismatched API key must never redirect a tester to another merchant.
+    initializationStage = 'verify_provider_transaction';
     validateTransaction(await resolvedTransaction(providerId), { id: payment.id, provider_id: providerId, amount_xof: payment.amount_xof, purpose: 'shop', order_id: payment.order_id, merchant_account_id: config.accountId });
     if (payment.checkout_url) return Response.json({ url: safeCheckoutUrl(payment.checkout_url, config.environment), reference: payment.public_token });
     // Token generation is safely retryable for an already persisted transaction.
+    initializationStage = 'request_checkout_token';
     const token = await providerRequest(`/transactions/${providerId}/token`, { method: 'POST', body: '{}' });
+    initializationStage = 'validate_checkout_url';
     const url = safeCheckoutUrl(token.url, config.environment);
+    initializationStage = 'persist_checkout_url';
     const { error: urlError } = await db.from('payment_attempts').update({ checkout_url: url, last_error: null }).eq('id', payment.id);
     if (urlError) throw new Error('Confirmation différée.');
     return Response.json({ url, reference: payment.public_token }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (paymentId) {
-      console.error('payment_initialization_failed', { paymentId });
-      await paymentDatabase().from('payment_attempts').update({ last_error: 'initialization_failed' }).eq('id', paymentId);
+      console.error('payment_initialization_failed', { paymentId, stage: initializationStage, errorType: error instanceof Error ? error.name : 'unknown' });
+      await paymentDatabase().from('payment_attempts').update({ last_error: `initialization_failed:${initializationStage}` }).eq('id', paymentId);
     }
     if (error instanceof HttpInputError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof SyntaxError) return Response.json({ error: 'JSON invalide.' }, { status: 400 });
