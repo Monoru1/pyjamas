@@ -45,6 +45,13 @@ create policy "staff inventory history" on public.inventory_movements for select
 create policy "staff notification history" on public.notification_jobs for select to authenticated using((select public.is_admin()));
 -- Fulfillment is exposed only through the guarded transition RPC, never table writes.
 revoke insert,update,delete on public.orders,public.order_items from anon,authenticated;
+-- Explicit legacy column grants, if present, survive a table-level REVOKE.
+do $$ declare t text; cols text; begin
+ foreach t in array array['orders','order_items'] loop
+  select string_agg(quote_ident(column_name),',') into cols from information_schema.columns where table_schema='public' and table_name=t;
+  execute format('revoke insert (%s), update (%s) on public.%I from public,anon,authenticated',cols,cols,t);
+ end loop;
+end $$;
 
 create function public.create_shop_payment(p_key uuid,p_hash text,p_customer jsonb,p_lines jsonb,p_environment text,p_account bigint,p_shipping bigint)
 returns jsonb language plpgsql security invoker set search_path=public,pg_temp as $$
@@ -77,8 +84,8 @@ begin
  -- Snapshot customer data per order, never overwrite another person's identity by phone.
  insert into public.customers(full_name,phone,whatsapp_phone,email,city,country)
  values(p_customer->>'name',p_customer->>'phone',p_customer->>'phone',p_customer->>'email',p_customer->>'city','BJ') returning id into customer_id;
- insert into public.orders(customer_id,status,source,currency_code,subtotal,discount_total,total,customer_note,delivery,payment_state)
- values(customer_id,'pending','fedapay_'||p_environment,'XOF',total,0,total+p_shipping,p_customer->>'comment',
+ insert into public.orders(order_number,customer_id,status,source,currency_code,subtotal,discount_total,total,customer_note,delivery,payment_state)
+ values('MDP-'||upper(replace(p_key::text,'-','')),customer_id,'pending','fedapay_'||p_environment,'XOF',total,0,total+p_shipping,p_customer->>'comment',
  jsonb_build_object('name',p_customer->>'name','phone',p_customer->>'phone','email',p_customer->>'email','address',p_customer->>'address','city',p_customer->>'city','country','BJ','shipping_xof',p_shipping),'pending_payment') returning * into new_order;
  insert into public.payment_attempts(idempotency_key,request_hash,environment,customer,items,amount_xof,order_id,inventory_state,merchant_account_id,expires_at)
  values(p_key,p_hash,p_environment,p_customer,items,total+p_shipping,new_order.id,'reserved',p_account,now()+interval '24 hours') returning * into payment;
