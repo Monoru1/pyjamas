@@ -10,7 +10,7 @@ export function CustomerForm({ onlinePayment = false }: { onlinePayment?: boolea
   const setPhone = useCheckoutCustomerStore((state) => state.setPhone);
   const setComment = useCheckoutCustomerStore((state) => state.setComment);
 
-  const { email, address, city, setDelivery } = useCheckoutCustomerStore();
+  const { email, address, city, setDelivery,whatsappUpdates,setWhatsAppUpdates } = useCheckoutCustomerStore();
 
   return (
     <div className="space-y-4 rounded-[2rem] border border-brand-primary/10 bg-white p-6 shadow-sm">
@@ -53,6 +53,7 @@ export function CustomerForm({ onlinePayment = false }: { onlinePayment?: boolea
         <label className="grid gap-2 text-sm font-medium">Adresse et indications de livraison
           <textarea required autoComplete="street-address" minLength={8} maxLength={300} value={address} onChange={e=>setDelivery('address',e.target.value)} className="rounded-2xl border border-brand-primary/10 px-4 py-3" />
         </label>
+        <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={whatsappUpdates} onChange={e=>setWhatsAppUpdates(e.target.checked)} className="mt-1"/>Je souhaite recevoir la confirmation de cette commande sur WhatsApp.</label>
         <p className="text-xs">Téléphone béninois au format +229 01 suivi de 8 chiffres.</p>
       </>}
 

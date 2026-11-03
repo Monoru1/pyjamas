@@ -28,7 +28,7 @@ async function signedEvent(id=100) {
 }
 beforeAll(async()=>{db=await commerceDatabase();fixture.client=sqlClient(db);},60000);
 afterAll(async()=>{await db.close();});
-beforeEach(async()=>{
+beforeEach(async()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');
  creates=0;mails=0;provider={};
  for(const [key,value] of Object.entries({FEDAPAY_ENABLED:'true',PAYMENT_CHECKOUT_ENABLED:'true',FEDAPAY_ENVIRONMENT:'sandbox',FEDAPAY_SECRET_KEY:'sk_sandbox_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',FEDAPAY_ACCOUNT_ID:'42',SUPABASE_SERVICE_ROLE_KEY:'fixture',NEXT_PUBLIC_SUPABASE_URL:'https://isolated.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture',PAYMENT_DATABASE_ISOLATED:'true',PAYMENT_SITE_URL:origin,SITE_ORIGIN:origin,PAYMENT_RECONCILE_SECRET:'fixture-signing-secret-at-least-32-characters',PAYMENT_SHIPPING_XOF:'500',RESEND_API_KEY:'fixture',ORDER_EMAIL_FROM:'fixture@example.test',ORDER_ADMIN_EMAIL:'admin@example.test'}))vi.stubEnv(key,value);
  await db.exec(`truncate notification_jobs,inventory_movements,payment_events,payment_attempts,order_items,order_status_history,orders,customers,product_variants,products,event_request_limits cascade;
@@ -64,4 +64,11 @@ it('rejects a provider amount mismatch without confirming or notifying',async()=
  provider.status='approved';provider.amount=1;expect((await signedEvent()).status).toBe(503);
  expect((await db.query<Record<string,unknown>>('select payment_state from orders')).rows[0].payment_state).toBe('pending_payment');
  expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(0);
+});
+it('enqueues one WhatsApp confirmation only for explicit checkout consent',async()=>{
+ const basket={...input(),customer:{...input().customer,whatsappUpdates:true}};
+ const q=await (await quote(request('/api/payments/quote',{lines:basket.lines}))).json();
+ expect((await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}))).status).toBe(200);
+ provider.status='approved';expect((await signedEvent()).status).toBe(200);expect((await signedEvent()).status).toBe(200);
+ expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where kind='customer_whatsapp'")).rows[0].n).toBe(1);
 });

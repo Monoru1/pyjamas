@@ -1,7 +1,7 @@
 import { beforeEach,afterEach,expect,it,vi } from 'vitest';
 vi.mock('server-only',()=>({}));
 const mocks=vi.hoisted(()=>({db:{rpc:vi.fn(),from:vi.fn()}}));
-vi.mock('./server',()=>({paymentDatabase:()=>mocks.db}));
+vi.mock('./operations',()=>({operationsDatabase:()=>mocks.db}));
 import { processNotificationJobs,sendOrderEmail } from './notifications';
 const updates:Record<string,unknown>[]=[];
 function result(data:unknown) {
@@ -9,7 +9,7 @@ function result(data:unknown) {
  for(const method of ['select','eq','single'])q[method]=()=>q;
  q.update=(v:Record<string,unknown>)=>{updates.push(v);return q;};return q;
 }
-beforeEach(()=>{vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');
+beforeEach(()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');
  mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_email',lease_token:'lease',attempts:1,created_at:new Date().toISOString()},error:null});
  mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[{id:'job'}]));
 });
@@ -54,3 +54,5 @@ it('never reports delivery when the acknowledgement loses its lease',async()=>{
 it('rejects an empty provider acknowledgement',async()=>{
  await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',vi.fn().mockResolvedValue(new Response('{"id":""}')))).rejects.toThrow('email_provider_invalid');
 });
+
+it('disabled notifications do not claim work or contact providers',async()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','false');expect(await processNotificationJobs(2)).toBe(0);expect(mocks.db.rpc).not.toHaveBeenCalled();});

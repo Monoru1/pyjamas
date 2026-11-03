@@ -1,8 +1,11 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
-const mocks=vi.hoisted(()=>({allowed:true,recover:vi.fn(),storage:vi.fn()}));
+const mocks=vi.hoisted(()=>({allowed:true,recover:vi.fn(),storage:vi.fn(),jobs:vi.fn(),worker:vi.fn()}));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'staff'}}})},rpc:async()=>({data:mocks.allowed})})}));
 vi.mock('@/lib/payments/initialization',()=>({recoverPrivateCheckout:mocks.recover}));
 vi.mock('@/lib/supabase/recipe-storage',()=>({prepareRecipeStorage:mocks.storage}));
+vi.mock('@/lib/payments/operations',()=>({operationsDatabase:()=>({from:()=>({update:()=>({eq:()=>({eq:()=>({is:()=>({select:mocks.jobs})})})})})})}));
+vi.mock('@/lib/payments/notifications',()=>({processNotificationJobs:mocks.worker}));
+import {POST as retry} from '@/app/api/admin/notifications/retry/route';
 import { POST as recover } from '@/app/api/payments/recover/route';
 import { POST as prepare } from '@/app/api/admin/recipe-storage/route';
 const origin='https://deploy-preview-11--pyjamas25.netlify.app';
@@ -24,4 +27,13 @@ it('redirects expired recovery to a safe notice and rejects client amounts or ch
 it('permits only the empty explicit storage preparation form for an authorized manager',async()=>{
  expect((await prepare(request('bucket=private'))).status).toBe(400);expect(mocks.storage).not.toHaveBeenCalled();
  const r=await prepare(request(''));expect(r.status).toBe(303);expect(r.headers.get('location')).toBe(`${origin}/admin/medias?notice=storage_ready`);expect(mocks.storage).toHaveBeenCalledOnce();
+});
+
+it('staff can retry only an unleased pending notification; disabled and blocked jobs never send',async()=>{
+ vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','false');expect((await retry(request(`job_id=${id}`))).status).toBe(303);expect(mocks.jobs).not.toHaveBeenCalled();
+ vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');mocks.allowed=false;expect((await retry(request(`job_id=${id}`))).status).toBe(403);
+ mocks.allowed=true;expect((await retry(request(`job_id=${id}`,'https://evil.test'))).status).toBe(403);
+ expect((await retry(request('job_id=invalid'))).status).toBe(400);
+ mocks.jobs.mockResolvedValue({data:[],error:null});expect((await retry(request(`job_id=${id}`))).status).toBe(409);expect(mocks.worker).not.toHaveBeenCalled();
+ mocks.jobs.mockResolvedValue({data:[{id}],error:null});expect((await retry(request(`job_id=${id}`))).status).toBe(303);expect(mocks.worker).toHaveBeenCalledWith(2);
 });

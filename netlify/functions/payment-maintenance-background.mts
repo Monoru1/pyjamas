@@ -2,7 +2,7 @@
 const handler = async (request: Request) => {
   const secret = process.env.PAYMENT_RECONCILE_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return;
-  if (process.env.FEDAPAY_ENABLED !== 'true') return;
+  if (process.env.FEDAPAY_ENABLED !== 'true' && process.env.ORDER_NOTIFICATIONS_ENABLED !== 'true') return;
   const origin = process.env.PAYMENT_SITE_URL;
   if (!origin || !secret) throw new Error('Payment maintenance is not configured');
   const url = new URL('/api/payments/reconcile', origin);
