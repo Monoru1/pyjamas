@@ -15,7 +15,7 @@ export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'l
   async function act(confirm=false) {
     if(locked.current||!lines.length)return;locked.current=true;setBusy(true);setError('');
     try {
-      const basket={customer:{name:customer.name,phone:customer.phone,email:customer.email,address:customer.address,city:customer.city,comment:customer.comment},lines:items};
+      const basket={customer:{name:customer.name,phone:customer.phone,email:customer.email,address:customer.address,city:customer.city,comment:customer.comment,...(customer.whatsappUpdates?{whatsappUpdates:true}:{})},lines:items};
       const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(basket)));
       const fingerprint=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
       const saved=JSON.parse(sessionStorage.getItem('mdp-shop-payment')||'null');

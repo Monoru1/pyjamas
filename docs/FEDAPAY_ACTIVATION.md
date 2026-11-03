@@ -161,3 +161,26 @@ L'identifiant numérique `101915` a été observé dans cinq logs API Live du co
 - Ne pas exposer les clés API, secrets webhook, données client, numéros de carte ou liens de paiement dans les logs.
 - Les autorisations privées Live sont temporaires : contrôler leur expiration avant tout nouveau test ; ne pas réutiliser une autorisation expirée.
 - Vérifier un paiement de 100 XOF de bout en bout, webhook signé, rapprochement, état commande, notifications et absence de double débit avant activation commerciale.
+
+### Notifications opérationnelles (PR #13)
+
+Les notifications ont leur propre activation : `ORDER_NOTIFICATIONS_ENABLED=false`
+et `ORDER_WHATSAPP_ENABLED=false` par défaut. La maintenance planifiée fonctionne
+avec les notifications seules, sans ouvrir FedaPay. Configurer en recette uniquement :
+
+- E-mail : `RESEND_API_KEY`, `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL`,
+  `ORDER_TEST_EMAILS` (liste exacte des adresses de test séparées par virgules).
+- WhatsApp : `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
+  `WHATSAPP_GRAPH_VERSION` (version approuvée du compte), `WHATSAPP_ORDER_TEMPLATE`,
+  `WHATSAPP_TEMPLATE_LANGUAGE`, `ORDER_TEST_PHONES` (numéros E.164 de test).
+  Le template contient deux paramètres texte : numéro de commande, total XOF.
+- Base : URL et clé service-role de recette, `PAYMENT_DATABASE_ISOLATED=true`.
+
+Appliquer `20261103163942_operational_notifications.sql` avant le déploiement.
+Le panier recueille un consentement WhatsApp facultatif. Seule une commande payée
+et consentie crée ce travail. Les identifiants acceptés par les fournisseurs sont
+conservés ; une réponse WhatsApp ambiguë est bloquée pour contrôle manuel.
+Le formulaire staff ne reprend que les travaux en attente sans bail actif ; il
+ne rejoue jamais un travail envoyé ou bloqué. Aucun envoi ne part avec les deux
+activations absentes. La validation fournisseur réelle reste à faire sur les
+seuls destinataires de test explicitement autorisés.

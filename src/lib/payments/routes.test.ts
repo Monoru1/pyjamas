@@ -136,3 +136,9 @@ it('reconfirms and resumes the same reserved last unit after refresh without rer
  expect(mocks.provider.mock.calls.map(([path])=>path)).toEqual(['/transactions/42/token']);
  mocks.provider.mockClear();expect((await checkout(request({...input,customer:{...input.customer,name:'Other Name'}}))).status).toBe(409);expect(mocks.provider).not.toHaveBeenCalled();
 });
+
+it('runs the notification outbox independently when provider reconciliation is disabled',async()=>{
+ vi.stubEnv('FEDAPAY_ENABLED','false');mocks.notifications.mockResolvedValue(2);
+ const response=await reconcile(new Request('https://preview.example.test/api/payments/reconcile',{method:'POST',headers:{authorization:'Bearer fixture-reconcile-secret-32-characters'}}));
+ expect(response.status).toBe(200);expect(await response.json()).toMatchObject({checked:0,attempted:0,notificationsSent:2});expect(mocks.db.from).not.toHaveBeenCalled();
+});
