@@ -38,3 +38,19 @@ it('successful provider response marks the leased job sent',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'}))));
  expect(await processNotificationJobs(1)).toBe(1);expect(updates).toContainEqual(expect.objectContaining({status:'sent',last_error:null}));
 });
+
+it('does not send a retry after another worker has acquired the lease',async()=>{
+ mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_email',lease_token:'old',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[]));
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ expect(await processNotificationJobs(1)).toBe(0);expect(fetcher).not.toHaveBeenCalled();
+});
+it('never reports delivery when the acknowledgement loses its lease',async()=>{
+ let notificationCalls=0;
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:++notificationCalls===1?[{id:'job'}]:[]));
+ vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'}))));
+ expect(await processNotificationJobs(1)).toBe(0);
+});
+it('rejects an empty provider acknowledgement',async()=>{
+ await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',vi.fn().mockResolvedValue(new Response('{"id":""}')))).rejects.toThrow('email_provider_invalid');
+});

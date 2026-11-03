@@ -41,6 +41,7 @@
     "@vitejs/plugin-react": "6.0.3",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.2",
+    "pg": "8.23.1",
     "prettier": "3.9.5",
     "prettier-plugin-tailwindcss": "0.8.0",
     "supabase": "2.109.1",

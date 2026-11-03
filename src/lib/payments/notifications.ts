@@ -9,7 +9,7 @@ export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fet
   });
   if (!response.ok) throw new Error('email_provider_failed');
   const result = await response.json();
-  if (typeof result.id !== 'string') throw new Error('email_provider_invalid');
+  if (typeof result.id !== 'string' || !result.id.trim()) throw new Error('email_provider_invalid');
 }
 
 export async function processNotificationJobs(limit = 2) {
@@ -33,17 +33,16 @@ export async function processNotificationJobs(limit = 2) {
         await db.from('notification_jobs').update({status:'blocked',last_error:'delivery_window_exceeded',lease_until:null}).eq('id',job.id).eq('lease_token',job.lease_token);
         continue;
       }
-      if (!job.first_delivery_at) {
-        const {data:started,error:startError} = await db.from('notification_jobs').update({first_delivery_at:new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token).select('id');
-        if(startError || started?.length!==1) throw new Error('notification_lease_lost');
-      }
+      // Verify ownership on EVERY attempt, including retries after an ambiguous send.
+      const {data:started,error:startError} = await db.from('notification_jobs').update({first_delivery_at:job.first_delivery_at || new Date().toISOString()}).eq('id',job.id).eq('lease_token',job.lease_token).eq('status','sending').select('id');
+      if(startError || started?.length!==1) throw new Error('notification_lease_lost');
       const admin = job.kind === 'admin_email';
       await sendOrderEmail({ from: from!, to: recipient,
         subject: `${admin ? 'Commande payée' : 'Confirmation de commande'} ${order.order_number}`,
         text: `La Maison des Pyjamas\nCommande ${order.order_number}\nPaiement confirmé : ${order.total} FCFA.\n${admin ? 'Consultez les coordonnées et articles dans l’administration.' : 'Votre commande est enregistrée. La boutique vous contactera pour la livraison.'}${order.needs_attention ? '\nUne vérification par la boutique est nécessaire.' : ''}`,
       }, job.id);
-      const { error: updateError } = await db.from('notification_jobs').update({ status: 'sent', sent_at: new Date().toISOString(), last_error: null, lease_until: null }).eq('id', job.id).eq('lease_token', job.lease_token);
-      if (updateError) throw updateError;
+      const { data: completed, error: updateError } = await db.from('notification_jobs').update({ status: 'sent', sent_at: new Date().toISOString(), last_error: null, lease_until: null }).eq('id', job.id).eq('lease_token', job.lease_token).eq('status','sending').select('id');
+      if (updateError || completed?.length !== 1) throw new Error('notification_lease_lost');
       sent++;
     } catch {
       // Resend retains idempotency keys for 24h. Stop automatic retries after
