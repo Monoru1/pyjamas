@@ -7,7 +7,7 @@ const handler = async (request: Request) => {
   if (!origin || !secret) throw new Error('Payment maintenance is not configured');
   const url = new URL('/api/payments/reconcile', origin);
   if (url.protocol !== 'https:') throw new Error('HTTPS required');
-  const response = await fetch(url, { method: 'POST', headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(55_000) });
+  const response = await fetch(url, { method: 'POST', redirect: 'error', headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(55_000) });
   if (!response.ok) throw new Error(`Payment maintenance failed: ${response.status}`);
   const result = await response.json();
   if (result.checked !== result.attempted) throw new Error('Some payments require intervention');

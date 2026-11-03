@@ -57,6 +57,9 @@ describe('FedaPay fail-closed configuration and webhooks', () => {
     const fetcher=vi.fn().mockResolvedValue(new Response('{}',{status:503}));
     await expect(providerRequest('/transactions',{},fetcher)).rejects.toThrow();
     expect(fetcher.mock.calls[0][0]).toBe('https://sandbox-api.fedapay.com/v1/transactions');
+    expect(fetcher.mock.calls[0][1].redirect).toBe('error');
+    const redirected=vi.fn().mockResolvedValue(new Response(null,{status:307,headers:{location:'https://other.example/transactions'}}));
+    await expect(providerRequest('/transactions',{},redirected)).rejects.toThrow();
     await expect(providerRequest('/payouts',{},fetcher)).rejects.toThrow();
     vi.unstubAllEnvs();
   });

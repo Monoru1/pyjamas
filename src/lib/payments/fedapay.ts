@@ -103,7 +103,7 @@ export async function providerRequest(path: string, init: RequestInit = {}, fetc
   if (!readOnlyLogs && !/^(?:\/transactions(?:\/\d+(?:\/token)?)?|\/currencies\/\d+)$/.test(path)) throw new Error('Requête invalide.');
   const response = await fetcher(`${apiOrigin}/v1${path}`, {
     ...init, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    cache: 'no-store', signal: AbortSignal.timeout(8_000),
+    redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new ProviderHttpError(response.status);
   return response.json();
