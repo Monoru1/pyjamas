@@ -18,6 +18,9 @@ it('uses a stable provider idempotency key and checks actual send response',asyn
  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'})));
  await sendOrderEmail({from:'sender@example.test',to:'customer@example.test',subject:'fixture',text:'fixture'},'job',fetcher);
  expect(fetcher.mock.calls[0][1].headers['Idempotency-Key']).toBe('order-job');
+ expect(fetcher.mock.calls[0][1].redirect).toBe('error');
+ const redirected=vi.fn().mockResolvedValue(new Response(null,{status:307,headers:{location:'https://other.example/emails'}}));
+ await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',redirected)).rejects.toThrow('email_provider_failed');
  const failed=vi.fn().mockResolvedValue(new Response('{}',{status:503}));
  await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',failed)).rejects.toThrow('email_provider_failed');
 });

@@ -5,7 +5,7 @@ type Mail = { from: string; to: string; subject: string; text: string };
 export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fetch = fetch) {
   const response = await fetcher('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `order-${id}` },
-    body: JSON.stringify(mail), signal: AbortSignal.timeout(8_000),
+    redirect: 'error', body: JSON.stringify(mail), signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) throw new Error('email_provider_failed');
   const result = await response.json();
