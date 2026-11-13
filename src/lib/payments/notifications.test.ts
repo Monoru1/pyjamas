@@ -56,3 +56,24 @@ it('rejects an empty provider acknowledgement',async()=>{
 });
 
 it('disabled notifications do not claim work or contact providers',async()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','false');expect(await processNotificationJobs(2)).toBe(0);expect(mocks.db.rpc).not.toHaveBeenCalled();});
+
+it.each([
+ [429, 'pending', 'whatsapp_rate_limited'],
+ [503, 'blocked', 'whatsapp_delivery_ambiguous'],
+] as const)('handles Meta response %s without assuming delivery', async (status, next, reason) => {
+ for (const [key, value] of Object.entries({
+  ORDER_WHATSAPP_ENABLED: 'true', WHATSAPP_GRAPH_VERSION: 'v25.0',
+  WHATSAPP_PHONE_NUMBER_ID: '123', WHATSAPP_ACCESS_TOKEN: 'fixture',
+  WHATSAPP_ORDER_READY_TEMPLATE: 'order_ready', WHATSAPP_TEMPLATE_LANGUAGE: 'fr',
+  ORDER_TEST_PHONES: '33600000000', ORDER_TEST_CUSTOMER_PHONE: '+33600000000',
+ })) vi.stubEnv(key, value);
+ mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_whatsapp_ready',lease_token:'lease',attempts:1},error:null});
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{
+  order_number:'TEST', total:2000, payment_state:'paid', status:'ready', delivery:{phone:'2290100000000'},
+ }:[{id:'job'}]));
+ const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status }));
+ vi.stubGlobal('fetch', fetcher);
+ expect(await processNotificationJobs(1)).toBe(0);
+ expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({to:'33600000000',template:{name:'order_ready'}});
+ expect(updates).toContainEqual(expect.objectContaining({status:next,last_error:reason,...(status===429?{first_delivery_at:null}:{})}));
+});

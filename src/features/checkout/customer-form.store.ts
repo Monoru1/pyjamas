@@ -34,7 +34,9 @@ export const useCheckoutCustomerStore = create<CheckoutCustomerState>()(
     }),
     {
       name: 'mdp-checkout-customer',
-      version: 1,
+      version: 2,
+      // Ask again after expanding the scope from confirmation to order tracking.
+      migrate: (saved) => ({ ...(saved as Partial<CheckoutCustomerState>), whatsappUpdates: false }),
       storage: createJSONStorage(() => {
         localStorage.removeItem('mdp-checkout-customer');
         return sessionStorage;

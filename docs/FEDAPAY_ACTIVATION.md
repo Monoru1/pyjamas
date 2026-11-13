@@ -184,3 +184,45 @@ Le formulaire staff ne reprend que les travaux en attente sans bail actif ; il
 ne rejoue jamais un travail envoyé ou bloqué. Aucun envoi ne part avec les deux
 activations absentes. La validation fournisseur réelle reste à faire sur les
 seuls destinataires de test explicitement autorisés.
+
+## Recette Sandbox et suivi WhatsApp
+
+La recette Sandbox utilise la base isolée `oxhymanjibveayhcaqvj` et un compte
+staff. Configurer `FEDAPAY_ENVIRONMENT=sandbox`, la clé privée Sandbox
+`FEDAPAY_SECRET_KEY`, l’identifiant numérique du marchand Sandbox
+`FEDAPAY_ACCOUNT_ID` et le secret de signature Sandbox
+`FEDAPAY_WEBHOOK_SECRET`. Enregistrer l’URL HTTPS
+`<origine-de-recette>/api/payments/webhook` dans le tableau de bord Sandbox.
+Laisser `PAYMENT_LIVE_TEST_ENABLED=false` et `FEDAPAY_LIVE_APPROVED=false`.
+Utiliser `npm run payments:check -- --sandbox` avec les variables de recette
+et vérifier ensuite un paiement sur le checkout hébergé.
+
+La migration `20261113090005_order_whatsapp_lifecycle.sql` est appliquée
+en recette sous la version distante `20261113090521`, après
+`20261103163942_operational_notifications.sql`. Les nouveaux types de
+notification utilisent chacun un modèle Meta approuvé, avec deux paramètres
+texte dans le corps dans cet ordre (référence de commande, total en XOF).
+
+| Événement | Variable |
+|---|---|
+| Nouvelle commande réservée, même si elle attend le paiement | `WHATSAPP_STAFF_NEW_TEMPLATE` |
+| Paiement confirmé | `WHATSAPP_ORDER_TEMPLATE` |
+| Paiement refusé | `WHATSAPP_PAYMENT_FAILED_TEMPLATE` |
+| Commande prête | `WHATSAPP_ORDER_READY_TEMPLATE` |
+| Commande livrée | `WHATSAPP_ORDER_DELIVERED_TEMPLATE` |
+
+`ORDER_STAFF_WHATSAPP_PHONE` désigne le destinataire staff.
+`ORDER_TEST_CUSTOMER_PHONE` peut rediriger le suivi client vers un
+destinataire Meta autorisé en recette, indépendamment du numéro béninois du
+formulaire de commande. En preview, les deux destinations doivent figurer
+dans `ORDER_TEST_PHONES`. Renseigner ces valeurs en variables serveur, avec
+le numéro émetteur de test Meta et son jeton, puis activer
+`ORDER_NOTIFICATIONS_ENABLED` et `ORDER_WHATSAPP_ENABLED` en recette.
+Le consentement au suivi est recueilli au checkout. Les commandes antérieures
+conservent le consentement donné à la seule confirmation.
+
+L’administration affiche l’acceptation par Meta et l’identifiant du message.
+Vérifier la réception sur le téléphone de test. Une limite HTTP 429 est
+réessayable avec délai. En cas de réponse ambiguë, vérifier chez Meta avant
+toute nouvelle tentative. Le workflow logistique actuel passe de « prête »
+à « livrée ».

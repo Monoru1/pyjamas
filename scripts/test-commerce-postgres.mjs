@@ -21,7 +21,7 @@ try {
     grant usage on schema auth to anon,authenticated,service_role;
     create schema extensions;create function extensions.unaccent(text) returns text language sql immutable as $$select $1$$;`);
   await pool.query((await readFile('supabase/recette/bootstrap-production-schema.sql','utf8')).replace(/^create extension[^;]+;$/gm,''));
-  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
+  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
   await pool.query("insert into currencies(code,name,symbol) values('XOF','Franc CFA','FCFA')");
   await pool.query("insert into products(id,slug,name_fr,base_price,currency_code,is_active) values($1,'concurrency-fixture','Fixture uniquement',1500,'XOF',true)",[product]);
   await pool.query("insert into product_variants(id,product_id,sku,color_name_fr,size_label,price,stock_quantity,is_active) values($1,$2,'CONCURRENT-S','Vert','S',1500,1,true)",[variant,product]);
@@ -42,7 +42,7 @@ try {
   await pool.query('update payment_attempts set provider_id=42 where id=$1',[payment.id]);
   const apply=()=>pool.query("select apply_shop_payment($1,42,1500,42,'sandbox','paid','fixture-event')",[payment.id]);
   await Promise.all([apply(),apply()]);
-  assert.equal((await pool.query('select count(*)::int n from notification_jobs')).rows[0].n,2);
+  assert.equal((await pool.query('select count(*)::int n from notification_jobs')).rows[0].n,3);
   assert.equal((await pool.query("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n,1);
-  console.log('PASS concurrent webhook replay: one inventory commit and two unique notification jobs');
+  console.log('PASS concurrent webhook replay: one inventory commit and three unique notification jobs');
 } finally { await pool.end(); }
