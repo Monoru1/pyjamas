@@ -33,7 +33,7 @@ try {
     to_jsonb(i) - 'image_url') order by o.id) snapshot
     from orders o join order_items i on i.order_id=o.id where o.order_number like 'LEGACY-%'`);
   const historyBefore = (await historicalSnapshot()).rows;
-  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113153806_physical_stock_receipts'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
+  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113154852_physical_stock_receipts'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
   assert.deepEqual((await historicalSnapshot()).rows, historyBefore, 'All nine historical orders and line prices survive the migration');
   assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,1);
   const staff = randomUUID(), receiptKey = randomUUID();
