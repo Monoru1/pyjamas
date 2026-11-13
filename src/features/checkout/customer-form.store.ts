@@ -10,8 +10,8 @@ interface CheckoutCustomerState {
   email: string;
   address: string;
   city: string;
-  whatsappUpdates:boolean;
-  setWhatsAppUpdates:(enabled:boolean)=>void;
+  emailConfirmation:boolean;
+  setEmailConfirmation:(enabled:boolean)=>void;
   setDelivery: (field: 'email' | 'address' | 'city', value: string) => void;
   setName: (name: string) => void;
   setPhone: (phone: string) => void;
@@ -24,19 +24,19 @@ export const useCheckoutCustomerStore = create<CheckoutCustomerState>()(
     (set) => ({
       name: '',
       phone: '',
-      comment: '', email: '', address: '', city: '', whatsappUpdates:false,
-      setWhatsAppUpdates:(whatsappUpdates)=>set({whatsappUpdates}),
+      comment: '', email: '', address: '', city: '', emailConfirmation:false,
+      setEmailConfirmation:(emailConfirmation)=>set({emailConfirmation}),
       setDelivery: (field, value) => set({ [field]: value }),
       setName: (name) => set({ name }),
       setPhone: (phone) => set({ phone }),
       setComment: (comment) => set({ comment }),
-      clearCustomer: () => set({ name: '', phone: '', comment: '', email: '', address: '', city: '',whatsappUpdates:false }),
+      clearCustomer: () => set({ name: '', phone: '', comment: '', email: '', address: '', city: '',emailConfirmation:false }),
     }),
     {
       name: 'mdp-checkout-customer',
-      version: 2,
-      // Ask again after expanding the scope from confirmation to order tracking.
-      migrate: (saved) => ({ ...(saved as Partial<CheckoutCustomerState>), whatsappUpdates: false }),
+      version: 3,
+      // Never carry consent from WhatsApp over to e-mail.
+      migrate: (saved) => ({ ...(saved as Partial<CheckoutCustomerState>), emailConfirmation: false }),
       storage: createJSONStorage(() => {
         localStorage.removeItem('mdp-checkout-customer');
         return sessionStorage;

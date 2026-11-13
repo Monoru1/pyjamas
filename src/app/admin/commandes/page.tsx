@@ -64,7 +64,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<{s
               const customer = Array.isArray(order.customers) ? order.customers[0] : order.customers;
               const items = Array.isArray(order.order_items) ? order.order_items : [];
               const online = order.source.startsWith('fedapay_');
-              const canFulfill = !online || (order.payment_state === 'paid' && !order.needs_attention);
+              const canFulfill = order.source !== 'notification_demo' && (!online || (order.payment_state === 'paid' && !order.needs_attention));
               const transitions = canFulfill ? nextStatuses[order.status] ?? [] : [];
 
               return (
@@ -80,11 +80,12 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<{s
                   <p className="order-items">
                     {items.map((item) => `${item.quantity}× ${item.product_name}${item.size_label ? ` · ${item.size_label}` : ''} · Réf. ${item.sku}`).join(' — ') || 'Articles à renseigner'}
                   </p>
+                  {order.source === 'notification_demo' && <p className="order-note">Démonstration des notifications</p>}
                   {online && <p className="order-note">Paiement : {order.payment_state} · {order.source === 'fedapay_sandbox' ? 'TEST SANDBOX' : 'Production'}{order.needs_attention ? ' · INTERVENTION REQUISE' : ''}</p>}
                   {order.delivery && <p className="order-note">Livraison : {order.delivery.address}, {order.delivery.city} · {order.delivery.email}</p>}
                   {order.customer_note && <p className="order-note">“{order.customer_note}”</p>}
 
-                  {!canFulfill ? <p className="order-note">Traitement bloqué : paiement non confirmé ou intervention requise.</p> : order.status === 'pending' ? (
+                  {order.source === 'notification_demo' ? null : !canFulfill ? <p className="order-note">Traitement bloqué : paiement non confirmé ou intervention requise.</p> : order.status === 'pending' ? (
                     <div className="flex flex-wrap gap-3">
                       <form action={updateOrderStatus}>
                         <input type="hidden" name="id" value={order.id} />

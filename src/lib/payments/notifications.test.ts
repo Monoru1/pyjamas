@@ -6,11 +6,11 @@ import { processNotificationJobs,sendOrderEmail } from './notifications';
 const updates:Record<string,unknown>[]=[];
 function result(data:unknown) {
  const q:Record<string,unknown>={then:(resolve:(value:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};
- for(const method of ['select','eq','single'])q[method]=()=>q;
+ for(const method of ['select','eq','single','maybeSingle'])q[method]=()=>q;
  q.update=(v:Record<string,unknown>)=>{updates.push(v);return q;};return q;
 }
-beforeEach(()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');
- mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_email',lease_token:'lease',attempts:1,created_at:new Date().toISOString()},error:null});
+beforeEach(()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');vi.stubEnv('ORDER_ADMIN_EMAIL','admin@example.test');
+ mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'admin_email',lease_token:'lease',attempts:1,created_at:new Date().toISOString()},error:null});
  mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[{id:'job'}]));
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
@@ -20,14 +20,14 @@ it('uses a stable provider idempotency key and checks actual send response',asyn
  expect(fetcher.mock.calls[0][1].headers['Idempotency-Key']).toBe('order-job');
  expect(fetcher.mock.calls[0][1].redirect).toBe('error');
  const redirected=vi.fn().mockResolvedValue(new Response(null,{status:307,headers:{location:'https://other.example/emails'}}));
- await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',redirected)).rejects.toThrow('email_provider_failed');
+ await expect(sendOrderEmail({from:'a',to:'admin@example.test',subject:'s',text:'t'},'job',redirected)).rejects.toThrow('email_provider_failed');
  const failed=vi.fn().mockResolvedValue(new Response('{}',{status:503}));
- await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',failed)).rejects.toThrow('email_provider_failed');
+ await expect(sendOrderEmail({from:'a',to:'admin@example.test',subject:'s',text:'t'},'job',failed)).rejects.toThrow('email_provider_failed');
 });
 it('mail failure stays retryable and is never marked sent',async()=>{
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('{}',{status:503})));
  expect(await processNotificationJobs(1)).toBe(0);
- expect(updates).toContainEqual(expect.objectContaining({status:'pending',last_error:'email_delivery_failed'}));
+ expect(updates).toContainEqual(expect.objectContaining({status:'pending',last_error:'email_provider_failed'}));
  expect(updates.some(u=>u.status==='sent')).toBe(false);
 });
 it('missing email configuration queues work visibly without claiming delivery',async()=>{
@@ -40,7 +40,7 @@ it('successful provider response marks the leased job sent',async()=>{
 });
 
 it('does not send a retry after another worker has acquired the lease',async()=>{
- mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_email',lease_token:'old',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
+ mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'admin_email',lease_token:'old',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
  mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[]));
  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
  expect(await processNotificationJobs(1)).toBe(0);expect(fetcher).not.toHaveBeenCalled();
@@ -52,28 +52,44 @@ it('never reports delivery when the acknowledgement loses its lease',async()=>{
  expect(await processNotificationJobs(1)).toBe(0);
 });
 it('rejects an empty provider acknowledgement',async()=>{
- await expect(sendOrderEmail({from:'a',to:'b',subject:'s',text:'t'},'job',vi.fn().mockResolvedValue(new Response('{"id":""}')))).rejects.toThrow('email_provider_invalid');
+ await expect(sendOrderEmail({from:'a',to:'admin@example.test',subject:'s',text:'t'},'job',vi.fn().mockResolvedValue(new Response('{"id":""}')))).rejects.toThrow('email_provider_invalid');
 });
 
 it('disabled notifications do not claim work or contact providers',async()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','false');expect(await processNotificationJobs(2)).toBe(0);expect(mocks.db.rpc).not.toHaveBeenCalled();});
 
-it.each([
- [429, 'pending', 'whatsapp_rate_limited'],
- [503, 'blocked', 'whatsapp_delivery_ambiguous'],
-] as const)('handles Meta response %s without assuming delivery', async (status, next, reason) => {
- for (const [key, value] of Object.entries({
-  ORDER_WHATSAPP_ENABLED: 'true', WHATSAPP_GRAPH_VERSION: 'v25.0',
-  WHATSAPP_PHONE_NUMBER_ID: '123', WHATSAPP_ACCESS_TOKEN: 'fixture',
-  WHATSAPP_ORDER_READY_TEMPLATE: 'order_ready', WHATSAPP_TEMPLATE_LANGUAGE: 'fr',
-  ORDER_TEST_PHONES: '33600000000', ORDER_TEST_CUSTOMER_PHONE: '+33600000000',
- })) vi.stubEnv(key, value);
- mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'customer_whatsapp_ready',lease_token:'lease',attempts:1},error:null});
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{
-  order_number:'TEST', total:2000, payment_state:'paid', status:'ready', delivery:{phone:'2290100000000'},
- }:[{id:'job'}]));
- const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status }));
- vi.stubGlobal('fetch', fetcher);
+it.each(['telegram', 'email'] as const)('keeps the other channel working when %s fails', async (failed) => {
+ vi.stubEnv('ORDER_TELEGRAM_ENABLED', 'true');
+ vi.stubEnv('TELEGRAM_BOT_TOKEN', '123:fixture');
+ vi.stubEnv('TELEGRAM_STAFF_CHAT_ID', '456');
+ const telegram = { id:'tg',order_id:'order',kind:'staff_telegram_ready',lease_token:'lease',attempts:1 };
+ const email = { ...telegram, id:'mail',kind:'staff_email_ready' };
+ mocks.db.rpc.mockResolvedValueOnce({data:telegram,error:null}).mockResolvedValueOnce({data:email,error:null});
+ const fetcher = vi.fn(async (url:string, init?: RequestInit) => {
+  if (url.includes('resend.com')) expect(JSON.parse(String(init?.body)).html).toContain('Voir les commandes');
+  if (url.includes('telegram.org')) return failed === 'telegram'
+   ? Response.json({ parameters:{retry_after:240} }, {status:429})
+   : Response.json({ok:true,result:{message_id:42}});
+  return failed === 'email' ? new Response('{}',{status:503}) : Response.json({id:'email-id'});
+ });
+ vi.stubGlobal('fetch',fetcher);
+ expect(await processNotificationJobs(2)).toBe(1);
+ expect(updates).toContainEqual(expect.objectContaining({
+  status:'pending',last_error:failed==='telegram'?'telegram_rate_limited':'email_provider_failed',
+ }));
+ expect(updates).toContainEqual(expect.objectContaining({
+  status:'sent',provider_message_id:failed==='telegram'?'email-id':'42',
+ }));
+ expect(fetcher).toHaveBeenCalledTimes(2);
+});
+
+it('blocks an uncertain Telegram send before a second attempt', async () => {
+ vi.stubEnv('ORDER_TELEGRAM_ENABLED','true');
+ vi.stubEnv('TELEGRAM_BOT_TOKEN','123:fixture');
+ vi.stubEnv('TELEGRAM_STAFF_CHAT_ID','456');
+ mocks.db.rpc.mockResolvedValue({data:{id:'tg',order_id:'order',kind:'staff_telegram_paid',lease_token:'lease',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
+ const fetcher=vi.fn();
+ vi.stubGlobal('fetch',fetcher);
  expect(await processNotificationJobs(1)).toBe(0);
- expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({to:'33600000000',template:{name:'order_ready'}});
- expect(updates).toContainEqual(expect.objectContaining({status:next,last_error:reason,...(status===429?{first_delivery_at:null}:{})}));
+ expect(fetcher).not.toHaveBeenCalled();
+ expect(updates).toContainEqual(expect.objectContaining({status:'blocked',last_error:'telegram_delivery_uncertain'}));
 });

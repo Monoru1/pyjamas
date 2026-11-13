@@ -19,7 +19,7 @@ let provider: Record<string, unknown>;
 let creates=0;
 let mails=0;
 const request=(path:string,body:unknown)=>new Request(origin+path,{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify(body)});
-const input=()=>({idempotencyKey:randomUUID(),customer:{name:'Fixture uniquement',phone:'+229 01 00 00 00 00',email:'fixture@example.test',address:'Adresse de recette fictive',city:'Cotonou'},lines:[{variantId:variant,quantity:1}]});
+const input=()=>({idempotencyKey:randomUUID(),customer:{emailConfirmation:true,name:'Fixture uniquement',phone:'+229 01 00 00 00 00',email:'fixture@example.test',address:'Adresse de recette fictive',city:'Cotonou'},lines:[{variantId:variant,quantity:1}]});
 async function signedEvent(id=100, name='transaction.approved') {
  const raw=JSON.stringify({id,name,entity:{id:42}});
  const t=Math.floor(Date.now()/1000);
@@ -55,27 +55,29 @@ it('runs quote → reservation → provider double → signed webhook → confir
  provider.status='approved';expect((await signedEvent()).status).toBe(200);expect((await signedEvent()).status).toBe(200);
  const confirmed=await status(new Request(origin+`/api/payments/status?reference=${payment.reference}&status=approved`));expect((await confirmed.json()).status).toBe('paid');
  expect((await db.query<Record<string,unknown>>("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n).toBe(1);
- expect(await processNotificationJobs(3)).toBe(2);expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(2);
- expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where status='sent'")).rows[0].n).toBe(2);
+ expect(await processNotificationJobs(3)).toBe(3);expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(3);
+ expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where status='sent'")).rows[0].n).toBe(3);
 });
 it('rejects a provider amount mismatch without confirming or notifying',async()=>{
  const basket=input();const q=await (await quote(request('/api/payments/quote',{lines:basket.lines}))).json();
  expect((await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}))).status).toBe(200);
  provider.status='approved';provider.amount=1;expect((await signedEvent()).status).toBe(503);
  expect((await db.query<Record<string,unknown>>('select payment_state from orders')).rows[0].payment_state).toBe('pending_payment');
- expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(0);
+ expect(await processNotificationJobs(2)).toBe(1);expect(mails).toBe(1);
 });
-it('enqueues one WhatsApp confirmation only for explicit checkout consent',async()=>{
- const basket={...input(),customer:{...input().customer,whatsappUpdates:true}};
- const q=await (await quote(request('/api/payments/quote',{lines:basket.lines}))).json();
- expect((await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}))).status).toBe(200);
- provider.status='approved';expect((await signedEvent()).status).toBe(200);expect((await signedEvent()).status).toBe(200);
- expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where kind='customer_whatsapp'")).rows[0].n).toBe(1);
+it('never enqueues a customer email based on historical WhatsApp consent', async () => {
+ const base = input();
+ const basket = { ...base, customer: { ...base.customer, emailConfirmation: undefined, whatsappUpdates: true } };
+ const q = await (await quote(request('/api/payments/quote', { lines: basket.lines }))).json();
+ expect((await checkout(request('/api/payments/checkout', { ...basket, quoteToken: q.quoteToken }))).status).toBe(200);
+ provider.status = 'approved';
+ expect((await signedEvent()).status).toBe(200);
+ expect((await db.query("select kind from notification_jobs where kind = 'customer_email' or kind like '%whatsapp%'")).rows).toEqual([]);
 });
 
 it('queues one staff alert and each consented lifecycle event through the guarded staff workflow', async () => {
  const base = input();
- const basket = { ...base, customer: { ...base.customer, whatsappUpdates: true, whatsappTracking: true } };
+ const basket = { ...base, customer: { ...base.customer, emailConfirmation: true } };
  const q = await (await quote(request('/api/payments/quote', { lines: basket.lines }))).json();
  const result = await checkout(request('/api/payments/checkout', { ...basket, quoteToken: q.quoteToken }));
  expect(result.status).toBe(200);
@@ -102,7 +104,17 @@ it('queues one staff alert and each consented lifecycle event through the guarde
  });
  const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
  expect(kinds).toEqual([
-   'admin_email', 'customer_email', 'customer_whatsapp', 'customer_whatsapp_delivered',
-   'customer_whatsapp_failed', 'customer_whatsapp_ready', 'staff_whatsapp_new',
+   'admin_email', 'customer_email', 'staff_email_delivered', 'staff_email_failed', 'staff_email_new', 'staff_email_ready',
+   'staff_telegram_delivered', 'staff_telegram_failed', 'staff_telegram_new', 'staff_telegram_paid', 'staff_telegram_ready',
  ]);
+});
+
+it('queues a demonstration order without touching payments or inventory', async () => {
+ await db.exec(`insert into public.orders(order_number,source,status,currency_code,subtotal,total)
+ values ('MDP-DEMO-NOTIFICATIONS','notification_demo','pending','XOF',25000,25000)`);
+ const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
+ expect(kinds).toEqual(['staff_email_new', 'staff_telegram_new']);
+ expect((await db.query('select claim_staff_notification_job(true,true) as job')).rows).toEqual([{ job:null }]);
+ expect((await db.query('select id from payment_attempts')).rows).toEqual([]);
+ expect((await db.query('select id from inventory_movements')).rows).toEqual([]);
 });

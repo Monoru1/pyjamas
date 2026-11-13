@@ -3,7 +3,7 @@ const mocks=vi.hoisted(()=>({allowed:true,recover:vi.fn(),storage:vi.fn(),jobs:v
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'staff'}}})},rpc:async()=>({data:mocks.allowed})})}));
 vi.mock('@/lib/payments/initialization',()=>({recoverPrivateCheckout:mocks.recover}));
 vi.mock('@/lib/supabase/recipe-storage',()=>({prepareRecipeStorage:mocks.storage}));
-vi.mock('@/lib/payments/operations',()=>({operationsDatabase:()=>({from:()=>({update:()=>({eq:()=>({eq:()=>({is:()=>({select:mocks.jobs})})})})})})}));
+vi.mock('@/lib/payments/operations',()=>({operationsDatabase:()=>({from:()=>({update:()=>({eq:()=>({eq:()=>({is:()=>({lte:()=>({select:mocks.jobs})})})})})})})}));
 vi.mock('@/lib/payments/notifications',()=>({processNotificationJobs:mocks.worker}));
 import {POST as retry} from '@/app/api/admin/notifications/retry/route';
 import { POST as recover } from '@/app/api/payments/recover/route';
@@ -35,5 +35,5 @@ it('staff can retry only an unleased pending notification; disabled and blocked 
  mocks.allowed=true;expect((await retry(request(`job_id=${id}`,'https://evil.test'))).status).toBe(403);
  expect((await retry(request('job_id=invalid'))).status).toBe(400);
  mocks.jobs.mockResolvedValue({data:[],error:null});expect((await retry(request(`job_id=${id}`))).status).toBe(409);expect(mocks.worker).not.toHaveBeenCalled();
- mocks.jobs.mockResolvedValue({data:[{id}],error:null});expect((await retry(request(`job_id=${id}`))).status).toBe(303);expect(mocks.worker).toHaveBeenCalledWith(2);
+ mocks.jobs.mockResolvedValue({data:[{id}],error:null});expect((await retry(request(`job_id=${id}`))).status).toBe(303);expect(mocks.worker).toHaveBeenCalledWith(1,id);
 });

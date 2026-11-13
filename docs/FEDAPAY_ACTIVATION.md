@@ -248,3 +248,35 @@ Le webhook Live de la PR 14 est
 `https://deploy-preview-14--pyjamas25.netlify.app/api/payments/webhook`.
 Renseigner le secret associé à cette URL et vérifier une livraison signée
 depuis le tableau de bord Live avant de déclarer la configuration validée.
+
+## Démonstration Telegram et e-mail
+
+La migration `20261113093826_staff_notification_channels.sql` garde
+l'historique WhatsApp et arrête la création et le traitement de ses tâches.
+Elle ajoute une file par canal et par événement staff. La confirmation
+client par e-mail exige un consentement explicite au checkout.
+
+Configurer uniquement les variables serveur de la recette Netlify.
+
+| Canal | Variables |
+|---|---|
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_STAFF_CHAT_ID`, `ORDER_TELEGRAM_ENABLED=true` |
+| Resend | `RESEND_API_KEY`, `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL`, `ORDER_TEST_EMAILS`, `ORDER_NOTIFICATIONS_ENABLED=true` |
+
+Créer un bot dédié avec [BotFather](https://t.me/BotFather), puis envoyer
+`/start` au bot depuis le chat de test. Configurer uniquement l'identifiant
+de ce chat. Dans Resend, utiliser un expéditeur autorisé et inscrire l'adresse
+de réception de test dans `ORDER_TEST_EMAILS`. Ajouter les secrets dans
+Netlify sans les copier dans GitHub ou dans une URL partagée.
+
+Dans la PR 14, ouvrir **Administration → Paiements → Historique des
+notifications**. Le bouton **Envoyer les notifications de démonstration**
+traite les deux tâches de la commande fictive `MDP-DEMO-NOTIFICATIONS`.
+La commande ne réserve aucun stock et n'a aucune transaction FedaPay.
+Un statut « accepté par le fournisseur » indique que Telegram ou Resend
+a renvoyé un identifiant. Vérifier la réception dans le chat et la boîte
+de test. Le bouton ne renvoie pas un message déjà accepté.
+
+Un rejet Telegram HTTP 429 est réessayable après le délai indiqué. Une
+réponse ambiguë est bloquée pour éviter un doublon. Resend utilise la même
+clé d'idempotence par tâche et s'arrête avant l'expiration de sa fenêtre.

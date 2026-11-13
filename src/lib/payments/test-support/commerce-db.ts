@@ -11,7 +11,7 @@ export async function commerceDatabase() {
     create schema extensions;
     create function extensions.unaccent(text) returns text language sql immutable as $$select $1$$;`);
   await db.exec(readFileSync('supabase/recette/bootstrap-production-schema.sql','utf8').replace(/^create extension[^;]+;$/gm,''));
-  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle']) {
+  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels']) {
     await db.exec(readFileSync(`supabase/migrations/${name}.sql`,'utf8'));
   }
   return db;
