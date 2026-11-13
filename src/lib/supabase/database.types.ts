@@ -66,7 +66,7 @@ export type Database = {
   public: {
     Tables: {
       payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string;environment:string;order_id:string|null;last_error:string|null;updated_at:string}>;
-      notification_jobs: Table<{id:string;order_id:string;kind:string;provider_message_id:string|null;status:string;attempts:number;last_error:string|null;created_at:string;next_attempt_at:string}>;
+      notification_jobs: Table<{id:string;order_id:string;kind:string;provider_message_id:string|null;status:string;attempts:number;last_error:string|null;created_at:string;next_attempt_at:string;recipient:string|null;delivery_status:string|null;delivered_at:string|null;sent_at:string|null}>;
       payment_events: Table<{id:number;payment_id:string;external_event:string;new_status:string;created_at:string}>;
       order_status_history: Table<{order_id:string;note:string|null;created_at:string}>;
       activity_logs: Table;

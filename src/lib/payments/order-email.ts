@@ -27,8 +27,11 @@ export function emailLabel(kind: EmailKind) {
   return `${kind.startsWith('customer_') ? 'Acheteur' : 'Équipe'} · ${events[emailEvent(kind)][0]}`;
 }
 
-type Line = { name: string; size?: string | null; quantity: number; total: number; photo?: string | null };
-type EmailOrder = { reference: string; total: number; subtotal?: number; shipping?: number; lines: Line[]; demo?: boolean };
+type Line = { name: string; variant?: string | null; size?: string | null; quantity: number; total: number; photo?: string | null };
+export type EmailOrder = {
+  reference: string; total: number; subtotal?: number; discount?: number; shipping?: number;
+  lines: Line[]; demo?: boolean; adminPath?: string;
+};
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!
@@ -43,22 +46,24 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
     ? 'Merci pour votre commande. Votre paiement a été vérifié. Nous vous informerons lorsque vos articles seront prêts.'
     : summary;
   const customerTracking = trackingUrl || (order.demo ? `${origin}/paiement` : undefined);
-  const action = customer && customerTracking ? 'Suivre ma commande' : customer ? 'Contacter la boutique' : 'Voir les commandes';
-  const actionUrl = customer ? customerTracking || `${origin}/contact` : `${origin}/admin/commandes`;
+  const adminPath = order.adminPath && /^\/admin\/commandes\/[0-9a-f-]{36}$/.test(order.adminPath) ? order.adminPath : '/admin/commandes';
+  const action = customer && customerTracking ? 'Suivre ma commande' : customer ? 'Contacter la boutique' : adminPath === '/admin/commandes' ? 'Voir les commandes' : 'Ouvrir la commande';
+  const actionUrl = customer ? customerTracking || `${origin}/contact` : `${origin}${adminPath}`;
   const prefix = order.demo ? `[DÉMONSTRATION] ${customer ? 'Acheteur' : 'Équipe'} — ` : '';
   const subject = `${prefix}${title} · ${order.reference}`.replace(/[\r\n]+/g, ' ');
   const rows = order.lines.map(line => {
     const safePhoto = safeMediaUrl(line.photo);
     const photo = safePhoto ? new URL(safePhoto, origin).href : '';
-    return `<tr><td style="padding:14px 0;border-bottom:1px solid #f0ddd5"><table role="presentation" cellspacing="0" cellpadding="0"><tr>${photo ? `<td style="padding-right:12px"><img src="${escapeHtml(photo)}" alt="" width="56" height="56" style="display:block;border-radius:6px;object-fit:cover"></td>` : ''}<td><strong>${escapeHtml(line.name)}</strong><br><span style="font-size:13px;color:#65474e">${line.size ? `Taille ${escapeHtml(line.size)} · ` : ''}Qté ${line.quantity}</span></td></tr></table></td><td align="right" style="padding:14px 0 14px 8px;border-bottom:1px solid #f0ddd5;font-size:14px">${xof(line.total)}</td></tr>`;
+    return `<tr><td style="padding:14px 0;border-bottom:1px solid #f0ddd5"><table role="presentation" cellspacing="0" cellpadding="0"><tr>${photo ? `<td style="padding-right:12px"><img src="${escapeHtml(photo)}" alt="" width="56" height="56" style="display:block;border-radius:6px;object-fit:cover"></td>` : ''}<td><strong>${escapeHtml(line.name)}</strong><br><span style="font-size:13px;color:#65474e">${line.variant ? `${escapeHtml(line.variant)} · ` : ''}${line.size ? `Taille ${escapeHtml(line.size)} · ` : ''}Qté ${line.quantity}</span></td></tr></table></td><td align="right" style="padding:14px 0 14px 8px;border-bottom:1px solid #f0ddd5;font-size:14px">${xof(line.total)}</td></tr>`;
   }).join('');
   const detail = [
     ...(order.subtotal === undefined ? [] : [['Sous-total', xof(order.subtotal)]]),
+    ...(order.discount ? [['Remise', `− ${xof(order.discount)}`]] : []),
     ...(order.shipping === undefined ? [] : [['Livraison', xof(order.shipping)]]),
     ['Total commande', xof(order.total)],
   ];
   const text = ['La Maison des Pyjamas', `${prefix}${title}`, description, `Commande ${order.reference}`,
-    ...order.lines.map(line => `${line.quantity} × ${line.name}${line.size ? ` (${line.size})` : ''} · ${xof(line.total)}`),
+    ...order.lines.map(line => `${line.quantity} × ${line.name}${[line.variant, line.size].some(Boolean) ? ` (${[line.variant, line.size].filter(Boolean).join(', ')})` : ''} · ${xof(line.total)}`),
     ...detail.map(([label, amount]) => `${label} · ${amount}`), `${action} · ${actionUrl}`, contactEmail,
   ].filter(Boolean).join('\n');
   const content = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fff6ec"><tr><td align="center" style="padding:20px 10px">

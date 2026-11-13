@@ -45,6 +45,7 @@ export async function updateOrderStatus(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath('/admin');
   revalidatePath('/admin/commandes');
+  revalidatePath(`/admin/commandes/${id}`);
 }
 
 function refreshCatalog() {

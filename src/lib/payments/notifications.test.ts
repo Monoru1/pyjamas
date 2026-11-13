@@ -4,6 +4,8 @@ const mocks=vi.hoisted(()=>({db:{rpc:vi.fn(),from:vi.fn()}}));
 vi.mock('./operations',()=>({operationsDatabase:()=>mocks.db}));
 import { processNotificationJobs,sendOrderEmail } from './notifications';
 const updates:Record<string,unknown>[]=[];
+const paidOrder={id:'11111111-1111-4111-8111-111111111111',order_number:'TEST',created_at:'2026-11-13T10:00:00Z',status:'pending',payment_state:'paid',source:'fedapay_live',needs_attention:false,currency_code:'XOF',subtotal:2000,discount_total:0,total:2000,customer_note:null,delivery:{email:'customer@example.test',shipping_xof:0}};
+const line={id:'l1',product_id:null,product_name:'Pyjama fixture',sku:'FIX-M',color_name:'Rouge',size_label:'M',quantity:2,unit_price:1000,line_total:2000,image_url:null};
 function result(data:unknown) {
  const q:Record<string,unknown>={then:(resolve:(value:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};
  for(const method of ['select','eq','single','maybeSingle','order','in'])q[method]=()=>q;
@@ -11,7 +13,7 @@ function result(data:unknown) {
 }
 beforeEach(()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');vi.stubEnv('ORDER_ADMIN_EMAIL','admin@example.test');
  mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'admin_email',lease_token:'lease',attempts:1,created_at:new Date().toISOString()},error:null});
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:table==='order_items'?[]:[{id:'job'}]));
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?paidOrder:table==='order_items'?[]:[{id:'job'}]));
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 it('uses a stable provider idempotency key and checks actual send response',async()=>{
@@ -41,13 +43,13 @@ it('successful provider response marks the leased job sent',async()=>{
 
 it('does not send a retry after another worker has acquired the lease',async()=>{
  mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'admin_email',lease_token:'old',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[]));
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?paidOrder:[]));
  const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
  expect(await processNotificationJobs(1)).toBe(0);expect(fetcher).not.toHaveBeenCalled();
 });
 it('never reports delivery when the acknowledgement loses its lease',async()=>{
  let notificationCalls=0;
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:table==='order_items'?[]:++notificationCalls===1?[{id:'job'}]:[]));
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?paidOrder:table==='order_items'?[]:++notificationCalls===1?[{id:'job'}]:[]));
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'}))));
  expect(await processNotificationJobs(1)).toBe(0);
 });
@@ -80,4 +82,22 @@ it('renders all nine email models and escapes product data', async () => {
  expect(pending.html).toContain('&lt;script&gt;fixture');
  expect(pending.html).not.toContain('evil.test');
  expect(pending.html).not.toContain('DÉMONSTRATION');
+});
+
+it('sends exactly the persisted order: reference, lines, amounts, recipient and order link',async()=>{
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?paidOrder:table==='order_items'?[line]:[{id:'job'}]));
+ const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'})));vi.stubGlobal('fetch',fetcher);
+ expect(await processNotificationJobs(1)).toBe(1);
+ const mail=JSON.parse(fetcher.mock.calls[0][1].body);
+ expect(mail.subject).toBe('Paiement confirmé · TEST');expect(mail.to).toBe('admin@example.test');
+ expect(mail.text).toContain('2 × Pyjama fixture (Rouge, M) · 2\u202f000 FCFA');expect(mail.text).toContain('Total commande · 2\u202f000 FCFA');
+ expect(mail.html).toContain(`/admin/commandes/${paidOrder.id}"`);
+ expect(updates).toContainEqual(expect.objectContaining({recipient:'admin@example.test'}));
+ expect(mocks.db.rpc).toHaveBeenCalledWith('refresh_email_delivery',{p_message_id:'provider-message'});
+});
+it('blocks instead of sending when persisted amounts disagree',async()=>{
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{...paidOrder,total:2500}:table==='order_items'?[line]:[{id:'job'}]));
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ expect(await processNotificationJobs(1)).toBe(0);expect(fetcher).not.toHaveBeenCalled();
+ expect(updates).toContainEqual(expect.objectContaining({status:'blocked',last_error:'order_data_inconsistent'}));
 });
