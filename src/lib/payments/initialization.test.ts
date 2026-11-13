@@ -5,10 +5,10 @@ vi.mock('./fedapay',async original=>({...await original<object>(),providerReques
 import { recoverPrivateCheckout } from './initialization';
 import { ProviderHttpError } from './fedapay';
 const id='11111111-1111-4111-8111-111111111111';
-function chain(data:unknown){const q:Record<string,unknown>={then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};for(const k of ['select','eq','maybeSingle'])q[k]=()=>q;q.update=(u:Record<string,unknown>)=>{mocks.updates.push(u);return q;};return q;}
+function chain(data:unknown){const q:Record<string,unknown>={then:(resolve:(v:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};for(const k of ['select','eq','is','maybeSingle'])q[k]=()=>q;q.update=(u:Record<string,unknown>)=>{mocks.updates.push(u);return chain([u]);};return q;}
 beforeEach(()=>{
  vi.clearAllMocks();mocks.updates=[];
- for(const[k,v]of Object.entries({FEDAPAY_ENABLED:'true',PAYMENT_CHECKOUT_ENABLED:'true',FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_DATABASE_ISOLATED:'true',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',CONTEXT:'deploy-preview',REVIEW_ID:'11',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SHIPPING_XOF:'0',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:id}))vi.stubEnv(k,v);
+ for(const[k,v]of Object.entries({FEDAPAY_ENABLED:'true',PAYMENT_CHECKOUT_ENABLED:'true',FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_DATABASE_ISOLATED:'true',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SHIPPING_XOF:'0',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:id}))vi.stubEnv(k,v);
  mocks.permission={staff_user_id:'staff',merchant_account_id:101915,amount_xof:100,expires_at:new Date(Date.now()+300000).toISOString(),revoked_at:null,payment_id:id};
  mocks.payment={id,order_id:'order',provider_id:113943841,public_token:'reference',amount_xof:100,merchant_account_id:101915,status:'pending',checkout_url:null};
  mocks.db.from.mockImplementation((table:string)=>chain(table==='live_test_authorizations'?mocks.permission:mocks.payment));
@@ -49,4 +49,20 @@ it('records only safe phase and HTTP status on token failure, preserving the sam
  try {mocks.provider.mockRejectedValue(new ProviderHttpError(403));expect(await recoverPrivateCheckout(id,'staff')).toBe('retry_failed');
  expect(mocks.updates).toContainEqual({last_error:'initialization_failed:request_checkout_token:http_403'});
  expect(JSON.stringify(spy.mock.calls)).not.toContain('sk_live_fixture');expect(JSON.stringify(spy.mock.calls)).not.toContain('fixture-token');}finally{spy.mockRestore();}
+});
+
+it('returns the persisted winner when a concurrent request already stored the checkout link', async () => {
+  const winner = 'https://checkout.fedapay.com/existing-link';
+  mocks.db.from.mockImplementation((table: string) => {
+    const q = chain(table === 'live_test_authorizations' ? mocks.permission : { ...mocks.payment, checkout_url: winner });
+    q.update = vi.fn(() => chain([]));
+    return q;
+  });
+  const { initializeStoredCheckout } = await import('./initialization');
+  const result = await initializeStoredCheckout({
+    id, order_id: 'order', provider_id: 113943841, public_token: 'reference',
+    amount_xof: 100, status: 'pending', checkout_url: null,
+  });
+  expect(result.url).toBe(winner);
+  expect(mocks.provider.mock.calls.map(([path]) => path)).toEqual(['/transactions/113943841/token']);
 });

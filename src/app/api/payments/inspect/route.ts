@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase, resolvedTransaction, readProviderInitializationLogs } from '@/lib/payments/server';
-import { paymentConfiguration, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
+import { liveInspectionConfiguration, paymentConfiguration, paymentDeployment, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
 import { UUID_PATTERN } from '@/lib/payments/read-body';
 
 export const runtime = 'nodejs';
@@ -14,18 +14,19 @@ export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get('payment') || '';
   if (!UUID_PATTERN.test(id)) return Response.json({ error: 'Référence invalide.' }, { status: 400, headers });
   try {
-    const config = paymentConfiguration();
-    const { data: payment, error } = await paymentDatabase().from('payment_attempts')
-      .select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id,last_error')
+    const readOnlyLive = process.env.FEDAPAY_ENVIRONMENT === 'live' && paymentDeployment().context === 'deploy-preview';
+    const config = readOnlyLive ? liveInspectionConfiguration() : paymentConfiguration();
+    const { data: payment, error } = await paymentDatabase(readOnlyLive).from('payment_attempts')
+      .select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id,last_error,checkout_url,inventory_state,status')
       .eq('id', id).eq('environment', config.environment).maybeSingle();
     if (error || !payment?.provider_id || !payment.order_id) return Response.json({ error: 'Transaction associée introuvable.' }, { status: 404, headers });
-    const transaction = await resolvedTransaction(payment.provider_id);
+    const transaction = await resolvedTransaction(payment.provider_id, readOnlyLive);
     let mismatch: string | null = null;
     try { validateTransaction(transaction, payment); }
     catch (error) { if (!(error instanceof TransactionMismatchError)) throw error; mismatch = error.field; }
     let providerLogs: Awaited<ReturnType<typeof readProviderInitializationLogs>> | undefined;
     if (new URL(request.url).searchParams.get('logs') === '1') {
-      try { providerLogs = await readProviderInitializationLogs(payment.provider_id); }
+      try { providerLogs = await readProviderInitializationLogs(payment.provider_id, readOnlyLive); }
       catch { providerLogs = { available: false, entries: [] }; }
     }
     return Response.json({
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
         providerId: transaction.id === payment.provider_id,
         amount: Number(transaction.amount) === Number(payment.amount_xof),
         currency: transaction.currency?.iso === 'XOF',
-        merchantAccountId: transaction.account_id === payment.merchant_account_id,
+        merchantAccountId: transaction.account_id === config.accountId && transaction.account_id === payment.merchant_account_id,
         paymentReference: transaction.custom_metadata?.payment_id === payment.id,
         purpose: transaction.custom_metadata?.purpose === payment.purpose,
         order: transaction.custom_metadata?.order_id === payment.order_id,
@@ -50,6 +51,8 @@ export async function GET(request: Request) {
         accountIdType: typeof transaction.account_id,
       },
       localError: payment.last_error,
+      localStatus: payment.status, inventoryState: payment.inventory_state,
+      checkoutLinkStored: Boolean(payment.checkout_url),
       providerLogs,
       providerRequests: 'GET only', financialMutation: false,
     }, { headers });

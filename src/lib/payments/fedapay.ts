@@ -11,6 +11,27 @@ export function paymentDeployment(env:Record<string,string|undefined>=process.en
     previewOrigin:(built&&process.env.PAYMENT_BUILD_ORIGIN)||env.DEPLOY_PRIME_URL};
 }
 
+const recipeOrigin = 'https://deploy-preview-14--pyjamas25.netlify.app';
+const recipeDatabase = 'https://oxhymanjibveayhcaqvj.supabase.co';
+
+function isPrivateLiveRecipe(env: Record<string, string | undefined>) {
+  const deployment = paymentDeployment(env);
+  return deployment.context === 'deploy-preview' && deployment.reviewId === '14'
+    && (deployment.previewOrigin || env.PAYMENT_SITE_URL) === recipeOrigin
+    && env.NEXT_PUBLIC_SUPABASE_URL === recipeDatabase
+    && env.PAYMENT_DATABASE_ISOLATED === 'true' && env.FEDAPAY_LIVE_APPROVED === 'false';
+}
+
+/** Authenticated staff may inspect existing Live transactions with admission disabled. */
+export function liveInspectionConfiguration(env: Record<string, string | undefined> = process.env) {
+  const accountId = Number(env.FEDAPAY_ACCOUNT_ID);
+  if (!isPrivateLiveRecipe(env) || env.FEDAPAY_ENVIRONMENT !== 'live' || accountId !== 101915
+    || !env.FEDAPAY_SECRET_KEY?.startsWith('sk_live_') || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Diagnostic Live indisponible.');
+  }
+  return { environment: 'live' as const, accountId, key: env.FEDAPAY_SECRET_KEY, apiOrigin: 'https://api.fedapay.com' };
+}
+
 export function paymentConfiguration(env: Record<string, string | undefined> = process.env) {
   const environment = env.FEDAPAY_ENVIRONMENT;
   if (env.FEDAPAY_ENABLED !== 'true' || !['sandbox', 'live'].includes(environment || '')
@@ -26,11 +47,9 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
   const testCeiling = Number(env.PAYMENT_LIVE_TEST_MAX_XOF);
   if (liveTest) {
-    if (deployment.context !== 'deploy-preview' || deployment.reviewId !== '11'
-      || new URL(origin).origin !== 'https://deploy-preview-11--pyjamas25.netlify.app'
-      || env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
-      || env.PAYMENT_DATABASE_ISOLATED !== 'true' || env.FEDAPAY_LIVE_APPROVED === 'true'
-      || !Number.isSafeInteger(testCeiling) || testCeiling < 1 || testCeiling > 1000
+    if (!isPrivateLiveRecipe(env)
+      || Number(env.FEDAPAY_ACCOUNT_ID) !== 101915
+      || !Number.isSafeInteger(testCeiling) || testCeiling < 1 || testCeiling > 100
       || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || '')) throw new Error('Recette Live non autorisée.');
   } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || deployment.context !== 'production')) throw new Error('Production non validée.');
   const shipping = Number(env.PAYMENT_SHIPPING_XOF);
@@ -98,7 +117,19 @@ export function validateTransaction(transaction: ProviderTransaction, payment: {
 }
 
 export async function providerRequest(path: string, init: RequestInit = {}, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
-  const { key, apiOrigin } = paymentConfiguration();
+  return requestProvider(paymentConfiguration(), path, init, fetcher);
+}
+
+export function inspectLiveProvider(path: string, fetcher: typeof fetch = fetch) {
+  if (!/^(?:\/transactions\/\d+|\/currencies\/\d+|\/logs\?per_page=100)$/.test(path)) {
+    throw new Error('Lecture fournisseur invalide.');
+  }
+  return requestProvider(liveInspectionConfiguration(), path, { method: 'GET' }, fetcher);
+}
+
+async function requestProvider(
+  { key, apiOrigin }: { key: string; apiOrigin: string }, path: string, init: RequestInit, fetcher: typeof fetch,
+): Promise<Record<string, unknown>> {
   const readOnlyLogs = path === '/logs?per_page=100' && (!init.method || init.method === 'GET');
   if (!readOnlyLogs && !/^(?:\/transactions(?:\/\d+(?:\/token)?)?|\/currencies\/\d+)$/.test(path)) throw new Error('Requête invalide.');
   const response = await fetcher(`${apiOrigin}/v1${path}`, {

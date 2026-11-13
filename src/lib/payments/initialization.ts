@@ -26,9 +26,17 @@ export async function initializeStoredCheckout(payment: StoredCheckout, config =
     stage = 'validate_checkout_url';
     const url = checkoutTokenFromResponse(token, config.environment);
     stage = 'persist_checkout_url';
-    const { error } = await paymentDatabase().from('payment_attempts').update({ checkout_url: url, last_error: null }).eq('id', payment.id).eq('provider_id', payment.provider_id);
-    if (error) throw new Error('Persistence unavailable');
-    return { state, url, internal: false };
+    const db = paymentDatabase();
+    const { data: stored, error } = await db.from('payment_attempts')
+      .update({ checkout_url: url, last_error: null }).eq('id', payment.id)
+      .eq('provider_id', payment.provider_id).is('checkout_url', null).select('checkout_url');
+    if (error || !stored) throw new Error('Persistence unavailable');
+    if (stored.length === 1) return { state, url, internal: false };
+    // A simultaneous request already persisted a link. Return the shared link.
+    const { data: existing, error: lookupError } = await db.from('payment_attempts').select('checkout_url')
+      .eq('id', payment.id).eq('provider_id', payment.provider_id).maybeSingle();
+    if (lookupError) throw new Error('Persistence unavailable');
+    return { state, url: safeCheckoutUrl(existing?.checkout_url, config.environment), internal: false };
   } catch (error) { throw new CheckoutInitializationError(stage, error); }
 }
 

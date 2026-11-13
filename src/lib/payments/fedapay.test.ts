@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { mapProviderStatus, paymentConfiguration, providerRequest, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
+import { mapProviderStatus, paymentConfiguration, providerRequest, inspectLiveProvider, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
 
 const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
@@ -65,14 +65,14 @@ describe('FedaPay fail-closed configuration and webhooks', () => {
   });
 });
 
-it('allows live acceptance only on PR 11 and the exact isolated database with a strict ceiling',()=>{
- const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'11',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
+it('allows live acceptance only on PR 14 and the exact isolated database with a strict ceiling',()=>{
+ const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
  expect(paymentConfiguration(acceptance)).toMatchObject({liveTest:true,staffOnly:true,testCeiling:100});
- for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'1001'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
+ for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'101'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
 });
 it('uses the real build metadata when Netlify does not provide CONTEXT/REVIEW_ID at runtime',()=>{
  try {
-  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',PAYMENT_BUILD_REVIEW_ID:'11',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-11--pyjamas25.netlify.app'};
+  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_BUILD_REVIEW_ID:'14',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-14--pyjamas25.netlify.app'};
   for(const [key,value]of Object.entries(values))vi.stubEnv(key,value);
   vi.stubEnv('CONTEXT',undefined);vi.stubEnv('REVIEW_ID',undefined);
   expect(paymentConfiguration().liveTest).toBe(true);
@@ -100,4 +100,28 @@ it('validates documented token responses without accepting mixed environments or
  const token={token:'fixture',url:'https://checkout.fedapay.com/fixture'};
  expect(checkoutTokenFromResponse(token,'live')).toBe(token.url);expect(checkoutTokenFromResponse({'v1/token':token},'live')).toBe(token.url);
  for(const value of [{url:token.url},{...token,url:'https://sandbox-checkout.fedapay.com/fixture'},{...token,url:'https://evil.example/fixture'},{...token,'v1/token':token}])expect(()=>checkoutTokenFromResponse(value,'live')).toThrow();
+});
+
+it('can read a bound Live transaction on PR 14 with the payment switches off', async () => {
+  const settings = {
+    ...env, FEDAPAY_ENABLED: 'false', PAYMENT_CHECKOUT_ENABLED: 'false',
+    PAYMENT_LIVE_TEST_ENABLED: 'false', FEDAPAY_LIVE_APPROVED: 'false',
+    FEDAPAY_ENVIRONMENT: 'live', FEDAPAY_ACCOUNT_ID: '101915', FEDAPAY_SECRET_KEY: 'sk_live_fixture',
+    FEDAPAY_WEBHOOK_SECRET: '', CONTEXT: 'deploy-preview', REVIEW_ID: '14',
+    PAYMENT_SITE_URL: 'https://deploy-preview-14--pyjamas25.netlify.app',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://oxhymanjibveayhcaqvj.supabase.co',
+  };
+  try {
+    for (const [key, value] of Object.entries(settings)) vi.stubEnv(key, value);
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ id: 113943841 }));
+    expect(() => paymentConfiguration()).toThrow();
+    expect(() => inspectLiveProvider('/transactions/113943841/token', fetcher)).toThrow();
+    await expect(inspectLiveProvider('/transactions/113943841', fetcher)).resolves.toEqual({ id: 113943841 });
+    expect(fetcher).toHaveBeenCalledWith('https://api.fedapay.com/v1/transactions/113943841', expect.objectContaining({ method: 'GET', redirect: 'error' }));
+    vi.stubEnv('REVIEW_ID', '11');
+    expect(() => inspectLiveProvider('/transactions/113943841', fetcher)).toThrow();
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });

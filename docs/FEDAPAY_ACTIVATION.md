@@ -226,3 +226,25 @@ Vérifier la réception sur le téléphone de test. Une limite HTTP 429 est
 réessayable avec délai. En cas de réponse ambiguë, vérifier chez Meta avant
 toute nouvelle tentative. Le workflow logistique actuel passe de « prête »
 à « livrée ».
+
+## Correction du 13 novembre 2026 — compte Live en recette isolée
+
+La PR 14 remplace la PR 11 comme preview autorisée pour les opérations
+privées Live. Les paragraphes antérieurs décrivent les essais historiques.
+La configuration cible utilise le marchand Live `101915`, un plafond de
+`100 XOF` et la base `oxhymanjibveayhcaqvj`. Garder
+`FEDAPAY_ENABLED`, `PAYMENT_CHECKOUT_ENABLED`, `PAYMENT_LIVE_TEST_ENABLED`
+et `FEDAPAY_LIVE_APPROVED` à `false` en attendant l'autorisation requise.
+
+Dans l'administration de la preview, l'inspection de l'ancienne transaction
+utilise exclusivement des GET FedaPay. Les résultats résument l'association,
+la devise, le montant, le marchand, l'état fournisseur et les preuves d'un
+ancien lien, sans exposer le lien ni le jeton. Le diagnostic fonctionne avec
+l'admission fermée. Vérifier la transaction existante et son stock avant toute
+autorisation de checkout. Laisser la réservation et l'historique intacts tant
+que l'état fournisseur et le traitement de l'ancienne intention restent ouverts.
+
+Le webhook Live de la PR 14 est
+`https://deploy-preview-14--pyjamas25.netlify.app/api/payments/webhook`.
+Renseigner le secret associé à cette URL et vérifier une livraison signée
+depuis le tableau de bord Live avant de déclarer la configuration validée.

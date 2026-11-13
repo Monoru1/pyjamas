@@ -1,26 +1,29 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
-import { paymentConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
+import { inspectLiveProvider, liveInspectionConfiguration, paymentConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
 
-export function paymentDatabase() {
-  paymentConfiguration();
+export function paymentDatabase(readOnlyLive = false) {
+  if (readOnlyLive) liveInspectionConfiguration();
+  else paymentConfiguration();
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-export async function resolvedTransaction(providerId: number): Promise<ProviderTransaction> {
-  const transaction = transactionFromResponse(await providerRequest(`/transactions/${providerId}`));
+export async function resolvedTransaction(providerId: number, readOnlyLive = false): Promise<ProviderTransaction> {
+  const request = readOnlyLive ? inspectLiveProvider : providerRequest;
+  const transaction = transactionFromResponse(await request(`/transactions/${providerId}`));
   // FedaPay may return currency_id rather than an expanded currency. Resolve it,
   // never assume that a numeric id means XOF.
   if (!transaction.currency?.iso && Number.isSafeInteger(transaction.currency_id) && transaction.currency_id! > 0) {
-    const resource = await providerRequest(`/currencies/${transaction.currency_id}`);
+    const resource = await request(`/currencies/${transaction.currency_id}`);
     transaction.currency = (resource['v1/currency'] ?? resource) as { iso: string };
   }
   return transaction;
 }
 
 /** Only sanitized evidence for this transaction; never return log bodies, IPs or tokens. */
-export async function readProviderInitializationLogs(providerId: number) {
-  const payload = await providerRequest('/logs?per_page=100');
+export async function readProviderInitializationLogs(providerId: number, readOnlyLive = false) {
+  const request = readOnlyLive ? inspectLiveProvider : providerRequest;
+  const payload = await request('/logs?per_page=100');
   const rows = (Array.isArray(payload) ? payload : payload['v1/logs'] ?? payload.logs) as Record<string, unknown>[] | undefined;
   if (!Array.isArray(rows)) return { available: false, entries: [] };
   const entries = rows.flatMap(log => {
@@ -29,11 +32,13 @@ export async function readProviderInitializationLogs(providerId: number) {
     if (!path.endsWith(`/transactions/${providerId}/token`)) return [];
     let response: Record<string, unknown> = {};
     try { response = typeof log.response === 'string' ? JSON.parse(log.response) : log.response as Record<string, unknown> || {}; } catch { /* No raw diagnostic output. */ }
+    const wrapped = response['v1/token'];
+    const token = wrapped && typeof wrapped === 'object' ? wrapped as Record<string, unknown> : response;
     let checkoutHost: string | null = null;
-    try { if (typeof response.url === 'string') checkoutHost = new URL(response.url).hostname; } catch { /* Invalid URL is summarized only. */ }
+    try { if (typeof token.url === 'string') checkoutHost = new URL(token.url).hostname; } catch { /* Invalid URL is summarized only. */ }
     return [{ method: log.method === 'POST' ? 'POST' : 'other', status: Number(log.status),
-      tokenPresent: typeof response.token === 'string' && response.token.length > 0,
-      urlPresent: typeof response.url === 'string', checkoutHost,
+      tokenPresent: typeof token.token === 'string' && token.token.length > 0,
+      urlPresent: typeof token.url === 'string', checkoutHost,
       wrappedToken: Boolean(response['v1/token']), timestamp: typeof log.created_at === 'string' ? log.created_at : null }];
   });
   return { available: true, entries };

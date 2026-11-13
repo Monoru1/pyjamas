@@ -25,10 +25,11 @@ export function checkPaymentReadiness(env, target) {
     check('live approval stays disabled in sandbox', env.FEDAPAY_LIVE_APPROVED !== 'true');
   } else if (target === 'live-test') {
     check('private Live test explicitly enabled', env.PAYMENT_LIVE_TEST_ENABLED === 'true');
-    check('only Netlify PR 11 preview', env.CONTEXT === 'deploy-preview' && env.REVIEW_ID === '11' && site?.origin === 'https://deploy-preview-11--pyjamas25.netlify.app');
+    check('only Netlify PR 14 preview', env.CONTEXT === 'deploy-preview' && env.REVIEW_ID === '14' && site?.origin === 'https://deploy-preview-14--pyjamas25.netlify.app');
     check('exact isolated recipe database', env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co' && env.PAYMENT_DATABASE_ISOLATED === 'true');
-    check('public live approval stays disabled', env.FEDAPAY_LIVE_APPROVED !== 'true');
-    check('strict test ceiling between 1 and 1000 XOF', /^\d+$/.test(env.PAYMENT_LIVE_TEST_MAX_XOF || '') && Number.isSafeInteger(Number(env.PAYMENT_LIVE_TEST_MAX_XOF)) && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) >= 1 && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) <= 1000);
+    check('public live approval stays disabled', env.FEDAPAY_LIVE_APPROVED === 'false');
+    check('expected Live merchant', env.FEDAPAY_ACCOUNT_ID === '101915');
+    check('strict test ceiling between 1 and 100 XOF', /^\d+$/.test(env.PAYMENT_LIVE_TEST_MAX_XOF || '') && Number.isSafeInteger(Number(env.PAYMENT_LIVE_TEST_MAX_XOF)) && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) >= 1 && Number(env.PAYMENT_LIVE_TEST_MAX_XOF) <= 100);
     check('one owner authorization identifier configured', /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || ''));
   } else {
     check('Netlify production context', env.CONTEXT === 'production');

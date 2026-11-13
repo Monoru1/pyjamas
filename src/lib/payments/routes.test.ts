@@ -104,8 +104,8 @@ it('returns the new total before creating any order or provider transaction when
  expect(mocks.db.rpc.mock.calls.some(([name])=>name==='create_shop_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('live preview rejects anonymous staff access and an amount above the owner ceiling',async()=>{
- for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'11',PAYMENT_SITE_URL:'https://deploy-preview-11--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
- const req=()=>request(input,'https://deploy-preview-11--pyjamas25.netlify.app');
+ for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
+ const req=()=>request(input,'https://deploy-preview-14--pyjamas25.netlify.app');
  mocks.allowed=false;expect((await checkout(req())).status).toBe(403);
  mocks.allowed=true;expect((await checkout(req())).status).toBe(403);expect(mocks.provider).not.toHaveBeenCalled();
 });
@@ -126,7 +126,11 @@ it('requires staff for read-only provider inspection and reports comparisons wit
 it('reconfirms and resumes the same reserved last unit after refresh without rereading available stock or creating a charge',async()=>{
  const parsed=checkoutSchema.parse(input);
  const hash=createHash('sha256').update(JSON.stringify({customer:parsed.customer,lines:parsed.lines})).digest('hex');
- mocks.db.from.mockImplementation(()=>chain({...payment,request_hash:hash,environment:'sandbox',merchant_account_id:42,items:quote.items}));
+ mocks.db.from.mockImplementation(()=>{
+  const query = chain({...payment,request_hash:hash,environment:'sandbox',merchant_account_id:42,items:quote.items});
+  query.update = vi.fn(() => chain([{checkout_url:'https://sandbox-checkout.fedapay.com/fixture'}]));
+  return query;
+ });
  mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?null:{...payment,provider_id:42},error:null}));
  const review=await checkout(request({...input,quoteToken:undefined}));
  expect(review.status).toBe(409);const data=await review.json();expect(data.quote.reserved).toBe(true);expect(data.quote.amount_xof).toBe(15500);
