@@ -33,8 +33,18 @@ export async function POST(request: Request) {
     if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
-    const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items').eq('idempotency_key',input.idempotencyKey).maybeSingle();
+    const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id').eq('idempotency_key',input.idempotencyKey).maybeSingle();
     if(lookupError)throw new Error('Recherche de commande indisponible.');
+    if (config.liveTest && (!existing || !existing.provider_id)) {
+      const { data: previous, error: previousError } = await db.from('payment_attempts')
+        .select('status,inventory_state').eq('environment', 'live').eq('provider_id', 113943841).maybeSingle();
+      const settled = previous && (['paid', 'refunded', 'partially_refunded'].includes(previous.status)
+        ? previous.inventory_state === 'committed'
+        : previous.status === 'expired' && previous.inventory_state === 'released');
+      if (previousError || !settled) {
+        return Response.json({ error: 'Le précédent test Live doit être rapproché avant un nouveau paiement.' }, { status: 409 });
+      }
+    }
     let quote:ShopQuote;
     if(existing && !Array.isArray(existing)) {
       if(existing.request_hash!==hash || existing.environment!==config.environment || existing.merchant_account_id!==config.accountId)return Response.json({error:'Cette demande est déjà liée à une autre commande.'},{status:409});

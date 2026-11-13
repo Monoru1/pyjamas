@@ -3,14 +3,11 @@ import { CheckoutButton } from '@/features/cart/components/checkout-button';
 import { checkoutConfiguration } from '@/lib/payments/fedapay';
 import { CartLines } from '@/features/cart/components/cart-lines';
 import { CartSummary } from '@/features/cart/components/cart-summary';
-import { WhatsAppCheckoutButton } from '@/features/cart/components/whatsapp-checkout-button';
 import { CustomerForm } from '@/features/checkout/components/customer-form';
-import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CartPage() {
-  const settings = await getStoreSettings();
   let payment: ReturnType<typeof checkoutConfiguration> | null = null;
   try {
     const config = checkoutConfiguration();
@@ -35,16 +32,15 @@ export default async function CartPage() {
               Dernière étape avant le sapin.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-white/72">
-              {payment ? 'Vérifiez vos pièces et vos coordonnées, puis réglez votre commande avec FedaPay.' : 'Vérifiez vos pièces, envoyez votre demande, puis la boutique confirme sa prise en charge sur WhatsApp.'}
+              {payment ? 'Vérifiez vos pièces et vos coordonnées, puis réglez votre commande avec FedaPay.' : 'Le paiement en ligne est momentanément indisponible. Votre panier reste disponible.'}
             </p>
           </div>
           <CartLines />
         </section>
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
-          <CustomerForm onlinePayment={Boolean(payment)} />
+          {payment && <CustomerForm onlinePayment />}
           <CartSummary />
           {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} liveTest={payment.liveTest} />}
-          <WhatsAppCheckoutButton phoneNumber={settings.whatsappPhone} />
         </aside>
       </div>
     </main>

@@ -3,7 +3,7 @@ const mocks=vi.hoisted(()=>({allowed:true,recover:vi.fn(),storage:vi.fn(),jobs:v
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'staff'}}})},rpc:async()=>({data:mocks.allowed})})}));
 vi.mock('@/lib/payments/initialization',()=>({recoverPrivateCheckout:mocks.recover}));
 vi.mock('@/lib/supabase/recipe-storage',()=>({prepareRecipeStorage:mocks.storage}));
-vi.mock('@/lib/payments/operations',()=>({operationsDatabase:()=>({from:()=>({update:()=>({eq:()=>({eq:()=>({is:()=>({lte:()=>({select:mocks.jobs})})})})})})})}));
+vi.mock('@/lib/payments/operations',()=>({operationsDatabase:()=>({from:()=>({update:()=>({eq:()=>({eq:()=>({is:()=>({lte:()=>({in:()=>({select:mocks.jobs})})})})})})})})}));
 vi.mock('@/lib/payments/notifications',()=>({processNotificationJobs:mocks.worker}));
 import {POST as retry} from '@/app/api/admin/notifications/retry/route';
 import { POST as recover } from '@/app/api/payments/recover/route';

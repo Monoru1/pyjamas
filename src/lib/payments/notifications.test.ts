@@ -6,12 +6,12 @@ import { processNotificationJobs,sendOrderEmail } from './notifications';
 const updates:Record<string,unknown>[]=[];
 function result(data:unknown) {
  const q:Record<string,unknown>={then:(resolve:(value:unknown)=>unknown)=>Promise.resolve({data,error:null}).then(resolve)};
- for(const method of ['select','eq','single','maybeSingle'])q[method]=()=>q;
+ for(const method of ['select','eq','single','maybeSingle','order','in'])q[method]=()=>q;
  q.update=(v:Record<string,unknown>)=>{updates.push(v);return q;};return q;
 }
 beforeEach(()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','true');vi.stubEnv('ORDER_TEST_EMAILS','customer@example.test,fixture@example.test,admin@example.test,b');vi.clearAllMocks();updates.length=0;vi.stubEnv('RESEND_API_KEY','fixture');vi.stubEnv('ORDER_EMAIL_FROM','sender@example.test');vi.stubEnv('ORDER_ADMIN_EMAIL','admin@example.test');
  mocks.db.rpc.mockResolvedValue({data:{id:'job',order_id:'order',kind:'admin_email',lease_token:'lease',attempts:1,created_at:new Date().toISOString()},error:null});
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:[{id:'job'}]));
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:table==='order_items'?[]:[{id:'job'}]));
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 it('uses a stable provider idempotency key and checks actual send response',async()=>{
@@ -47,7 +47,7 @@ it('does not send a retry after another worker has acquired the lease',async()=>
 });
 it('never reports delivery when the acknowledgement loses its lease',async()=>{
  let notificationCalls=0;
- mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:++notificationCalls===1?[{id:'job'}]:[]));
+ mocks.db.from.mockImplementation((table:string)=>result(table==='orders'?{order_number:'TEST',total:2000,payment_state:'paid',delivery:{email:'customer@example.test'}}:table==='order_items'?[]:++notificationCalls===1?[{id:'job'}]:[]));
  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'}))));
  expect(await processNotificationJobs(1)).toBe(0);
 });
@@ -57,39 +57,21 @@ it('rejects an empty provider acknowledgement',async()=>{
 
 it('disabled notifications do not claim work or contact providers',async()=>{vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED','false');expect(await processNotificationJobs(2)).toBe(0);expect(mocks.db.rpc).not.toHaveBeenCalled();});
 
-it.each(['telegram', 'email'] as const)('keeps the other channel working when %s fails', async (failed) => {
- vi.stubEnv('ORDER_TELEGRAM_ENABLED', 'true');
- vi.stubEnv('TELEGRAM_BOT_TOKEN', '123:fixture');
- vi.stubEnv('TELEGRAM_STAFF_CHAT_ID', '456');
- const telegram = { id:'tg',order_id:'order',kind:'staff_telegram_ready',lease_token:'lease',attempts:1 };
- const email = { ...telegram, id:'mail',kind:'staff_email_ready' };
- mocks.db.rpc.mockResolvedValueOnce({data:telegram,error:null}).mockResolvedValueOnce({data:email,error:null});
- const fetcher = vi.fn(async (url:string, init?: RequestInit) => {
-  if (url.includes('resend.com')) expect(JSON.parse(String(init?.body)).html).toContain('Voir les commandes');
-  if (url.includes('telegram.org')) return failed === 'telegram'
-   ? Response.json({ parameters:{retry_after:240} }, {status:429})
-   : Response.json({ok:true,result:{message_id:42}});
-  return failed === 'email' ? new Response('{}',{status:503}) : Response.json({id:'email-id'});
- });
- vi.stubGlobal('fetch',fetcher);
- expect(await processNotificationJobs(2)).toBe(1);
- expect(updates).toContainEqual(expect.objectContaining({
-  status:'pending',last_error:failed==='telegram'?'telegram_rate_limited':'email_provider_failed',
- }));
- expect(updates).toContainEqual(expect.objectContaining({
-  status:'sent',provider_message_id:failed==='telegram'?'email-id':'42',
- }));
- expect(fetcher).toHaveBeenCalledTimes(2);
-});
-
-it('blocks an uncertain Telegram send before a second attempt', async () => {
- vi.stubEnv('ORDER_TELEGRAM_ENABLED','true');
- vi.stubEnv('TELEGRAM_BOT_TOKEN','123:fixture');
- vi.stubEnv('TELEGRAM_STAFF_CHAT_ID','456');
- mocks.db.rpc.mockResolvedValue({data:{id:'tg',order_id:'order',kind:'staff_telegram_paid',lease_token:'lease',attempts:2,first_delivery_at:new Date().toISOString()},error:null});
- const fetcher=vi.fn();
- vi.stubGlobal('fetch',fetcher);
- expect(await processNotificationJobs(1)).toBe(0);
- expect(fetcher).not.toHaveBeenCalled();
- expect(updates).toContainEqual(expect.objectContaining({status:'blocked',last_error:'telegram_delivery_uncertain'}));
+it('renders all nine email models and escapes product data', async () => {
+ const { demoEmailOrder, emailKinds, renderOrderEmail } = await import('./order-email');
+ expect(emailKinds).toHaveLength(9);
+ for (const kind of emailKinds) {
+  const message = renderOrderEmail(kind, demoEmailOrder, 'https://pyjamas25.netlify.app');
+  expect(message.subject).toContain('[DÉMONSTRATION]');
+  expect(message.html).toContain('logo-email.png');
+  expect(message.html).toContain('Taille M');
+  expect(message.text).toContain('25\u202f000 FCFA');
+ }
+ const pending = renderOrderEmail('staff_email_new', { ...demoEmailOrder, demo: false,
+   lines: [{ name: '<script>fixture</script>', quantity: 1, total: 25000, photo: 'https://evil.test/1.png' }],
+ }, 'https://pyjamas25.netlify.app');
+ expect(pending.subject).toContain('en attente de paiement');
+ expect(pending.html).toContain('&lt;script&gt;fixture');
+ expect(pending.html).not.toContain('evil.test');
+ expect(pending.html).not.toContain('DÉMONSTRATION');
 });

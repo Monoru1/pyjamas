@@ -34,8 +34,8 @@ export const useCheckoutCustomerStore = create<CheckoutCustomerState>()(
     }),
     {
       name: 'mdp-checkout-customer',
-      version: 3,
-      // Never carry consent from WhatsApp over to e-mail.
+      version: 4,
+      // Request consent again when extending it to order tracking.
       migrate: (saved) => ({ ...(saved as Partial<CheckoutCustomerState>), emailConfirmation: false }),
       storage: createJSONStorage(() => {
         localStorage.removeItem('mdp-checkout-customer');

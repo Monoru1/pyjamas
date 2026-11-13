@@ -11,7 +11,7 @@ export async function commerceDatabase() {
     create schema extensions;
     create function extensions.unaccent(text) returns text language sql immutable as $$select $1$$;`);
   await db.exec(readFileSync('supabase/recette/bootstrap-production-schema.sql','utf8').replace(/^create extension[^;]+;$/gm,''));
-  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels']) {
+  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications']) {
     await db.exec(readFileSync(`supabase/migrations/${name}.sql`,'utf8'));
   }
   return db;
@@ -42,6 +42,7 @@ export function sqlClient(db: PGlite) {
       const builder = {
         select(fields = '*') { relation = fields.includes('orders('); return builder; },
         update(values: Record<string, unknown>) { update = values; return builder; },
+        in(key: string, values: string[]) { filters.push([key,'in',values]); return builder; },
         eq(key: string, value: unknown) { filters.push([key,'=',value]); return builder; },
         is(key: string, value: unknown) { filters.push([key,'is',value]); return builder; },
         lte(key: string, value: unknown) { filters.push([key,'<=',value]); return builder; },
@@ -55,7 +56,9 @@ export function sqlClient(db: PGlite) {
             const params: unknown[] = [];
             const bind = (value: unknown) => { params.push(value); return `$${params.length}`; };
             const assignments = update && Object.entries(update).map(([key,value]) => `${identifier(key)}=${bind(value)}`).join(',');
-            const where = filters.map(([key,op,value]) => `${identifier(key)} ${op} ${value === null ? 'null' : bind(value)}`).join(' and ');
+            const where = filters.map(([key,op,value]) => op === 'in'
+              ? `${identifier(key)} in (${(value as string[]).map(bind).join(',')})`
+              : `${identifier(key)} ${op} ${value === null ? 'null' : bind(value)}`).join(' and ');
             let sql = update ? `update ${identifier(table)} set ${assignments}` : `select *, ${relation ? `(select jsonb_build_object('order_number',o.order_number,'needs_attention',o.needs_attention) from orders o where o.id=payment_attempts.order_id)` : 'null'} as orders from ${identifier(table)}`;
             if (where) sql += ` where ${where}`;
             if (update) sql += ' returning *';

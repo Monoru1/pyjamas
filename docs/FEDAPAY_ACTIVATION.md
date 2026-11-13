@@ -162,71 +162,6 @@ L'identifiant numérique `101915` a été observé dans cinq logs API Live du co
 - Les autorisations privées Live sont temporaires : contrôler leur expiration avant tout nouveau test ; ne pas réutiliser une autorisation expirée.
 - Vérifier un paiement de 100 XOF de bout en bout, webhook signé, rapprochement, état commande, notifications et absence de double débit avant activation commerciale.
 
-### Notifications opérationnelles (PR #13)
-
-Les notifications ont leur propre activation : `ORDER_NOTIFICATIONS_ENABLED=false`
-et `ORDER_WHATSAPP_ENABLED=false` par défaut. La maintenance planifiée fonctionne
-avec les notifications seules, sans ouvrir FedaPay. Configurer en recette uniquement :
-
-- E-mail : `RESEND_API_KEY`, `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL`,
-  `ORDER_TEST_EMAILS` (liste exacte des adresses de test séparées par virgules).
-- WhatsApp : `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
-  `WHATSAPP_GRAPH_VERSION` (version approuvée du compte), `WHATSAPP_ORDER_TEMPLATE`,
-  `WHATSAPP_TEMPLATE_LANGUAGE`, `ORDER_TEST_PHONES` (numéros E.164 de test).
-  Le template contient deux paramètres texte : numéro de commande, total XOF.
-- Base : URL et clé service-role de recette, `PAYMENT_DATABASE_ISOLATED=true`.
-
-Appliquer `20261103163942_operational_notifications.sql` avant le déploiement.
-Le panier recueille un consentement WhatsApp facultatif. Seule une commande payée
-et consentie crée ce travail. Les identifiants acceptés par les fournisseurs sont
-conservés ; une réponse WhatsApp ambiguë est bloquée pour contrôle manuel.
-Le formulaire staff ne reprend que les travaux en attente sans bail actif ; il
-ne rejoue jamais un travail envoyé ou bloqué. Aucun envoi ne part avec les deux
-activations absentes. La validation fournisseur réelle reste à faire sur les
-seuls destinataires de test explicitement autorisés.
-
-## Recette Sandbox et suivi WhatsApp
-
-La recette Sandbox utilise la base isolée `oxhymanjibveayhcaqvj` et un compte
-staff. Configurer `FEDAPAY_ENVIRONMENT=sandbox`, la clé privée Sandbox
-`FEDAPAY_SECRET_KEY`, l’identifiant numérique du marchand Sandbox
-`FEDAPAY_ACCOUNT_ID` et le secret de signature Sandbox
-`FEDAPAY_WEBHOOK_SECRET`. Enregistrer l’URL HTTPS
-`<origine-de-recette>/api/payments/webhook` dans le tableau de bord Sandbox.
-Laisser `PAYMENT_LIVE_TEST_ENABLED=false` et `FEDAPAY_LIVE_APPROVED=false`.
-Utiliser `npm run payments:check -- --sandbox` avec les variables de recette
-et vérifier ensuite un paiement sur le checkout hébergé.
-
-La migration `20261113090005_order_whatsapp_lifecycle.sql` est appliquée
-en recette sous la version distante `20261113090521`, après
-`20261103163942_operational_notifications.sql`. Les nouveaux types de
-notification utilisent chacun un modèle Meta approuvé, avec deux paramètres
-texte dans le corps dans cet ordre (référence de commande, total en XOF).
-
-| Événement | Variable |
-|---|---|
-| Nouvelle commande réservée, même si elle attend le paiement | `WHATSAPP_STAFF_NEW_TEMPLATE` |
-| Paiement confirmé | `WHATSAPP_ORDER_TEMPLATE` |
-| Paiement refusé | `WHATSAPP_PAYMENT_FAILED_TEMPLATE` |
-| Commande prête | `WHATSAPP_ORDER_READY_TEMPLATE` |
-| Commande livrée | `WHATSAPP_ORDER_DELIVERED_TEMPLATE` |
-
-`ORDER_STAFF_WHATSAPP_PHONE` désigne le destinataire staff.
-`ORDER_TEST_CUSTOMER_PHONE` peut rediriger le suivi client vers un
-destinataire Meta autorisé en recette, indépendamment du numéro béninois du
-formulaire de commande. En preview, les deux destinations doivent figurer
-dans `ORDER_TEST_PHONES`. Renseigner ces valeurs en variables serveur, avec
-le numéro émetteur de test Meta et son jeton, puis activer
-`ORDER_NOTIFICATIONS_ENABLED` et `ORDER_WHATSAPP_ENABLED` en recette.
-Le consentement au suivi est recueilli au checkout. Les commandes antérieures
-conservent le consentement donné à la seule confirmation.
-
-L’administration affiche l’acceptation par Meta et l’identifiant du message.
-Vérifier la réception sur le téléphone de test. Une limite HTTP 429 est
-réessayable avec délai. En cas de réponse ambiguë, vérifier chez Meta avant
-toute nouvelle tentative. Le workflow logistique actuel passe de « prête »
-à « livrée ».
-
 ## Correction du 13 novembre 2026 — compte Live en recette isolée
 
 La PR 14 remplace la PR 11 comme preview autorisée pour les opérations
@@ -249,34 +184,37 @@ Le webhook Live de la PR 14 est
 Renseigner le secret associé à cette URL et vérifier une livraison signée
 depuis le tableau de bord Live avant de déclarer la configuration validée.
 
-## Démonstration Telegram et e-mail
+## E-mails transactionnels de la V1
 
-La migration `20261113093826_staff_notification_channels.sql` garde
-l'historique WhatsApp et arrête la création et le traitement de ses tâches.
-Elle ajoute une file par canal et par événement staff. La confirmation
-client par e-mail exige un consentement explicite au checkout.
+Configurer uniquement les variables serveur Deploy Previews de pyjamas25.
+Renseigner `RESEND_API_KEY`, `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL` et
+`ORDER_TEST_EMAILS`, puis activer `ORDER_NOTIFICATIONS_ENABLED=true`.
+`ORDER_CONTACT_EMAIL` est facultatif et correspond à l'adresse publique de
+la boutique. En recette, seuls les destinataires de la liste de test sont admis.
 
-Configurer uniquement les variables serveur de la recette Netlify.
+Dans **Administration → Paiements → Prévisualiser les e-mails**, sélectionner
+un modèle staff ou acheteur. L'envoi de démonstration cible uniquement
+`ORDER_ADMIN_EMAIL`, qui doit figurer dans `ORDER_TEST_EMAILS`. Il utilise
+des données fictives et ne modifie ni les commandes, ni les stocks, ni FedaPay.
+L'historique des envois commerciaux reste disponible dans Paiements.
 
-| Canal | Variables |
-|---|---|
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_STAFF_CHAT_ID`, `ORDER_TELEGRAM_ENABLED=true` |
-| Resend | `RESEND_API_KEY`, `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL`, `ORDER_TEST_EMAILS`, `ORDER_NOTIFICATIONS_ENABLED=true` |
+Les données des anciens canaux sont conservées. Les nouvelles tâches et leur
+traitement sont limités à Resend. Les e-mails acheteur exigent un consentement
+au checkout et vérifient l'état de la commande avant l'envoi.
 
-Créer un bot dédié avec [BotFather](https://t.me/BotFather), puis envoyer
-`/start` au bot depuis le chat de test. Configurer uniquement l'identifiant
-de ce chat. Dans Resend, utiliser un expéditeur autorisé et inscrire l'adresse
-de réception de test dans `ORDER_TEST_EMAILS`. Ajouter les secrets dans
-Netlify sans les copier dans GitHub ou dans une URL partagée.
+### Contrôle du prochain essai Live
 
-Dans la PR 14, ouvrir **Administration → Paiements → Historique des
-notifications**. Le bouton **Envoyer les notifications de démonstration**
-traite les deux tâches de la commande fictive `MDP-DEMO-NOTIFICATIONS`.
-La commande ne réserve aucun stock et n'a aucune transaction FedaPay.
-Un statut « accepté par le fournisseur » indique que Telegram ou Resend
-a renvoyé un identifiant. Vérifier la réception dans le chat et la boîte
-de test. Le bouton ne renvoie pas un message déjà accepté.
+Depuis Paiements, utiliser le diagnostic en lecture seule sur la transaction
+`113943841`. Vérifier le compte marchand, 100 XOF, l'état et le lien éventuel
+avant toute décision. Si l'état est incertain, garder la réservation.
+Si FedaPay confirme l'expiration, le rapprochement atomique peut libérer la
+réservation une seule fois. Une suppression fournisseur exige un accord
+distinct et ne doit pas effacer l'historique Supabase.
 
-Un rejet Telegram HTTP 429 est réessayable après le délai indiqué. Une
-réponse ambiguë est bloquée pour éviter un doublon. Resend utilise la même
-clé d'idempotence par tâche et s'arrête avant l'expiration de sa fenêtre.
+Pour un essai ultérieur, préparer uniquement un article technique en recette
+et une autorisation SQL bornée à 100 XOF pour le marchand 101915. Le checkout
+privé refuse toute nouvelle transaction tant que la précédente n'a pas été
+rapprochée avec le stock correspondant. Attendre l'accord sur le montant,
+le marchand et la transaction avant d'ouvrir le checkout. Vérifier ensuite
+la livraison signée FedaPay, l'état local, le mouvement de stock unique et
+l'e-mail, puis refermer l'admission.

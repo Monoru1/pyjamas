@@ -17,7 +17,7 @@ export function HeroSection({ siteName }: HeroSectionProps) {
             Des pyjamas doux, chics et prêts pour les moments qui comptent.
           </h1>
           <p className="max-w-2xl text-lg leading-8 text-foreground/70">
-            Une boutique pensée pour commander vite, choisir la bonne taille, vérifier le stock et finaliser sur WhatsApp sans friction.
+            Une boutique pensée pour commander vite, choisir la bonne taille, vérifier le stock et finaliser votre commande en ligne.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <a href="#vedettes" className="rounded-full bg-brand-primary px-6 py-3 text-center text-sm font-semibold text-white shadow-sm">
@@ -39,7 +39,7 @@ export function HeroSection({ siteName }: HeroSectionProps) {
               </div>
               <div className="rounded-2xl bg-white p-4 shadow-sm">
                 <p className="font-semibold">Commande rapide</p>
-                <p className="mt-1 text-sm text-foreground/60">Panier transformé en message WhatsApp structuré.</p>
+                <p className="mt-1 text-sm text-foreground/60">Prix et stock vérifiés avant le paiement.</p>
               </div>
               <div className="rounded-2xl bg-white p-4 shadow-sm">
                 <p className="font-semibold">Back-office prêt</p>

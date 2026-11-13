@@ -77,7 +77,7 @@ it('never enqueues a customer email based on historical WhatsApp consent', async
 
 it('queues one staff alert and each consented lifecycle event through the guarded staff workflow', async () => {
  const base = input();
- const basket = { ...base, customer: { ...base.customer, emailConfirmation: true } };
+ const basket = { ...base, customer: { ...base.customer, emailConfirmation: true, emailTracking: true } };
  const q = await (await quote(request('/api/payments/quote', { lines: basket.lines }))).json();
  const result = await checkout(request('/api/payments/checkout', { ...basket, quoteToken: q.quoteToken }));
  expect(result.status).toBe(200);
@@ -104,8 +104,8 @@ it('queues one staff alert and each consented lifecycle event through the guarde
  });
  const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
  expect(kinds).toEqual([
-   'admin_email', 'customer_email', 'staff_email_delivered', 'staff_email_failed', 'staff_email_new', 'staff_email_ready',
-   'staff_telegram_delivered', 'staff_telegram_failed', 'staff_telegram_new', 'staff_telegram_paid', 'staff_telegram_ready',
+   'admin_email', 'customer_email', 'customer_email_delivered', 'customer_email_failed', 'customer_email_ready',
+   'staff_email_delivered', 'staff_email_failed', 'staff_email_new', 'staff_email_ready',
  ]);
 });
 
@@ -113,8 +113,8 @@ it('queues a demonstration order without touching payments or inventory', async 
  await db.exec(`insert into public.orders(order_number,source,status,currency_code,subtotal,total)
  values ('MDP-DEMO-NOTIFICATIONS','notification_demo','pending','XOF',25000,25000)`);
  const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
- expect(kinds).toEqual(['staff_email_new', 'staff_telegram_new']);
- expect((await db.query('select claim_staff_notification_job(true,true) as job')).rows).toEqual([{ job:null }]);
+ expect(kinds).toEqual(['staff_email_new']);
+ expect((await db.query('select claim_order_email() as job')).rows).toEqual([{ job:null }]);
  expect((await db.query('select id from payment_attempts')).rows).toEqual([]);
  expect((await db.query('select id from inventory_movements')).rows).toEqual([]);
 });

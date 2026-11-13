@@ -146,3 +146,18 @@ it('runs the notification outbox independently when provider reconciliation is d
  const response=await reconcile(new Request('https://preview.example.test/api/payments/reconcile',{method:'POST',headers:{authorization:'Bearer fixture-reconcile-secret-32-characters'}}));
  expect(response.status).toBe(200);expect(await response.json()).toMatchObject({checked:0,attempted:0,notificationsSent:2});expect(mocks.db.from).not.toHaveBeenCalled();
 });
+
+it('blocks a new private Live checkout until the old transaction and its inventory are reconciled', async () => {
+ for (const [key, value] of Object.entries({
+  FEDAPAY_ENVIRONMENT:'live', FEDAPAY_SECRET_KEY:'sk_live_fixture', CONTEXT:'deploy-preview', REVIEW_ID:'14',
+  FEDAPAY_ACCOUNT_ID:'101915', FEDAPAY_LIVE_APPROVED:'false',
+  PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',
+  NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co', PAYMENT_LIVE_TEST_ENABLED:'true',
+  PAYMENT_LIVE_TEST_MAX_XOF:'100', PAYMENT_LIVE_TEST_AUTHORIZATION_ID:payment.id,
+ })) vi.stubEnv(key,value);
+ mocks.db.from.mockReturnValueOnce(chain(null)).mockReturnValueOnce(chain({status:'pending',inventory_state:'reserved'}));
+ const response = await checkout(request(input,'https://deploy-preview-14--pyjamas25.netlify.app'));
+ expect(response.status).toBe(409);
+ expect((await response.json()).error).toContain('précédent test Live');
+ expect(mocks.provider).not.toHaveBeenCalled();
+});
