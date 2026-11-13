@@ -42,9 +42,10 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
   const description = customer && event === 'paid'
     ? 'Merci pour votre commande. Votre paiement a été vérifié. Nous vous informerons lorsque vos articles seront prêts.'
     : summary;
-  const action = customer && trackingUrl ? 'Suivre ma commande' : customer ? 'Contacter la boutique' : 'Voir les commandes';
-  const actionUrl = customer ? trackingUrl || `${origin}/contact` : `${origin}/admin/commandes`;
-  const prefix = order.demo ? '[DÉMONSTRATION] ' : '';
+  const customerTracking = trackingUrl || (order.demo ? `${origin}/paiement` : undefined);
+  const action = customer && customerTracking ? 'Suivre ma commande' : customer ? 'Contacter la boutique' : 'Voir les commandes';
+  const actionUrl = customer ? customerTracking || `${origin}/contact` : `${origin}/admin/commandes`;
+  const prefix = order.demo ? `[DÉMONSTRATION] ${customer ? 'Acheteur' : 'Équipe'} — ` : '';
   const subject = `${prefix}${title} · ${order.reference}`.replace(/[\r\n]+/g, ' ');
   const rows = order.lines.map(line => {
     const safePhoto = safeMediaUrl(line.photo);

@@ -16,14 +16,15 @@ export default async function EmailPreview({ searchParams }: {
   const kind = isEmailKind(params.modele) ? params.modele : 'customer_email';
   const deployment = paymentDeployment();
   const canSend = deployment.context === 'deploy-preview' && deployment.reviewId === '14'
-    && process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co';
+    && process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co'
+    && process.env.PAYMENT_DATABASE_ISOLATED === 'true';
   const message = renderOrderEmail(kind, demoEmailOrder, trustedSiteOrigin(process.env.SITE_ORIGIN));
   return <div className="admin-page">
     <header className="admin-heading"><div><h1>Modèles d’e-mail</h1><p>Les données affichées sont fictives.</p></div>
       <Link href="/admin/paiements">Historique des envois</Link>
     </header>
     <form className="mb-4 flex flex-wrap items-end gap-3" method="get">
-      <label className="grid gap-1">Modèle<select name="modele" defaultValue={kind} className="rounded-lg border bg-white p-2">
+      <label className="grid min-w-0 max-w-full gap-1">Modèle<select name="modele" defaultValue={kind} className="max-w-full rounded-lg border bg-white p-2">
         {emailKinds.map(value => <option key={value} value={value}>{emailLabel(value)}</option>)}
       </select></label>
       <button className="admin-action min-h-11 px-4">Afficher</button>

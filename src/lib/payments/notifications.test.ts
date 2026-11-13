@@ -62,7 +62,13 @@ it('renders all nine email models and escapes product data', async () => {
  expect(emailKinds).toHaveLength(9);
  for (const kind of emailKinds) {
   const message = renderOrderEmail(kind, demoEmailOrder, 'https://pyjamas25.netlify.app');
-  expect(message.subject).toContain('[DÉMONSTRATION]');
+  const buyer = kind.startsWith('customer_');
+  expect(message.subject).toContain(buyer ? '[DÉMONSTRATION] Acheteur' : '[DÉMONSTRATION] Équipe');
+  const target = buyer ? '/paiement' : '/admin/commandes';
+  expect(message.html).toContain(`href="https://pyjamas25.netlify.app${target}"`);
+  expect(message.text).toContain(`https://pyjamas25.netlify.app${target}`);
+  expect(message.html).toContain('family-red-tartan-320.webp');
+  expect(message.html).toContain('width=device-width');
   expect(message.html).toContain('logo-email.png');
   expect(message.html).toContain('Taille M');
   expect(message.text).toContain('25\u202f000 FCFA');
