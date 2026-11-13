@@ -9,9 +9,8 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   const deployment = paymentDeployment();
   if (deployment.context !== 'production' && (
-    deployment.context !== 'deploy-preview' || deployment.reviewId !== '14'
-    || deployment.previewOrigin !== 'https://deploy-preview-14--pyjamas25.netlify.app'
-    || new URL(request.url).origin !== deployment.previewOrigin
+    deployment.context !== 'deploy-preview'
+    || process.env.SITE_ORIGIN !== 'https://deploy-preview-14--pyjamas25.netlify.app'
     || process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
     || process.env.PAYMENT_DATABASE_ISOLATED !== 'true'
   )) return new Response(null, { status: 404 });

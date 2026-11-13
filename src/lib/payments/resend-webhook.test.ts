@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('RESEND_WEBHOOK_SECRET', secret);
   vi.stubEnv('PAYMENT_BUILD_CONTEXT', 'deploy-preview');
-  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '14');
+  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
   vi.stubEnv('PAYMENT_BUILD_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://oxhymanjibveayhcaqvj.supabase.co');
   vi.stubEnv('PAYMENT_DATABASE_ISOLATED', 'true');
@@ -79,9 +79,9 @@ it('never labels a provider acceptance as a delivery', () => {
 
 it('rejects valid signed events on another preview or database before persistence', async () => {
   const signed = sign(body);
-  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '15');
+  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-15--pyjamas25.netlify.app');
   expect((await POST(request(body, signed))).status).toBe(404);
-  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '14');
+  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://other.supabase.co');
   expect((await POST(request(body, signed))).status).toBe(404);
   expect(mocks.rpc).not.toHaveBeenCalled();
