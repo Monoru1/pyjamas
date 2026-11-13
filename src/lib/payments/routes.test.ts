@@ -107,7 +107,9 @@ it('live preview rejects anonymous staff access and an amount above the owner ce
  for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
  const req=()=>request(input,'https://deploy-preview-14--pyjamas25.netlify.app');
  mocks.allowed=false;expect((await checkout(req())).status).toBe(403);
- mocks.allowed=true;expect((await checkout(req())).status).toBe(403);expect(mocks.provider).not.toHaveBeenCalled();
+ mocks.allowed=true;
+ mocks.db.from.mockReturnValueOnce(chain(null)).mockReturnValueOnce(chain({status:'expired',inventory_state:'released'}));
+ expect((await checkout(req())).status).toBe(403);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('rejects an invalid webhook even when new payment processing is disabled',async()=>{
  vi.stubEnv('FEDAPAY_ENABLED','false');expect((await webhook(signedEvent(false))).status).toBe(400);expect(mocks.reconcile).not.toHaveBeenCalled();
