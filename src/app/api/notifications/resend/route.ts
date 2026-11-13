@@ -1,3 +1,4 @@
+import { paymentDeployment } from '@/lib/payments/fedapay';
 import { operationsDatabase } from '@/lib/payments/operations';
 import { HttpInputError, readLimitedBody, requireJsonRequest } from '@/lib/payments/read-body';
 import { parseResendEvent, verifyResendWebhook } from '@/lib/payments/resend-webhook';
@@ -6,6 +7,14 @@ export const runtime = 'nodejs';
 
 /** Resend delivery events. Signature first; nothing from the body is logged. */
 export async function POST(request: Request) {
+  const deployment = paymentDeployment();
+  if (deployment.context !== 'production' && (
+    deployment.context !== 'deploy-preview' || deployment.reviewId !== '14'
+    || deployment.previewOrigin !== 'https://deploy-preview-14--pyjamas25.netlify.app'
+    || new URL(request.url).origin !== deployment.previewOrigin
+    || process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
+    || process.env.PAYMENT_DATABASE_ISOLATED !== 'true'
+  )) return new Response(null, { status: 404 });
   try {
     requireJsonRequest(request);
     const raw = await readLimitedBody(request, 64000);

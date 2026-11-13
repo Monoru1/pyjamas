@@ -17,7 +17,16 @@ const request = (payload: string, headers: { id: string; timestamp: string; sign
   new Request('https://deploy-preview-14--pyjamas25.netlify.app/api/notifications/resend', { method: 'POST', body: payload,
     headers: { 'content-type': 'application/json', 'svix-id': headers.id, 'svix-timestamp': headers.timestamp, 'svix-signature': headers.signature } });
 
-beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('RESEND_WEBHOOK_SECRET', secret); mocks.rpc.mockResolvedValue({ data: 'delivered', error: null }); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv('RESEND_WEBHOOK_SECRET', secret);
+  vi.stubEnv('PAYMENT_BUILD_CONTEXT', 'deploy-preview');
+  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '14');
+  vi.stubEnv('PAYMENT_BUILD_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://oxhymanjibveayhcaqvj.supabase.co');
+  vi.stubEnv('PAYMENT_DATABASE_ISOLATED', 'true');
+  mocks.rpc.mockResolvedValue({ data: 'delivered', error: null });
+});
 afterEach(() => vi.unstubAllEnvs());
 
 it('accepts only a fresh, correctly signed raw body', () => {
@@ -66,4 +75,14 @@ it('never labels a provider acceptance as a delivery', () => {
   expect(notificationSummary({ ...row, notification_accepted: 0, notification_delivered: 3 }).tone).toBe('delivered');
   expect(notificationSummary({ ...row, notification_failed: 1 }).tone).toBe('failed');
   expect(notificationSummary({ ...row, notification_total: 0 }).label).toBe('Aucune');
+});
+
+it('rejects valid signed events on another preview or database before persistence', async () => {
+  const signed = sign(body);
+  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '15');
+  expect((await POST(request(body, signed))).status).toBe(404);
+  vi.stubEnv('PAYMENT_BUILD_REVIEW_ID', '14');
+  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://other.supabase.co');
+  expect((await POST(request(body, signed))).status).toBe(404);
+  expect(mocks.rpc).not.toHaveBeenCalled();
 });

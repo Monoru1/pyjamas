@@ -1,3 +1,4 @@
+import { parseAdminOrderFilters, type OrderSearchParams } from '@/lib/orders/admin-order-filters';
 import Link from 'next/link';
 import { updateOrderStatus } from '@/app/admin/actions';
 import { OrdersAutoRefresh } from '@/app/admin/commandes/orders-auto-refresh';
@@ -7,7 +8,6 @@ import { notificationSummary, toneClass } from '@/lib/orders/notification-status
 import { formatPrice } from '@/lib/utils/money';
 
 const PAGE_SIZE = 20;
-type Filters = { q?: string; status?: string; paiement?: string; du?: string; au?: string; tri?: string; page?: string };
 type Row = {
   id: string; order_number: string; created_at: string; status: string; payment_state: string; source: string;
   needs_attention: boolean; total: number; currency_code: string; client_name: string | null;
@@ -15,17 +15,9 @@ type Row = {
   notification_failed: number | null; notification_waiting: number | null;
   notification_accepted: number | null; notification_delivered: number | null;
 };
-const day = (value?: string) => value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value)) ? value : undefined;
-
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<Filters> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<OrderSearchParams> }) {
   const supabase = await createClient();
-  const filters = await searchParams;
-  const search = (filters.q ?? '').trim().toLowerCase().slice(0, 60).replace(/[%_\\,()*]/g, ' ').trim();
-  const status = filters.status && filters.status in orderStatusLabels ? filters.status : '';
-  const payment = filters.paiement && filters.paiement in paymentStateLabels ? filters.paiement : '';
-  const from = day(filters.du), to = day(filters.au);
-  const oldestFirst = filters.tri === 'ancien';
-  const page = Math.min(Math.max(Number.parseInt(filters.page ?? '1', 10) || 1, 1), 5000);
+  const { search, status, payment, from, to, oldestFirst, page } = parseAdminOrderFilters(await searchParams);
 
   let query = supabase.from('admin_order_list' as never).select('*', { count: 'exact' })
     .order('created_at', { ascending: oldestFirst }).order('id')

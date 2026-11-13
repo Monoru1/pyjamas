@@ -48,8 +48,13 @@ export async function POST(request: Request) {
         idempotency_key: key, kind, recipient: to, staff_user_id: user.id,
         provider_message_id: providerId, last_requested_at: new Date().toISOString(),
       }, { onConflict: 'idempotency_key' });
-      if (historyError) console.error('demo_history_failed');
-      else await history.rpc('refresh_email_delivery', { p_message_id: providerId });
+      if (historyError) {
+        console.error('demo_history_failed');
+        next.searchParams.set('resultat', 'historique-incomplet');
+        return Response.redirect(next, 303);
+      }
+      const { error: deliveryError } = await history.rpc('refresh_email_delivery', { p_message_id: providerId });
+      if (deliveryError) console.error('demo_delivery_refresh_failed');
       next.searchParams.set('resultat', 'accepte');
     } catch {
       next.searchParams.set('resultat', 'indisponible');

@@ -13,3 +13,12 @@ nonfinancial-checks.sql : 20 assertions sur le PostgreSQL complet, fixtures synt
 prepare-staff.sql : créer/inviter d’abord un Auth user de test dans la recette, puis fournir son UUID par app.recette_staff_user_id en session SQL sécurisée. Aucun mot de passe ou e-mail prérempli.
 
 prepare-approved-live-intent.sql : ne pas exécuter sans accord explicite du propriétaire sur montant et marchand. Paramètres sécurisés : app.recette_staff_user_id, app.recette_merchant_account_id, app.recette_approved_amount_xof. Une intention locale de quinze minutes, aucun appel fournisseur. Son UUID est réservé au contexte Deploy Previews Netlify.
+
+## Suivi de la réconciliation des commandes
+
+La recette `oxhymanjibveayhcaqvj` a enregistré `order_reconciliation` sous
+`20261113150500`. Le fichier `20261113140000_order_reconciliation.sql` a été
+renommé en `20261113150500_order_reconciliation.sql` sans modifier son SQL.
+La recette reconnaît ainsi la version canonique pour cette migration. Les
+autres correspondances historiques de cette base restent documentées dans
+le rapport lié ci-dessus.

@@ -40,6 +40,7 @@ export default async function EmailPreview({ searchParams }: {
       <button className="admin-action min-h-11 px-4">Envoyer ce modèle à l’adresse de test</button>
     </form>}
     {params.resultat === 'accepte' && <p role="status">E-mail accepté par Resend. Vérifie la boîte de test.</p>}
+    {params.resultat === 'historique-incomplet' && <p role="status">E-mail accepté par Resend. L’historique de cet envoi est momentanément indisponible.</p>}
     {params.resultat === 'indisponible' && <p role="status">Envoi indisponible. Vérifie la configuration Resend de recette.</p>}
     <section aria-label={emailLabel(kind)} className="w-full max-w-[620px] overflow-hidden rounded-xl border bg-[#fff6ec] text-[#1f1215]" style={{ font: '15px/1.5 Arial, sans-serif' }} dangerouslySetInnerHTML={{ __html: message.content }} />
     <details className="mt-4"><summary>Version texte</summary><pre className="whitespace-pre-wrap">{message.text}</pre></details>
