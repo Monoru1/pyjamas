@@ -2,7 +2,7 @@ import { CampaignImage as Image } from '@/components/marketing/campaign-image';
 import { CatalogueExperience } from '@/features/catalog/components/catalogue-experience';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 // Real campaign photos imported from the shop's own Drive.
 // These are editorial photos, not a substitute for verified product variants.

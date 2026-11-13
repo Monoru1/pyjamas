@@ -18,6 +18,9 @@ export type OrderRow = {
   customer_id: string | null;
   status: OrderStatus;
   source: string;
+  payment_state: string;
+  delivery: { name: string; phone: string; email: string; address: string; city: string; shipping_xof: number } | null;
+  needs_attention: boolean;
   currency_code: string;
   subtotal: number;
   discount_total: number;

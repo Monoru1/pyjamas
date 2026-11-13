@@ -65,7 +65,10 @@ type Table<Row = GenericRow> = {
 export type Database = {
   public: {
     Tables: {
-      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string}>;
+      payment_attempts: Table<{id:string;status:string;amount_xof:number;provider_id:number|null;created_at:string;environment:string;order_id:string|null;last_error:string|null;updated_at:string}>;
+      notification_jobs: Table<{id:string;order_id:string;kind:string;provider_message_id:string|null;status:string;attempts:number;last_error:string|null;created_at:string;next_attempt_at:string;recipient:string|null;delivery_status:string|null;delivered_at:string|null;sent_at:string|null}>;
+      payment_events: Table<{id:number;payment_id:string;external_event:string;new_status:string;created_at:string}>;
+      order_status_history: Table<{order_id:string;note:string|null;created_at:string}>;
       activity_logs: Table;
       analytics_events: Table;
       banners: Table<BannerRow>;
@@ -85,6 +88,7 @@ export type Database = {
       product_collections: Table<ProductCollectionRow>;
       product_images: Table<ProductImageRow>;
       product_variants: Table<ProductVariantRow>;
+      staff_stock_movements: Table<{request_id:string;variant_id:string;staff_id:string;kind:'receipt'|'adjustment';stock_before:number;stock_after:number;reason:string;created_at:string}>;
       products: Table<ProductRow>;
       profiles: Table;
       reviews: Table;
@@ -93,10 +97,15 @@ export type Database = {
       testimonials: Table<TestimonialRow>;
     };
     Views: {
+      admin_stock_levels: { Row: {variant_id:string;available:number;reserved:number;awaiting_handover:number;physical:number}; Relationships: [] };
       dashboard_summary: { Row: DashboardSummaryRow; Relationships: [] };
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_record_stock: { Args: {p_request_id:string;p_quantity:number;p_reason:string;p_variant_id?:string;p_expected_stock?:number;p_product_id?:string;p_size?:string;p_price?:number}; Returns: string };
+      admin_set_available_stock: {Args:{p_id:string;p_expected_stock:number;p_stock:number};Returns:undefined};
+      admin_set_variant_price: {Args:{p_id:string;p_expected_price:number;p_price:number};Returns:undefined};
+      quote_shop_basket: { Args: {p_lines: Json; p_shipping: number}; Returns: Json };
       admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
       is_admin: { Args: never; Returns: boolean };

@@ -10,6 +10,7 @@ interface CartState {
   setQuantity: (variantId: string, quantity: number) => void;
   removeLine: (variantId: string) => void;
   clear: () => void;
+  refreshPrices: (items: {variantId:string;unitPrice:number;maxStock:number}[]) => void;
 }
 
 function clampQuantity(quantity: number, maxStock: number) {
@@ -62,6 +63,7 @@ export const useCartStore = create<CartState>()(
           lines: state.lines.filter((item) => item.variantId !== variantId),
         }));
       },
+      refreshPrices: (items) => set(state => ({lines:state.lines.map(line=>{const item=items.find(i=>i.variantId===line.variantId);return item?{...line,unitPrice:item.unitPrice,maxStock:item.maxStock}:line;})})),
       clear: () => set({ lines: [] }),
     }),
     {

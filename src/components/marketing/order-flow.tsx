@@ -1,7 +1,7 @@
 const steps = [
   ['1', 'Choisir', 'Sélectionnez le modèle, la taille, la couleur et la quantité.'],
   ['2', 'Composer', 'Le panier prépare une commande claire, avec références et total.'],
-  ['3', 'Envoyer', 'WhatsApp s’ouvre avec un message prêt à valider avec la boutique.'],
+  ['3', 'Envoyer', 'Le montant de la commande est vérifié avant le paiement.'],
 ];
 
 export function OrderFlow() {
@@ -11,7 +11,7 @@ export function OrderFlow() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70">Commande</p>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight md:text-5xl">
-            Un parcours fluide jusqu’au message WhatsApp.
+            Du choix de la taille au paiement.
           </h2>
           <p className="mt-5 text-sm leading-7 text-white/75">
             Tout reste simple : choisir, vérifier, envoyer. La boutique s’occupe du reste.

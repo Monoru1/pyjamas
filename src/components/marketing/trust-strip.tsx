@@ -1,6 +1,6 @@
 const items = [
   ['Stock visible', 'Tailles et couleurs clairement indiquées avant de commander.'],
-  ['Commande rapide', 'Un panier simple, prêt à devenir un message WhatsApp soigné.'],
+  ['Commande rapide', 'Un panier pour revoir les tailles, les quantités et le total.'],
   ['Esprit cadeau', 'Des pièces pensées pour offrir, partager et créer un souvenir.'],
 ];
 

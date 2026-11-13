@@ -4,7 +4,7 @@ export function safeMediaUrl(value: unknown, fallback = ''): string {
   if (/^\/christmas-2026\/[a-zA-Z0-9/_.-]+$/.test(value) && !value.includes('..')) return value;
   try {
     const url = new URL(value);
-    if (url.origin === storageOrigin && !url.username && !url.password && /^\/storage\/v1\/object\/public\/(site-assets|product-images|christmas-videos)\//.test(url.pathname)) return url.href;
+    if ([storageOrigin, 'https://oxhymanjibveayhcaqvj.supabase.co'].includes(url.origin) && !url.username && !url.password && /^\/storage\/v1\/object\/public\/(site-assets|product-images|christmas-videos)\//.test(url.pathname)) return url.href;
   } catch { /* Untrusted source. */ }
   return fallback;
 }

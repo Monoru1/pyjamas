@@ -45,7 +45,7 @@ export function CollectionFilms({ films }: { films: CollectionFilm[] }) {
           <span className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/20 bg-black/35 px-3 py-2 text-[10px] uppercase tracking-[.2em] text-[#f0d5aa] sm:left-6 sm:top-6">La collection Noël</span>
         </div>
         <div className="flex items-start justify-between gap-4 border-b border-[#e9c793]/20 py-6 sm:py-8" aria-live="polite"><div><p className="text-[10px] uppercase tracking-[.25em] text-[#c2a878]">À L’AFFICHE</p><h2 className="mt-2 font-serif text-2xl sm:text-4xl">{film.title}</h2></div><span className="pt-2 text-xs tabular-nums text-[#c2a878]">{durationLabel(film.duration)}</span></div>
-        {failed && <p role="alert" className="mt-4 rounded-xl bg-[#fff8e9] p-4 text-sm text-red-900">Ce film est momentanément indisponible. Choisissez un autre film ou réessayez.</p>}
+        {failed && <div role="alert" className="mt-4 rounded-xl bg-[#fff8e9] p-4 text-sm text-red-900"><p>Ce film est momentanément indisponible. Choisissez un autre film ou réessayez.</p><button type="button" onClick={()=>{setStarted(false);setFailed(false);}} className="mt-2 min-h-11 underline">Réessayer ce film</button></div>}
       </section>
 
       <section id="films-noel" aria-labelledby="films-title" className="mx-auto max-w-[1380px] scroll-mt-8 px-4 pb-16 pt-12 sm:px-8 sm:pb-24 sm:pt-16">

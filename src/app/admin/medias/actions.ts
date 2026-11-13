@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-
 export async function setMediaStatus(id: string, active: boolean) {
   if (!/^[a-f0-9-]{36}$/i.test(id)) return { error: 'Média invalide.' };
   const supabase = await createClient();

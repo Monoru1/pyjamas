@@ -1,8 +1,11 @@
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ContactPage() {
   const settings = await getStoreSettings();
-  const socialLinks = [['Instagram', settings.instagramUrl], ['TikTok', settings.tiktokUrl], ['WhatsApp', `https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`]];
+  const whatsappPhone=settings.whatsappPhone.replace(/\D/g,'');
+  const socialLinks = [['Instagram', settings.instagramUrl], ['TikTok', settings.tiktokUrl], ...(whatsappPhone?[['WhatsApp',`https://wa.me/${whatsappPhone}`]]:[])];
   return (
     <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 text-foreground sm:px-5 sm:py-8 md:px-8 md:py-10">
       <div className="pointer-events-none absolute -right-24 top-10 h-96 w-96 rounded-full bg-brand-accent/15 blur-3xl" />
@@ -27,15 +30,17 @@ export default async function ContactPage() {
               <p className="mt-2 text-white/65">Itinéraire, horaires et retrait.</p>
             </div>
           </div>
-          <a href={`https://wa.me/${settings.whatsappPhone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.28)] transition hover:-translate-y-0.5">
+          {whatsappPhone?<a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.28)] transition hover:-translate-y-0.5">
             Écrire sur WhatsApp
-          </a>
+          </a>:<p className="mt-8 text-sm">Le contact WhatsApp sera annoncé prochainement.</p>}
         </section>
 
         <section className="overflow-hidden rounded-[2rem] border border-brand-primary/10 bg-white shadow-[0_30px_90px_rgba(80,34,28,0.12)] md:rounded-[3rem]">
           <div className="p-6 md:p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-primary">Carte</p>
             <h2 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-brand-evergreen">Trouver la boutique.</h2>
+            <p className="mt-4 text-sm leading-6 text-foreground/70">Cette carte recherche la boutique à Cotonou. Faites confirmer l’adresse exacte et les horaires avant votre déplacement.</p>
+            <a className="mt-3 inline-flex min-h-11 items-center text-sm underline" href="https://www.google.com/maps/search/?api=1&query=La%20Maison%20des%20Pyjamas%20Cotonou" target="_blank" rel="noreferrer">Ouvrir la recherche Google Maps</a>
           </div>
           <div className="relative min-h-[360px] bg-[#f4eee6] sm:min-h-[440px]">
             <iframe
