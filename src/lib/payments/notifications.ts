@@ -20,9 +20,24 @@ export function allowedEmail(to: string, testOnly = false) {
   );
 }
 
-export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fetch = fetch) {
-  if (process.env.ORDER_NOTIFICATIONS_ENABLED !== 'true') throw new Error('notifications_disabled');
-  if (!allowedEmail(mail.to)) throw new EmailDeliveryError(true, 'test_recipient_not_allowed');
+/** Staff demonstrations may be enabled independently of the operational queue. */
+export function demoEmailEnabled(origin: string, env = process.env) {
+  const deployment = paymentDeployment(env);
+  if (deployment.context === 'production') {
+    return env.ORDER_EMAIL_DEMO_ENABLED === 'true'
+      && origin === (env.SITE_ORIGIN || env.URL)
+      && env.NEXT_PUBLIC_SUPABASE_URL === 'https://pukvrerdloudfiphomsj.supabase.co';
+  }
+  return deployment.context === 'deploy-preview' && deployment.reviewId === '14'
+    && origin === 'https://deploy-preview-14--pyjamas25.netlify.app'
+    && env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co'
+    && env.PAYMENT_DATABASE_ISOLATED === 'true'
+    && env.ORDER_NOTIFICATIONS_ENABLED === 'true';
+}
+
+export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fetch = fetch, demoOrigin?: string) {
+  if (demoOrigin ? !demoEmailEnabled(demoOrigin) : process.env.ORDER_NOTIFICATIONS_ENABLED !== 'true') throw new Error('notifications_disabled');
+  if (!allowedEmail(mail.to, Boolean(demoOrigin))) throw new EmailDeliveryError(true, 'test_recipient_not_allowed');
   const response = await fetcher('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `order-${id}` },
     redirect: 'error', body: JSON.stringify(mail), signal: AbortSignal.timeout(8000),

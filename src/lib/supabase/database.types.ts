@@ -88,6 +88,7 @@ export type Database = {
       product_collections: Table<ProductCollectionRow>;
       product_images: Table<ProductImageRow>;
       product_variants: Table<ProductVariantRow>;
+      staff_stock_movements: Table<{request_id:string;variant_id:string;staff_id:string;kind:'receipt'|'adjustment';stock_before:number;stock_after:number;reason:string;created_at:string}>;
       products: Table<ProductRow>;
       profiles: Table;
       reviews: Table;
@@ -96,10 +97,12 @@ export type Database = {
       testimonials: Table<TestimonialRow>;
     };
     Views: {
+      admin_stock_levels: { Row: {variant_id:string;available:number;reserved:number;awaiting_handover:number;physical:number}; Relationships: [] };
       dashboard_summary: { Row: DashboardSummaryRow; Relationships: [] };
       product_catalog: { Row: ProductCatalogRow; Relationships: [] };
     };
     Functions: {
+      admin_record_stock: { Args: {p_request_id:string;p_quantity:number;p_reason:string;p_variant_id?:string;p_expected_stock?:number;p_product_id?:string;p_size?:string;p_price?:number}; Returns: string };
       admin_set_available_stock: {Args:{p_id:string;p_expected_stock:number;p_stock:number};Returns:undefined};
       admin_set_variant_price: {Args:{p_id:string;p_expected_price:number;p_price:number};Returns:undefined};
       quote_shop_basket: { Args: {p_lines: Json; p_shipping: number}; Returns: Json };

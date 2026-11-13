@@ -199,3 +199,74 @@ it('exposes the order list and histories to staff only', async () => {
   expect((await rows(`select id from admin_order_list where search_text like '%${String(multi.order_number).toLowerCase()}%'`)).length).toBe(1);
   await asServer();
 });
+
+it('records a five-unit physical receipt once, with staff identity and reason', async () => {
+  const key = crypto.randomUUID();
+  const receipt = (request = key) => rows('select admin_record_stock($1,5,$2,$3)', [request, 'LIV-2026-001', small]);
+  await asStaff(outsider);
+  try {
+    await expect(receipt()).rejects.toThrow('Staff access required');
+    expect(await rows('select * from admin_stock_levels')).toEqual([]);
+    expect(await rows('select * from staff_stock_movements')).toEqual([]);
+  } finally { await asServer(); }
+
+  await asStaff();
+  try {
+    const [before] = await rows<{ available: number }>('select available from admin_stock_levels where variant_id=$1', [small]);
+    await receipt();
+    await receipt();
+    await expect(receipt(crypto.randomUUID())).rejects.toThrow('staff_stock_receipt_reference');
+    await expect(rows('select admin_record_stock($1,6,$2,$3)', [key, 'LIV-2026-001', small])).rejects.toThrow('Stock request already used');
+    await expect(rows('update product_variants set stock_quantity=100 where id=$1', [small])).rejects.toThrow('stock movement action');
+    expect(await rows('select staff_id, kind, stock_before, stock_after from staff_stock_movements where request_id=$1', [key]))
+      .toEqual([{ staff_id: staff, kind: 'receipt', stock_before: before.available, stock_after: before.available + 5 }]);
+    expect(await rows('select available from admin_stock_levels where variant_id=$1', [small])).toEqual([{ available: before.available + 5 }]);
+  } finally { await asServer(); }
+});
+
+it('receives a new size and requires a reason and a fresh count for corrections', async () => {
+  const key = crypto.randomUUID();
+  await asStaff();
+  try {
+    const [{ variant }] = await rows<{ variant: string }>(
+      "select admin_record_stock($1,3,'LIV-2026-002',p_product_id=>$2,p_size=>'4XL',p_price=>15000) variant", [key, productA]);
+    expect(await rows('select available, physical, reserved from admin_stock_levels where variant_id=$1', [variant]))
+      .toEqual([{ available: 3, physical: 3, reserved: 0 }]);
+    await expect(rows("select admin_record_stock($1,4,' ', $2,3)", [crypto.randomUUID(), variant])).rejects.toThrow('Invalid stock movement');
+    await expect(rows("select admin_record_stock($1,4,'Recomptage', $2,2)", [crypto.randomUUID(), variant])).rejects.toThrow('Stock changed');
+    await rows("select admin_record_stock($1,4,'Recomptage', $2,3)", [crypto.randomUUID(), variant]);
+    expect(await rows('select kind, stock_after from staff_stock_movements where variant_id=$1 order by created_at', [variant]))
+      .toEqual([{ kind: 'receipt', stock_after: 3 }, { kind: 'adjustment', stock_after: 4 }]);
+  } finally { await asServer(); }
+});
+
+it('distinguishes available, reserved and paid stock awaiting handover', async () => {
+  const stockVariant = crypto.randomUUID();
+  await rows("insert into product_variants(id,product_id,sku,color_name_fr,size_label,price,stock_quantity,is_active) values($1,$2,'HANDOVER','Standard','XXL',15000,1,true)", [stockVariant, productA]);
+  const lines = [{ variantId: stockVariant, quantity: 1 }];
+  const pending = await order(lines);
+  const check = async (reserved: number, awaitingHandover: number) => {
+    await asStaff();
+    try {
+      const [level] = await rows<{ physical: number; available: number; reserved: number; awaiting_handover: number }>(
+        'select physical, available, reserved, awaiting_handover from admin_stock_levels where variant_id=$1', [stockVariant]);
+      expect(level).toMatchObject({ reserved, awaiting_handover: awaitingHandover, physical: level.available + reserved + awaitingHandover });
+    } finally { await asServer(); }
+  };
+  await check(1, 0);
+  await settle(pending, 'failed');
+  await check(1, 0);
+  await settle(pending, 'expired');
+  await check(0, 0);
+  const paid = await order(lines);
+  await settle(paid);
+  await check(0, 1);
+  await asStaff();
+  try {
+    await transition(paid.order_id, 'pending', 'confirmed');
+    await transition(paid.order_id, 'confirmed', 'preparing');
+    await transition(paid.order_id, 'preparing', 'ready');
+    await transition(paid.order_id, 'ready', 'delivered');
+  } finally { await asServer(); }
+  await check(0, 0);
+});

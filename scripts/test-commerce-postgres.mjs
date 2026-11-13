@@ -21,21 +21,54 @@ try {
     grant usage on schema auth to anon,authenticated,service_role;
     create schema extensions;create function extensions.unaccent(text) returns text language sql immutable as $$select $1$$;`);
   await pool.query((await readFile('supabase/recette/bootstrap-production-schema.sql','utf8')).replace(/^create extension[^;]+;$/gm,''));
-  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
   await pool.query("insert into currencies(code,name,symbol) values('XOF','Franc CFA','FCFA')");
   await pool.query("insert into products(id,slug,name_fr,base_price,currency_code,is_active) values($1,'concurrency-fixture','Fixture uniquement',1500,'XOF',true)",[product]);
   await pool.query("insert into product_variants(id,product_id,sku,color_name_fr,size_label,price,stock_quantity,is_active) values($1,$2,'CONCURRENT-S','Vert','S',1500,1,true)",[variant,product]);
+  await pool.query(`insert into orders(order_number,status,subtotal,discount_total,total,source)
+    select 'LEGACY-' || n, 'delivered', 1500, 100, 1400, 'website' from generate_series(1,9) n`);
+  await pool.query(`insert into order_items(order_id,product_id,variant_id,sku,product_name,quantity,unit_price,line_total)
+    select id,$1,$2,'CONCURRENT-S','Historique',1,1500,1500 from orders`,[product,variant]);
+  const historicalSnapshot = () => pool.query(`select jsonb_agg(jsonb_build_array(
+    to_jsonb(o) - array['payment_state','delivery','needs_attention'],
+    to_jsonb(i) - 'image_url') order by o.id) snapshot
+    from orders o join order_items i on i.order_id=o.id where o.order_number like 'LEGACY-%'`);
+  const historyBefore = (await historicalSnapshot()).rows;
+  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113153806_physical_stock_receipts'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
+  assert.deepEqual((await historicalSnapshot()).rows, historyBefore, 'All nine historical orders and line prices survive the migration');
+  assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,1);
+  const staff = randomUUID(), receiptKey = randomUUID();
+  await pool.query('insert into auth.users values($1)', [staff]);
+  await pool.query("insert into profiles(id,role,is_active) values($1,'employee',true)", [staff]);
+  async function receiveFive() {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query("select set_config('request.jwt.claim.sub', $1, true)", [staff]);
+      await client.query('set local role authenticated');
+      await client.query("select admin_record_stock($1,5,'LIV-1',$2)", [receiptKey,variant]);
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally { client.release(); }
+  }
+  await Promise.all([receiveFive(),receiveFive()]);
+  assert.equal((await pool.query('select count(*)::int n from staff_stock_movements')).rows[0].n,1);
+  assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,6);
+  console.log('PASS historical order preservation, concurrent physical receipt and stock audit');
+  await pool.query('update product_variants set stock_quantity=1 where id=$1',[variant]);
   // Real separate connections contend on the same last unit.
   const outcomes=await Promise.allSettled([reserve(randomUUID()),reserve(randomUUID())]);
   assert.equal(outcomes.filter(x=>x.status==='fulfilled').length,1,'Only one basket can reserve the last unit');
   assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,0);
-  assert.equal((await pool.query('select count(*)::int n from orders')).rows[0].n,1);
+  assert.equal((await pool.query("select count(*)::int n from orders where order_number not like 'LEGACY-%'")).rows[0].n,1);
   console.log('PASS real PostgreSQL last-unit concurrency and atomic rollback');
-  await pool.query('truncate notification_jobs,inventory_movements,payment_events,payment_attempts,order_items,order_status_history,orders,customers cascade');
+  await pool.query('truncate notification_jobs,inventory_movements,payment_events,payment_attempts cascade');
+  await pool.query("delete from orders where order_number not like 'LEGACY-%'");
   await pool.query('update product_variants set stock_quantity=2 where id=$1',[variant]);
   const key=randomUUID();const duplicate=await Promise.all([reserve(key),reserve(key)]);
   assert.equal(duplicate[0].rows[0].payment.id,duplicate[1].rows[0].payment.id);
-  assert.equal((await pool.query('select count(*)::int n from orders')).rows[0].n,1);
+  assert.equal((await pool.query("select count(*)::int n from orders where order_number not like 'LEGACY-%'")).rows[0].n,1);
   assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,1);
   console.log('PASS concurrent idempotency: one order and one reservation');
   const payment=duplicate[0].rows[0].payment;

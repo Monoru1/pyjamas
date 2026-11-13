@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { trustedSiteOrigin } from '@/lib/security/urls';
-import { paymentDeployment } from '@/lib/payments/fedapay';
-import { allowedEmail, sendOrderEmail } from '@/lib/payments/notifications';
+import { allowedEmail, demoEmailEnabled, sendOrderEmail } from '@/lib/payments/notifications';
 import { operationsDatabase } from '@/lib/payments/operations';
 import { demoEmailOrder, isEmailKind, renderOrderEmail } from '@/lib/payments/order-email';
 import { HttpInputError, readLimitedBody, requireBrowserOrigin } from '@/lib/payments/read-body';
@@ -13,11 +12,7 @@ export async function POST(request: Request) {
   const origin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL);
   try {
     requireBrowserOrigin(request, origin);
-    const deployment = paymentDeployment();
-    if (deployment.context !== 'deploy-preview' || deployment.reviewId !== '14'
-      || origin !== 'https://deploy-preview-14--pyjamas25.netlify.app'
-      || process.env.NEXT_PUBLIC_SUPABASE_URL !== 'https://oxhymanjibveayhcaqvj.supabase.co'
-      || process.env.PAYMENT_DATABASE_ISOLATED !== 'true') return new Response(null, { status: 404 });
+    if (!demoEmailEnabled(origin)) return new Response(null, { status: 404 });
     const auth = await createClient();
     const { data: { user } } = await auth.auth.getUser();
     if (!user || !(await auth.rpc('is_admin')).data) return new Response(null, { status: 403 });
@@ -43,7 +38,7 @@ export async function POST(request: Request) {
         .gte('last_requested_at', new Date(Date.now() - 3600_000).toISOString());
       if (limitError || (count ?? 0) >= 20) throw new Error('demo_rate_limited');
       // Same model within the provider window reuses the key: a second click sends nothing new.
-      const providerId = await sendOrderEmail(mail, `demo-${key}`);
+      const providerId = await sendOrderEmail(mail, `demo-${key}`, fetch, origin);
       const { error: historyError } = await history.from('notification_demo_sends').upsert({
         idempotency_key: key, kind, recipient: to, staff_user_id: user.id,
         provider_message_id: providerId, last_requested_at: new Date().toISOString(),
