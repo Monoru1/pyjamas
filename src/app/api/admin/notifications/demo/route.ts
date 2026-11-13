@@ -32,7 +32,8 @@ export async function POST(request: Request) {
     const to = process.env.ORDER_ADMIN_EMAIL;
     try {
       if (!from || !to || !allowedEmail(to, true) || !process.env.RESEND_API_KEY) throw new Error('demo_disabled');
-      const mail = { from, to, ...renderOrderEmail(kind, demoEmailOrder, origin) };
+      const { subject, html, text } = renderOrderEmail(kind, demoEmailOrder, origin);
+      const mail = { from, to, subject, html, text };
       const key = createHash('sha256').update(JSON.stringify(mail)).digest('hex');
       await sendOrderEmail(mail, `demo-${key}`);
       next.searchParams.set('resultat', 'accepte');

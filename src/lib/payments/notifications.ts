@@ -93,7 +93,7 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
       .in('product_id', productIds).order('is_primary', { ascending: false }).order('sort_order').order('id') : { data: [] };
     const origin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL);
     const contact = emailAddress.safeParse(process.env.ORDER_CONTACT_EMAIL);
-    const message = renderOrderEmail(kind, demo ? demoEmailOrder : {
+    const { subject, html, text } = renderOrderEmail(kind, demo ? demoEmailOrder : {
       reference: order.order_number, total: Number(order.total), subtotal: Number(order.subtotal),
       shipping: typeof order.delivery?.shipping_xof === 'number' ? order.delivery.shipping_xof : undefined,
       lines: (items ?? []).map(item => ({ name: item.product_name, size: item.size_label,
@@ -104,7 +104,7 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
     const { data: started, error: startError } = await update({ first_delivery_at: job.first_delivery_at || new Date().toISOString() }).select('id');
     if (startError || started?.length !== 1) continue;
     try {
-      const providerId = await sendOrderEmail({ from, to, ...message }, job.id);
+      const providerId = await sendOrderEmail({ from, to, subject, html, text }, job.id);
       const { data: completed, error: completeError } = await update({
         status: 'sent', provider_message_id: providerId, sent_at: new Date().toISOString(), last_error: null, lease_until: null,
       }).select('id');

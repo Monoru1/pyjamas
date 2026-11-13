@@ -60,12 +60,10 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
     ...order.lines.map(line => `${line.quantity} × ${line.name}${line.size ? ` (${line.size})` : ''} · ${xof(line.total)}`),
     ...detail.map(([label, amount]) => `${label} · ${amount}`), `${action} · ${actionUrl}`, contactEmail,
   ].filter(Boolean).join('\n');
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;background:#fff6ec;color:#1f1215;font:15px/1.5 Arial,sans-serif">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fff6ec"><tr><td align="center" style="padding:20px 10px">
+  const content = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fff6ec"><tr><td align="center" style="padding:20px 10px">
 <!--[if mso]><table role="presentation" width="580"><tr><td><![endif]-->
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="max-width:580px;border:1px solid #f7dfd1">
-<tr><td align="center" bgcolor="#8f1428" style="padding:12px;color:#fffaf3"><img src="${origin}/brand/logo-email.png" width="136" height="76" alt="La Maison des Pyjamas" style="display:block;color:#fffaf3;font-family:Georgia,serif"></td></tr>
+<tr><td align="center" bgcolor="#8f1428" style="padding:12px;color:#fffaf3"><img src="${origin}/brand/logo-email.png" width="136" height="76" alt="La Maison des Pyjamas" style="display:block;color:#fffaf3;font-family:Georgia,serif"><p style="margin:0 0 8px;font:18px Georgia,serif">La Maison des Pyjamas</p></td></tr>
 <tr><td style="padding:24px">${order.demo ? '<p style="margin:0 0 14px;background:#fff6ec;padding:10px;color:#8f1428"><strong>DÉMONSTRATION · Données fictives</strong></p>' : ''}
 <p style="margin:0;color:#8f1428;font-size:13px;letter-spacing:1px">COMMANDE ${escapeHtml(order.reference)}</p>
 <h1 style="margin:8px 0 12px;font:normal 29px/1.15 Georgia,serif">${title}</h1><p style="margin:0 0 22px">${description}</p>
@@ -73,8 +71,10 @@ ${rows ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-top:
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fffaf3" style="margin-top:16px">${detail.map(([label, amount]) => `<tr><td style="padding:8px 12px">${label}</td><td align="right" style="padding:8px 12px"><strong>${amount}</strong></td></tr>`).join('')}</table>
 <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:22px"><tr><td bgcolor="#8f1428" style="border-radius:6px;mso-padding-alt:12px 18px"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 18px">${action}</a></td></tr></table>
 </td></tr><tr><td bgcolor="#fffaf3" style="padding:18px 24px;font-size:13px;color:#65474e">La Maison des Pyjamas<br><a href="${origin}/contact" style="color:#8f1428">Contact boutique</a>${contactEmail ? ` · <a href="mailto:${escapeHtml(contactEmail)}" style="color:#8f1428">${escapeHtml(contactEmail)}</a>` : ''}</td></tr>
-</table><!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>`;
-  return { subject, html, text };
+</table><!--[if mso]></td></tr></table><![endif]--></td></tr></table>`;
+  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;background:#fff6ec;color:#1f1215;font:15px/1.5 Arial,sans-serif">${content}</body></html>`;
+  return { subject, html, text, content };
 }
 
 export const demoEmailOrder: EmailOrder = {

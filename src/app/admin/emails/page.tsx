@@ -34,7 +34,7 @@ export default async function EmailPreview({ searchParams }: {
     </form>}
     {params.resultat === 'accepte' && <p role="status">E-mail accepté par Resend. Vérifie la boîte de test.</p>}
     {params.resultat === 'indisponible' && <p role="status">Envoi indisponible. Vérifie la configuration Resend de recette.</p>}
-    <iframe title={emailLabel(kind)} sandbox="" srcDoc={message.html} className="h-[760px] w-full max-w-[620px] rounded-xl border bg-white" />
+    <section aria-label={emailLabel(kind)} className="w-full max-w-[620px] overflow-hidden rounded-xl border bg-[#fff6ec] text-[#1f1215]" style={{ font: '15px/1.5 Arial, sans-serif' }} dangerouslySetInnerHTML={{ __html: message.content }} />
     <details className="mt-4"><summary>Version texte</summary><pre className="whitespace-pre-wrap">{message.text}</pre></details>
   </div>;
 }
