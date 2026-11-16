@@ -1,0 +1,167 @@
+name: production-release
+
+# Manual only. Runs from the default branch; the scripts come from an explicitly named commit that is
+# verified first. Every job that can reach production sits in the protected `production` environment:
+# its secrets are released only after the required reviewer approves that run.
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Phase à exécuter
+        type: choice
+        options: [backup-drill, production-migration]
+        required: true
+      release_sha:
+        description: Commit complet (40 caractères) à livrer, tête de la PR 14
+        required: true
+      drill_run_id:
+        description: "production-migration : numéro du run backup-drill réussi"
+        required: false
+      confirmation:
+        description: "production-migration : saisir MIGRER LA PRODUCTION"
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+  pull-requests: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: https://pukvrerdloudfiphomsj.supabase.co
+
+jobs:
+  verify:
+    name: Vérifier la référence et les prérequis (sans secret)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Référence de confiance, commit vérifié, CI verte
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PHASE: ${{ inputs.phase }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+          DRILL_RUN_ID: ${{ inputs.drill_run_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          REPO: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          [ "$REF" = "refs/heads/$DEFAULT_BRANCH" ] || { echo "Ce workflow ne s'exécute que depuis $DEFAULT_BRANCH."; exit 1; }
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "release_sha doit être un commit complet de 40 caractères."; exit 1; }
+          # The environment must exist AND require a human approval, otherwise its secrets would be released unattended.
+          environment="$(gh api "repos/$REPO/environments/production" 2>/dev/null)" || { echo "L'environnement « production » n'existe pas ou n'est pas lisible."; exit 1; }
+          [ "$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<<"$environment")" -ge 1 ] \
+            || { echo "L'environnement « production » n'exige aucune approbation : ajouter un relecteur obligatoire avant tout lancement."; exit 1; }
+          pr="$(gh api "repos/$REPO/pulls/14")"
+          if [ "$(jq -r '.merged' <<<"$pr")" = true ]; then
+            [ "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$RELEASE_SHA" ] || [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "Le commit n'est pas celui de la PR 14."; exit 1; }
+          else
+            [ "$(jq -r '.head.repo.full_name' <<<"$pr")" = "$REPO" ] || { echo "La PR 14 ne vient pas de ce dépôt."; exit 1; }
+            [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "release_sha n'est pas la tête actuelle de la PR 14."; exit 1; }
+          fi
+          checks="$(gh api "repos/$REPO/commits/$RELEASE_SHA/check-runs?per_page=100")"
+          for check in quality commerce-postgres release-rehearsal; do
+            [ "$(jq -r --arg n "$check" '[.check_runs[] | select(.name == $n)] | sort_by(.completed_at) | last | .conclusion' <<<"$checks")" = success ] \
+              || { echo "Le contrôle CI « $check » n'est pas vert sur ce commit."; exit 1; }
+          done
+          if [ "$PHASE" = production-migration ]; then
+            [ "$CONFIRMATION" = "MIGRER LA PRODUCTION" ] || { echo "Confirmation manquante ou inexacte."; exit 1; }
+            [[ "$DRILL_RUN_ID" =~ ^[0-9]+$ ]] || { echo "drill_run_id est requis."; exit 1; }
+            run="$(gh api "repos/$REPO/actions/runs/$DRILL_RUN_ID")"
+            [ "$(jq -r '.path' <<<"$run")" = ".github/workflows/production-release.yml" ] && [ "$(jq -r '.conclusion' <<<"$run")" = success ] \
+              && [ "$(jq -r '.head_branch' <<<"$run")" = "$DEFAULT_BRANCH" ] || { echo "Le run $DRILL_RUN_ID n'est pas un backup-drill réussi de ce workflow."; exit 1; }
+          fi
+          echo "Référence vérifiée : $RELEASE_SHA, phase $PHASE."
+
+  backup-drill:
+    name: Sauvegarde, restauration prouvée, répétition
+    if: inputs.phase == 'backup-drill'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      RELEASE_SHA: ${{ inputs.release_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: PostgreSQL 17 jetable
+        run: bash scripts/release/start-pg17.sh
+      - name: Sauvegarde, restauration stricte, comparaison, préflight, répétition de la migration
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+        run: bash scripts/release/backup-drill.sh
+      - name: Sauvegarde chiffrée dans le stockage privé, relecture, rétention
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/release/store-backup.sh
+      - name: Effacer les fichiers sensibles du runner
+        if: always()
+        run: |
+          docker rm -f lmp-pg17 > /dev/null 2>&1 || true
+          rm -rf backups .migration.*
+      - name: Preuves non sensibles
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence
+          path: evidence/
+          retention-days: 90
+          if-no-files-found: error
+
+  production-migration:
+    name: Migration de production (transaction unique)
+    if: inputs.phase == 'production-migration'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      RELEASE_SHA: ${{ inputs.release_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Preuve de restauration du run backup-drill
+        uses: actions/download-artifact@v4
+        with:
+          name: release-evidence
+          path: drill-evidence
+          run-id: ${{ inputs.drill_run_id }}
+          github-token: ${{ github.token }}
+      - name: Outils PostgreSQL 17
+        run: bash scripts/release/start-pg17.sh
+      - name: Préflight récent, dix migrations en une transaction, postflight
+        env:
+          PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
+          DRILL_EVIDENCE_DIR: drill-evidence
+        run: bash scripts/release/migrate.sh
+      - name: Nettoyage du runner
+        if: always()
+        run: |
+          docker rm -f lmp-pg17 > /dev/null 2>&1 || true
+          rm -rf .migration.*
+      - name: Preuves non sensibles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-evidence
+          path: evidence-migration/
+          retention-days: 90
+          if-no-files-found: warn
