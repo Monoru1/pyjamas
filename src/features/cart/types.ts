@@ -13,9 +13,3 @@ export interface CartLine {
   quantity: number;
   maxStock: number;
 }
-
-export interface CheckoutCustomer {
-  name: string;
-  phone: string | null;
-  comment: string | null;
-}

@@ -40,25 +40,58 @@ export async function updateOrderStatus(formData: FormData) {
   if (!id || !allowed.includes(status)) return;
   const expected = String(formData.get('expected_status') ?? '');
   if (!allowed.includes(expected)) throw new Error('Actualisez la commande avant de réessayer.');
-  const result = process.env.OPERATIONS_ATOMIC_ENABLED === 'true'
-    ? await supabase.rpc('admin_transition_order', { p_order_id: id, p_expected_status: expected as never, p_new_status: status as never })
-    : await supabase.rpc('admin_update_order_status', { p_order_id: id, p_new_status: status as never });
+  const result = await supabase.rpc('admin_transition_order', { p_order_id: id, p_expected_status: expected as never, p_new_status: status as never });
   const { error } = result;
   if (error) throw new Error(error.message);
   revalidatePath('/admin');
   revalidatePath('/admin/commandes');
+  revalidatePath(`/admin/commandes/${id}`);
+}
+
+function refreshCatalog() {
+  revalidatePath('/');revalidatePath('/catalogue');revalidatePath('/collections');revalidatePath('/accessoires');revalidatePath('/catalogue/[slug]','page');revalidatePath('/panier');revalidatePath('/admin/produits');
+}
+async function recordStock(formData: FormData, adjustment: boolean) {
+  const supabase = await guardAdmin();
+  const requestId = String(formData.get('request_id') ?? '');
+  const variantId = String(formData.get('id') ?? '');
+  const reason = String(formData.get('reason') ?? '').trim();
+  const quantity = Number(formData.get('stock'));
+  const expected = Number(formData.get('expected_stock'));
+  if (!requestId || !reason || reason.length > 200 || !formData.has('stock')
+      || !Number.isSafeInteger(quantity) || quantity < (adjustment ? 0 : 1)
+      || (adjustment && (!variantId || !formData.has('expected_stock') || !Number.isSafeInteger(expected)))) {
+    throw new Error('Vérifiez la quantité et le motif du mouvement.');
+  }
+
+  const { error } = await supabase.rpc('admin_record_stock', {
+    p_request_id: requestId,
+    p_quantity: quantity,
+    p_reason: reason,
+    ...(variantId ? { p_variant_id: variantId } : {
+      p_product_id: String(formData.get('product_id') ?? ''),
+      p_size: String(formData.get('size_label') ?? ''),
+      p_price: Number(formData.get('price')),
+    }),
+    ...(adjustment ? { p_expected_stock: expected } : {}),
+  });
+  if (error) throw new Error('Mouvement non enregistré. Vérifiez la taille et actualisez le stock avant de réessayer.');
+  refreshCatalog();
 }
 
 export async function updateVariantStock(formData: FormData) {
-  const supabase = await guardAdmin();
-  const id = String(formData.get('id'));
-  const stock = Math.max(0, Number(formData.get('stock')) || 0);
-  const price = Math.max(0, Number(formData.get('price')) || 0);
-  if (!Number.isInteger(stock) || !Number.isInteger(price)) throw new Error('Le stock et le prix doivent être des nombres entiers.');
-  const { error } = await supabase.from('product_variants').update({ stock_quantity: stock, price }).eq('id', id);
-  if (error) throw new Error('Le stock n’a pas pu être enregistré.');
-  revalidatePath('/admin');
-  revalidatePath('/admin/produits');
+  await recordStock(formData, true);
+}
+
+export async function receiveStock(formData: FormData) {
+  await recordStock(formData, false);
+}
+export async function updateVariantPrice(formData:FormData) {
+  const supabase=await guardAdmin();const price=Number(formData.get('price'));const expected=Number(formData.get('expected_price'));
+  if(!formData.has('price')||!formData.has('expected_price')||!Number.isSafeInteger(price)||price<=0||!Number.isFinite(expected))throw new Error('Prix invalide.');
+  const {error}=await supabase.rpc('admin_set_variant_price',{p_id:String(formData.get('id')),p_expected_price:expected,p_price:price});
+  if(error)throw new Error('Le prix a changé ou n’a pas pu être enregistré. Actualisez la page.');
+  refreshCatalog();
 }
 
 export async function toggleProduct(formData: FormData) {
@@ -98,27 +131,6 @@ export async function updateProduct(formData: FormData) {
   revalidatePath('/');
   revalidatePath('/catalogue');
   revalidatePath('/admin/produits');
-}
-
-export async function createVariant(formData: FormData) {
-  const supabase = await guardAdmin();
-  const productId = String(formData.get('product_id') ?? '');
-  const size = String(formData.get('size_label') ?? '').trim();
-  const price = Math.max(0, Number(formData.get('price')) || 0);
-  const stock = Math.max(0, Number(formData.get('stock')) || 0);
-  if (!productId || !size || !price) return;
-
-  const { error } = await supabase.from('product_variants').insert({
-    product_id: productId,
-    sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-    color_name_fr: String(formData.get('color_name_fr') ?? '').trim() || 'Standard',
-    size_label: size,
-    price,
-    stock_quantity: stock,
-    low_stock_threshold: 2,
-  });
-  if (error) throw new Error(error.message);
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/produits');
 }
 
 export async function deleteVariant(formData: FormData) {
@@ -267,7 +279,8 @@ export async function createProduct(formData: FormData) {
     product_id: product.id, sku: `LMP-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
     color_name_fr: 'Standard', size_label: size, price: variantPrices[index], stock_quantity: 0, low_stock_threshold: 2,
   }));
-  await supabase.from('product_variants').insert(variants);
+  const { error: variantError } = await supabase.from('product_variants').insert(variants);
+  if (variantError) throw new Error('La fiche a été créée masquée. Ajoutez ses tailles depuis la réception de marchandises.');
   const collectionIds = formData.getAll('collection_ids').map(String);
   if (collectionIds.length) await supabase.from('product_collections').insert(collectionIds.map(collection_id => ({ product_id: product.id, collection_id })));
   revalidatePath('/admin/produits');
@@ -292,7 +305,7 @@ export async function setPromotion(formData: FormData) {
   if (!promotion) return;
   await supabase.from('product_variants').update({ price: promotionPrice, compare_at_price: variant.compare_at_price ?? variant.price }).eq('id', variantId);
   await supabase.from('product_collections').upsert({ product_id: variant.product_id, collection_id: promotion.id });
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+  refreshCatalog(); revalidatePath('/admin/promotions');
 }
 
 export async function removePromotion(formData: FormData) {
@@ -305,7 +318,7 @@ export async function removePromotion(formData: FormData) {
     const { count } = await supabase.from('product_variants').select('id', { count: 'exact', head: true }).eq('product_id', variant.product_id).not('compare_at_price', 'is', null);
     if (!count) await supabase.from('product_collections').delete().eq('product_id', variant.product_id).eq('collection_id', promotion.id);
   }
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/promotions');
+  refreshCatalog(); revalidatePath('/admin/promotions');
 }
 
 export async function updateCollection(formData: FormData) {

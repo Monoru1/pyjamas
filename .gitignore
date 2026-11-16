@@ -37,3 +37,6 @@ pnpm-debug.log*
 
 .netlify
 *.tsbuildinfo
+backups/
+.migration.*/
+evidence*/

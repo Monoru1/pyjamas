@@ -26,6 +26,8 @@ function formatDay(date: string | null | undefined) {
   return new Intl.DateTimeFormat('fr-FR', { dateStyle:'full', timeZone:'UTC' }).format(new Date(date + 'T12:00:00Z'));
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function ChristmasEventPage() {
   const config = await getChristmasEventConfig();
   const price = config?.ticket_price_xof == null ? 'À confirmer' : config.ticket_price_xof === 0 ? 'Entrée gratuite' : new Intl.NumberFormat('fr-FR').format(config.ticket_price_xof) + ' FCFA';

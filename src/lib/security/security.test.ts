@@ -60,3 +60,14 @@ it('uses the public URL in production and the preview alias for deploy previews'
   expect(deploymentSiteOrigin({ ...settings, CONTEXT: 'deploy-preview', DEPLOY_PRIME_URL: 'https://deploy-preview-5--pyjamas25.netlify.app' })).toBe('https://deploy-preview-5--pyjamas25.netlify.app');
   expect(deploymentSiteOrigin({ CONTEXT: 'production', DEPLOY_PRIME_URL: settings.DEPLOY_PRIME_URL })).toBe('https://pyjamas25.netlify.app');
 });
+
+ it('allows recipe media in both the image optimizer and browser CSP', async () => {
+  const { default: configuration } = await import('../../../next.config');
+  const config = configuration('phase-test');
+  const rules = await config.headers!();
+  const csp = rules.find(rule => rule.source === '/:path*')!.headers.find(header => header.key === 'Content-Security-Policy')!.value;
+  const images = csp.split(';').find(directive => directive.trim().startsWith('img-src '))!;
+  expect(images.split(/\s+/)).toContain('https://oxhymanjibveayhcaqvj.supabase.co');
+  expect(images).not.toContain('https:;');
+  expect(config.images!.remotePatterns).toContainEqual(expect.objectContaining({ hostname: 'oxhymanjibveayhcaqvj.supabase.co' }));
+ });

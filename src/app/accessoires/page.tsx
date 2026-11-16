@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ProductGrid } from '@/features/catalog/components/product-grid';
 import { listProducts } from '@/lib/repositories/catalog.repository';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AccessoiresPage() {
   const products = (await listProducts(72)).filter((product) => product.categorySlug === 'accessoires');
 

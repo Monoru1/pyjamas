@@ -1,7 +1,7 @@
 const features = [
   ['01', 'Cadeaux sans stress', 'Une sélection claire pour offrir vite sans perdre le côté premium.'],
   ['02', 'Ambiance maison', 'Une direction chaude : crème, bordeaux, or doux et vert sapin.'],
-  ['03', 'Achat fluide', 'Stock visible, panier simple et commande WhatsApp structurée.'],
+  ['03', 'Achat fluide', 'Stock visible, panier simple et paiement en ligne.'],
 ];
 
 export function ChristmasSignature() {

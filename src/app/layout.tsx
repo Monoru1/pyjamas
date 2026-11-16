@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Fraunces, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Footer } from '@/components/site/footer';
 import { TopNav } from '@/components/site/top-nav';
 import { SiteChrome } from '@/components/site/site-chrome';
@@ -7,14 +7,16 @@ import './globals.css';
 import './christmas-2026.css';
 import './event-2026.css';
 
-const fraunces = Fraunces({
-  subsets: ['latin'],
+const fraunces = localFont({
+  src: '../../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2',
+  weight: '100 900',
   display: 'swap',
   variable: '--font-fraunces',
 });
 
-const inter = Inter({
-  subsets: ['latin'],
+const inter = localFont({
+  src: '../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
+  weight: '100 900',
   display: 'swap',
   variable: '--font-inter',
 });
