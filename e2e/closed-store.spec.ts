@@ -26,7 +26,7 @@ test('closed checkout keeps a synthetic basket, its amounts and the tracking lin
   await expect(page.getByRole('button', { name: /continuer vers FedaPay|Vérifier les prix/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Suivre mon dernier paiement' }).click();
   await expect(page.getByRole('heading', { name: 'Suivi de votre paiement' })).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText('Référence manquante');
+  await expect(page.getByRole('alert').filter({ hasText: 'Référence manquante' })).toBeVisible();
   await page.getByRole('link', { name: 'Retour au panier' }).click();
   await page.getByRole('button', { name: 'Retirer', exact: true }).click();
   await expect(page.getByText('Votre panier attend son premier cadeau.')).toBeVisible();
