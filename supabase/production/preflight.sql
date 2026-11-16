@@ -49,7 +49,7 @@ union all select 12, 'INFO', 'Relevé : produits / variantes / stock total', tru
   (select count(*) from public.products) || ' / ' || (select count(*) from public.product_variants) || ' / ' || (select coalesce(sum(stock_quantity), 0) from public.product_variants)
 union all select 13, 'INFO', 'Relevé : commandes / lignes / clients / total des commandes', true,
   (select count(*) from public.orders) || ' / ' || (select count(*) from public.order_items) || ' / ' || (select count(*) from public.customers) || ' / ' || (select coalesce(sum(total), 0) from public.orders)
-union all select 14, 'INFO', 'Relevé : lignes de commande qui recevront la photo actuelle du produit', true,
+union all select 14, 'INFO', 'Relevé : lignes de commande concernées par le remplissage de photo (neutralisé par défaut, voir build-production-migration)', true,
   (select count(*)::text from public.order_items i where i.product_id is not null and exists (select 1 from public.product_images p where p.product_id = i.product_id))
 union all select 15, 'INFO', 'Relevé : comptes staff actifs par rôle', true,
   (select coalesce(string_agg(role || ' ' || n, ', '), 'aucun') from (select role::text, count(*) n from public.profiles where is_active group by role) r)

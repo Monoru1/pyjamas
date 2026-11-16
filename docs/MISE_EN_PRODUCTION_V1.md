@@ -25,6 +25,42 @@ Les dix migrations s'appliquent en une seule transaction, dans l'ordre des versi
 
 Dépendances vérifiées : `fedapay_commerce` remplace deux contraintes créées par `sandbox_payment_acceptance` et modifie `payment_attempts` ; `live_test_price_quotes` réaligne `products.base_price` sur le prix minimal des variantes actives (bloqué par le préflight s'il y a un écart) ; `order_reconciliation` remplit `order_items.image_url` avec la photo actuelle ; `physical_stock_receipts` interdit au personnel d'écrire `stock_quantity` hors de `admin_record_stock`, ce qui rend l'ancien écran de stock inopérant jusqu'à la fusion de la PR #14.
 
+## Commandes pour la session autorisée sur Supabase
+
+`PROD_DB_URL` est la chaîne de connexion PostgreSQL de `pukvrerdloudfiphomsj` (Supabase → Connect). Elle se place dans une variable d'environnement locale, jamais dans Git, un rapport ou une conversation.
+
+```bash
+# 1. Lecture seule : écart sur les commandes, catalogue réel, préflight. Rien n'est écrit.
+psql "$PROD_DB_URL" -X -v ON_ERROR_STOP=1 -P pager=off \
+  -f supabase/production/orders-check.sql \
+  -f supabase/production/catalogue-review.sql \
+  -f supabase/production/preflight.sql | tee preflight-production.txt
+
+# 2. Après sauvegarde confirmée, restauration testée et préflight sans bloquant : une transaction.
+node scripts/build-production-migration.mjs > v1-production.sql
+psql "$PROD_DB_URL" -X -v ON_ERROR_STOP=1 -f v1-production.sql
+
+# 3. Lecture seule : contrôle après migration.
+psql "$PROD_DB_URL" -X -v ON_ERROR_STOP=1 -P pager=off -f supabase/production/postflight.sql | tee postflight-production.txt
+```
+
+Avec un connecteur SQL à la place de `psql` : exécuter le contenu de chaque fichier tel quel sur `pukvrerdloudfiphomsj`. `preflight.sql` et `postflight.sql` sont chacun une seule requête. `orders-check.sql` contient trois requêtes à lancer séparément. `v1-production.sql` doit partir en un seul envoi, avec son `begin` et son `commit` ; ne pas utiliser l'outil de migration du connecteur, qui renumérote les versions.
+
+Par défaut, la transaction laisse les lignes de commande existantes sans photo : le remplissage prévu par `order_reconciliation` y mettrait la photo actuelle du catalogue, pas celle vendue à l'époque. L'option `--keep-historical-photos` l'applique ; elle exige l'accord explicite du propriétaire.
+
+## Catalogue provisoire (décision du 16 novembre 2026)
+
+30 unités par taille commercialisée et 30 000 FCFA par lot, à confirmer par la boutique. À exécuter après le postflight :
+
+```bash
+psql "$PROD_DB_URL" -X -v ON_ERROR_STOP=1 \
+  -c "select set_config('app.provisional_staff_id', '<UUID d''un profil admin actif>', false)" \
+  -c "select set_config('app.lots_confirmed', 'oui', false)" \
+  -f supabase/production/provisional-catalogue.sql
+```
+
+Le script refuse de tourner tant que `app.lots_confirmed` ne vaut pas `oui` : cette valeur ne se pose qu'après lecture de `catalogue-review.sql` avec la boutique, pour vérifier que chaque unité vendue est bien un lot. Les anciens prix sont conservés dans `activity_logs` (`provisional_price`). Le stock passe par `admin_record_stock` sous forme de correction motivée « PROVISOIRE V1 », jamais de réception. Les lignes de commande ne sont pas modifiées. Le prix provisoire devient visible sur le catalogue public dès son application, même paiement fermé.
+
 ## Rétablissement
 
 Revenir au dernier déploiement Netlify connu en cas d’erreur applicative et garder les ventes et les écritures de stock suspendues. Si les contrôles indiquent une atteinte aux données, restaurer d’abord le point validé dans un environnement isolé, puis décider avec le propriétaire de la restauration et de la reprise des écritures postérieures au point choisi. Réconcilier les événements financiers avec FedaPay avant toute reprise. Une restauration SQL seule ne recrée pas les objets Storage effacés.

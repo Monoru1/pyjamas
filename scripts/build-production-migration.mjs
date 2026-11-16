@@ -2,11 +2,15 @@
 // migration history under the repository versions, and aborts (full rollback) if any commercial
 // figure changed. It connects to nothing: review the output, then run it with an authorised role.
 //   node scripts/build-production-migration.mjs > /tmp/v1-production.sql
+// Existing order lines keep NO photo by default: order_reconciliation would fill them with today's
+// catalogue photo, which is not the photo sold at the time. Pass --keep-historical-photos only
+// once the owner has explicitly accepted that effect on existing orders.
 import { readFileSync, readdirSync } from 'node:fs';
 const versions = ['20261029093122', '20261029105353', '20261029105807', '20261029111200', '20261103163942',
   '20261113090005', '20261113093826', '20261113102412', '20261113150500', '20261113154852'];
 const files = readdirSync('supabase/migrations');
 const tag = '$v1_migration_body$';
+const keepPhotos = process.argv.includes('--keep-historical-photos');
 const fingerprint = `select
   (select count(*) from public.products) products, (select count(*) from public.product_variants) variants,
   (select count(*) from public.orders) orders, (select count(*) from public.order_items) order_items,
@@ -32,6 +36,8 @@ for (const version of versions) {
   out.push(`\n-- ===== ${file} =====`, sql.trimEnd(),
     `insert into supabase_migrations.schema_migrations(version, name, statements) values ('${version}', '${name}', array[${tag}${sql}${tag}]);`);
 }
+if (!keepPhotos) out.push('\n-- ===== Historical order lines stay untouched: undo the photo backfill of order_reconciliation =====',
+  'update public.order_items set image_url = null where image_url is not null;');
 out.push(`\n-- ===== Verification before commit: any difference raises and rolls everything back =====
 do $$ declare before v1_before%rowtype; after record; begin
   select * into before from v1_before;
@@ -43,7 +49,8 @@ do $$ declare before v1_before%rowtype; after record; begin
     or to_regclass('public.notification_jobs') is null or to_regclass('public.staff_stock_movements') is null
     or (select count(*) from supabase_migrations.schema_migrations where version in (${versions.map(v => `'${v}'`).join(', ')})) <> 10
     or exists (select 1 from public.orders where payment_state <> 'unpaid')
-    or exists (select 1 from public.notification_jobs) or exists (select 1 from public.inventory_movements)
+    or exists (select 1 from public.notification_jobs) or exists (select 1 from public.inventory_movements)${keepPhotos ? '' : `
+    or exists (select 1 from public.order_items where image_url is not null)`}
   then raise exception 'Unexpected state after migration: rolled back'; end if;
 end $$;`, 'commit;');
 process.stdout.write(out.join('\n') + '\n');
