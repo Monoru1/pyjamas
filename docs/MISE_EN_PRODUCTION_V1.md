@@ -25,13 +25,30 @@ Les dix migrations s'appliquent en une seule transaction, dans l'ordre des versi
 
 Dépendances vérifiées : `fedapay_commerce` remplace deux contraintes créées par `sandbox_payment_acceptance` et modifie `payment_attempts` ; `live_test_price_quotes` réaligne `products.base_price` sur le prix minimal des variantes actives (bloqué par le préflight s'il y a un écart) ; `order_reconciliation` remplit `order_items.image_url` avec la photo actuelle ; `physical_stock_receipts` interdit au personnel d'écrire `stock_quantity` hors de `admin_record_stock`, ce qui rend l'ancien écran de stock inopérant jusqu'à la fusion de la PR #14.
 
+## Exécution à distance par GitHub Actions
+
+Le workflow manuel `production-release` (`.github/workflows/production-release.yml`) remplace toute opération sur un poste personnel. Il ne se lance que depuis `main`, sur un commit nommé explicitement, tête de la PR #14 et vert en CI. Ses deux phases tournent dans l'environnement GitHub protégé `production` : les secrets ne sont remis au job qu'après approbation du relecteur obligatoire. Le dépôt étant public, les journaux et les artifacts le sont aussi : seuls des comptages, empreintes et résultats de contrôle y figurent.
+
+Configuration unique, dans GitHub → Settings → Environments → `production` :
+
+- relecteur obligatoire : le propriétaire ; branches autorisées : `main` uniquement ;
+- secret `PROD_DB_URL` : chaîne de connexion « Session pooler » de `pukvrerdloudfiphomsj` ;
+- secret `SUPABASE_SERVICE_ROLE_KEY` : clé de service de `pukvrerdloudfiphomsj` (dépôt de la sauvegarde chiffrée) ;
+- secret `BACKUP_PASSPHRASE` : phrase d'au moins 24 caractères, à conserver hors de GitHub — sans elle la sauvegarde est indéchiffrable.
+
+Phase `backup-drill` (lecture seule sur la production) : sauvegarde complète, restauration stricte sur PostgreSQL 17 jetable (toute erreur de `pg_restore` arrête le run), comparaison des empreintes, des comptages table par table et de l'historique des migrations, préflight, répétition de la migration et du postflight sur la copie. La sauvegarde est chiffrée en AES-256, déposée dans le bucket privé `release-backups` du projet, relue et déchiffrée pour preuve, avec une rétention de 30 jours. Aucun dump n'est publié en artifact.
+
+Phase `production-migration` : exige le numéro du run `backup-drill` réussi, la saisie `MIGRER LA PRODUCTION`, une preuve de moins de 12 heures pour le même commit, un préflight rejoué, une production inchangée depuis la sauvegarde et une transaction identique à celle répétée. Les dix migrations partent en une transaction ; tout échec l'annule. Le postflight suit.
+
+Le job de CI `release-rehearsal` exécute ces mêmes scripts sur PostgreSQL 17 contre une production simulée, y compris le refus d'une restauration en erreur et d'une seconde migration.
+
 ## Sauvegarde et preuve de restauration (prérequis de la migration)
 
 État du préflight exécuté sur la production le 16 novembre 2026 : 11 contrôles bloquants validés sur 11 ; 56 versions ; 18 produits, 53 variantes, stock total 551 ; 9 commandes de test, 11 lignes, 5 clients, 402 000 FCFA ; empreinte catalogue `e8602adf188a2bad5f54d8a269a5ed96`, empreinte commandes `a42e571da59febbee26c278814548ebb`.
 
 ```bash
 export PROD_DB_URL='…'   # Supabase → Connect → Session pooler (IPv4). Ne jamais l'écrire ailleurs.
-bash scripts/production-backup-drill.sh
+PG_CONTAINER=… DRILL_ADMIN_URL=… bash scripts/release/backup-drill.sh
 ```
 
 Le script ne fait que lire la production. Il produit `backups/<horodatage>/full.dump` (sauvegarde complète), restaure les schémas commerciaux dans un PostgreSQL Docker jetable, compare la copie à la production, puis joue la migration V1 et le postflight sur cette copie. Il s'arrête avec « NE PAS MIGRER » au premier écart. Aucun service payant. Prérequis : Docker, Node.js ; l'image `postgres:17` fournit `pg_dump` dans la version du serveur.

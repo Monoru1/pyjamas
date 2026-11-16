@@ -87,3 +87,46 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/test-commerce-postgres.mjs
+
+  # Runs the real release scripts on PostgreSQL 17 against a stand-in production. No secret, no external service.
+  release-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Disposable PostgreSQL 17
+        run: bash scripts/release/start-pg17.sh
+      - name: Stand-in production database
+        run: bash scripts/release/simulate-production.sh
+      - name: Backup, strict restore, comparison, preflight, rehearsal
+        run: |
+          echo "PROD_DB_URL=${DRILL_ADMIN_URL%/*}/prodsim" >> "$GITHUB_ENV"
+          PROD_DB_URL="${DRILL_ADMIN_URL%/*}/prodsim" RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh
+      - name: A real pg_restore error stops the drill
+        run: |
+          docker exec -e QUERY="create table public.sim_needs_missing_role(id int); create role sim_role_missing_on_restore; grant select on public.sim_needs_missing_role to sim_role_missing_on_restore" -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "$QUERY"'
+          sed -i 's/select rolname from pg_roles where/select rolname from pg_roles where rolname <> \x27sim_role_missing_on_restore\x27 and/' scripts/release/backup-drill.sh
+          if RELEASE_SHA="$GITHUB_SHA" EVIDENCE_DIR=evidence-negative bash scripts/release/backup-drill.sh > negative.log 2>&1; then echo "A failing restore was accepted"; exit 1; fi
+          grep -q "pg_restore a rencontré une erreur" negative.log
+          git checkout scripts/release/backup-drill.sh
+          docker exec -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "drop table public.sim_needs_missing_role; drop role sim_role_missing_on_restore"'
+          rm -rf evidence backups
+          RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh > /dev/null
+      - name: Encrypted backup round trip
+        run: |
+          gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 --output full.dump.gpg backups/full.dump 3<<<"fixture-passphrase-for-ci-only-0000"
+          gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 --decrypt --output readback.dump full.dump.gpg 3<<<"fixture-passphrase-for-ci-only-0000"
+          cmp backups/full.dump readback.dump
+      - name: Guarded migration, then refusal of a second run
+        run: |
+          DRILL_EVIDENCE_DIR=evidence RELEASE_SHA="$GITHUB_SHA" bash scripts/release/migrate.sh
+          if DRILL_EVIDENCE_DIR=evidence RELEASE_SHA="$GITHUB_SHA" bash scripts/release/migrate.sh > second.log 2>&1; then echo "A second migration was accepted"; exit 1; fi
+          grep -q "ARRÊT AVANT TOUTE ÉCRITURE" second.log
+      - name: Evidence holds no personal data
+        run: |
+          if grep -rlE "example\.test|Cliente|2290100000000|not-a-real-hash" evidence evidence-migration; then echo "Personal data found in evidence"; exit 1; fi
+          cat evidence/PREUVE.txt evidence-migration/PREUVE-MIGRATION.txt
+

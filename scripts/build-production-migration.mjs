@@ -21,7 +21,7 @@ const fingerprint = `select
   (select md5(coalesce(string_agg(id || ':' || price || ':' || stock_quantity || ':' || is_active, ',' order by id), '')) from public.product_variants) variant_state,
   (select md5(coalesce(string_agg(id || ':' || order_number || ':' || status || ':' || subtotal || ':' || total, ',' order by id), '')) from public.orders) order_state,
   (select md5(coalesce(string_agg(order_id || ':' || sku || ':' || quantity || ':' || unit_price || ':' || line_total, ',' order by order_id, sku, quantity), '')) from public.order_items) line_state`;
-const out = [`-- V1 production migration — generated ${new Date().toISOString().slice(0, 10)} from the repository. Do not edit.`,
+const out = [`-- V1 production migration — generated from the repository. Do not edit.`,
   'begin;', "set local lock_timeout = '10s';", "set local statement_timeout = '180s';",
   // Refuse to run twice or on a database that is not at the expected starting point.
   `do $$ begin
