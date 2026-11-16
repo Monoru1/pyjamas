@@ -32,6 +32,17 @@ it('mail failure stays retryable and is never marked sent',async()=>{
  expect(updates).toContainEqual(expect.objectContaining({status:'pending',last_error:'email_provider_failed'}));
  expect(updates.some(u=>u.status==='sent')).toBe(false);
 });
+it.each([
+ ['invalid_idempotent_request', 'blocked', 'email_idempotency_conflict'],
+ ['concurrent_idempotent_requests', 'pending', 'email_provider_failed'],
+])('handles Resend conflict %s without replacing its idempotency key', async (name, status, code) => {
+ const fetcher=vi.fn().mockResolvedValue(Response.json({name,message:'provider details'}, {status:409}));
+ vi.stubGlobal('fetch',fetcher);
+ expect(await processNotificationJobs(1)).toBe(0);
+ expect(fetcher).toHaveBeenCalledTimes(1);
+ expect(fetcher.mock.calls[0][1].headers['Idempotency-Key']).toBe('order-job');
+ expect(updates).toContainEqual(expect.objectContaining({status,last_error:code}));
+});
 it('missing email configuration queues work visibly without claiming delivery',async()=>{
  vi.stubEnv('RESEND_API_KEY','');const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
  expect(await processNotificationJobs(1)).toBe(0);expect(fetcher).not.toHaveBeenCalled();expect(updates).toContainEqual(expect.objectContaining({last_error:'email_not_configured_or_order_unavailable'}));

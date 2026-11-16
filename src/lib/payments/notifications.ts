@@ -43,6 +43,14 @@ export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fet
     redirect: 'error', body: JSON.stringify(mail), signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) {
+    if (response.status === 409) {
+      const conflict: unknown = await response.json().catch(() => null);
+      if (conflict && typeof conflict === 'object' && 'name' in conflict
+        && conflict.name === 'invalid_idempotent_request') {
+        // The existing key may already have sent a different payload. Keep it for investigation.
+        throw new EmailDeliveryError(true, 'email_idempotency_conflict');
+      }
+    }
     const permanent = response.status >= 400 && response.status < 500 && ![408, 409, 429].includes(response.status);
     throw new EmailDeliveryError(permanent, permanent ? 'email_rejected' : 'email_provider_failed');
   }
