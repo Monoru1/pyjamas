@@ -149,6 +149,37 @@ it('runs the notification outbox independently when provider reconciliation is d
  expect(response.status).toBe(200);expect(await response.json()).toMatchObject({checked:0,attempted:0,notificationsSent:2});expect(mocks.db.from).not.toHaveBeenCalled();
 });
 
+const maintenanceRequest=()=>new Request('https://preview.example.test/api/payments/reconcile',{
+ method:'POST',headers:{authorization:'Bearer fixture-reconcile-secret-32-characters'},
+});
+it('skips a payment already claimed by another worker and reconciles the next due payment', async()=>{
+ const lost=chain([]), claimed=chain([{id:'next'}]);
+ mocks.db.from.mockReturnValueOnce(chain([{id:'lost',provider_id:41},{id:'next',provider_id:42}]))
+  .mockReturnValueOnce(lost).mockReturnValueOnce(claimed);
+ const response=await reconcile(maintenanceRequest());
+ expect(await response.json()).toMatchObject({checked:1,attempted:1});
+ expect(lost.lte).toHaveBeenCalledWith('next_reconcile_at',expect.any(String));
+ expect(mocks.reconcile).toHaveBeenCalledExactlyOnceWith('next',expect.stringMatching(/^reconcile:/));
+});
+it('keeps processing email when the payment queue is unavailable', async()=>{
+ mocks.db.from.mockReturnValueOnce(chain(null,new Error('database unavailable')));
+ mocks.notifications.mockResolvedValue(1);
+ const response=await reconcile(maintenanceRequest());
+ expect(response.status).toBe(503);
+ expect(mocks.reconcile).not.toHaveBeenCalled();
+ expect(mocks.notifications).toHaveBeenCalledExactlyOnceWith(2);
+});
+it('does not overwrite an intervening webhook when reconciliation fails', async()=>{
+ const locked=chain([{id:'due'}]), failure=chain(null);
+ mocks.db.from.mockReturnValueOnce(chain([{id:'due',provider_id:42}]))
+  .mockReturnValueOnce(locked).mockReturnValueOnce(failure);
+ mocks.reconcile.mockRejectedValueOnce(new Error('provider timeout'));
+ const response=await reconcile(maintenanceRequest());
+ expect(await response.json()).toMatchObject({checked:0,attempted:1});
+ const retryAt=(locked.update as ReturnType<typeof vi.fn>).mock.calls[0][0].next_reconcile_at;
+ expect(failure.eq).toHaveBeenCalledWith('next_reconcile_at',retryAt);
+});
+
 it('blocks a new private Live checkout until the old transaction and its inventory are reconciled', async () => {
  for (const [key, value] of Object.entries({
   FEDAPAY_ENVIRONMENT:'live', FEDAPAY_SECRET_KEY:'sk_live_fixture', CONTEXT:'deploy-preview', REVIEW_ID:'14',
