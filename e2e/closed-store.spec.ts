@@ -34,10 +34,16 @@ test('closed checkout keeps a synthetic basket, its amounts and the tracking lin
   expect(errors).toEqual([]);
 });
 
-test('an anonymous visitor stays on the local build when redirected to the admin login', async ({ page }) => {
+test('an anonymous visitor is redirected and the local admin login renders', async ({ page, request }) => {
   const localOrigin = new URL(test.info().project.use.baseURL ?? 'http://127.0.0.1:3000').origin;
-  await page.goto('/admin');
-  // Never accept a successful assertion against the published production site.
+  // Inspect the redirect without following it: a production redirect must never satisfy the local UI smoke test.
+  const response = await request.get('/admin', { maxRedirects: 0 });
+  expect([301, 302, 303, 307, 308]).toContain(response.status());
+  const location = response.headers()['location'];
+  expect(location).toBeTruthy();
+  expect(new URL(location, localOrigin).pathname).toBe('/admin/login');
+
+  await page.goto('/admin/login');
   await expect(page).toHaveURL(url => url.origin === localOrigin && url.pathname === '/admin/login');
   await expect(page.getByRole('button', { name: 'Ouvrir le studio' })).toBeVisible();
 });
