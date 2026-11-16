@@ -107,13 +107,12 @@ jobs:
           PROD_DB_URL="${DRILL_ADMIN_URL%/*}/prodsim" RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh
       - name: A real pg_restore error stops the drill
         run: |
-          docker exec -e QUERY="create table public.sim_needs_missing_role(id int); create role sim_role_missing_on_restore; grant select on public.sim_needs_missing_role to sim_role_missing_on_restore" -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "$QUERY"'
-          sed -i 's/select rolname from pg_roles where/select rolname from pg_roles where rolname <> \x27sim_role_missing_on_restore\x27 and/' scripts/release/backup-drill.sh
+          # A public table that depends on a schema outside the restored set cannot be recreated on the copy.
+          docker exec -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "create schema sim_outside; create table sim_outside.parent(id int primary key); create table public.sim_child(id int references sim_outside.parent(id))"'
           if RELEASE_SHA="$GITHUB_SHA" EVIDENCE_DIR=evidence-negative bash scripts/release/backup-drill.sh > negative.log 2>&1; then echo "A failing restore was accepted"; exit 1; fi
           grep -q "pg_restore a rencontré une erreur" negative.log
-          git checkout scripts/release/backup-drill.sh
-          docker exec -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "drop table public.sim_needs_missing_role; drop role sim_role_missing_on_restore"'
-          rm -rf evidence backups
+          docker exec -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "drop table public.sim_child; drop schema sim_outside cascade"'
+          rm -rf evidence backups evidence-negative
           RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh > /dev/null
       - name: Encrypted backup round trip
         run: |
