@@ -52,6 +52,8 @@ jobs:
         run: node scripts/check-shooting-media.mjs
       - name: Verify recovered migration history
         run: node scripts/check-migration-history.mjs
+      - name: Rehearse the production migration bundle
+        run: node scripts/rehearse-production-migration.mjs
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
       - name: Build with inert public configuration

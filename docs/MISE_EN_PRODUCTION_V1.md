@@ -12,6 +12,19 @@ Le 13 novembre 2026, la production comptait 18 produits, 53 variantes et 9 comma
 4. Pendant la fenêtre de migration, suspendre les écritures du personnel, capturer les références et montants historiques, les quantités par variante, les comptes et rôles, et l’inventaire des médias. Comparer ces relevés après application. Contrôler les droits staff et anon, les fonctions de réservation, les commandes existantes, les mouvements de stock, et les écrans mobile et ordinateur avec un compte staff autorisé.
 5. Préparer la publication Netlify avec les quatre options sur `false` dans Production. Vérifier `NEXT_PUBLIC_SUPABASE_URL` et la provenance des clés, puis fusionner la PR #14 et tester le site public et le back-office. L’ancien back-office fait des écritures directes de stock que la nouvelle migration bloque. Garder la gestion de stock suspendue jusqu’au déploiement de l’administration compatible.
 
+## Exécution outillée (16 novembre 2026)
+
+Les dix migrations s'appliquent en une seule transaction, dans l'ordre des versions du dépôt. Aucune ne supprime de table, de colonne ou de ligne.
+
+1. `supabase/production/preflight.sql` — lecture seule. Toutes les lignes `BLOQUANT` doivent être à `true`. Conserver le résultat.
+2. `node scripts/build-production-migration.mjs > v1-production.sql` — produit la transaction. Elle refuse de démarrer si une migration V1 est déjà enregistrée ou si `add_noel_pajama_sizes` manque, inscrit les dix versions du dépôt dans `supabase_migrations.schema_migrations`, puis compare avant `commit` les produits, variantes, prix, stocks, commandes et lignes. Le moindre écart lève une erreur et annule tout.
+3. Exécuter `v1-production.sql` avec un rôle propriétaire (éditeur SQL Supabase ou `psql`), en une seule fois. Ne pas passer par un outil qui renumérote les versions.
+4. `supabase/production/postflight.sql` — lecture seule. Toutes les lignes à `true`, empreintes identiques au préflight.
+
+`node scripts/rehearse-production-migration.mjs` rejoue cette séquence dans la CI sur la structure de production : application, refus d'un second passage, et retour arrière complet lorsqu'un prix serait réécrit. Cette répétition ne remplace ni la sauvegarde ni le test de restauration sur les données réelles.
+
+Dépendances vérifiées : `fedapay_commerce` remplace deux contraintes créées par `sandbox_payment_acceptance` et modifie `payment_attempts` ; `live_test_price_quotes` réaligne `products.base_price` sur le prix minimal des variantes actives (bloqué par le préflight s'il y a un écart) ; `order_reconciliation` remplit `order_items.image_url` avec la photo actuelle ; `physical_stock_receipts` interdit au personnel d'écrire `stock_quantity` hors de `admin_record_stock`, ce qui rend l'ancien écran de stock inopérant jusqu'à la fusion de la PR #14.
+
 ## Rétablissement
 
 Revenir au dernier déploiement Netlify connu en cas d’erreur applicative et garder les ventes et les écritures de stock suspendues. Si les contrôles indiquent une atteinte aux données, restaurer d’abord le point validé dans un environnement isolé, puis décider avec le propriétaire de la restauration et de la reprise des écritures postérieures au point choisi. Réconcilier les événements financiers avec FedaPay avant toute reprise. Une restauration SQL seule ne recrée pas les objets Storage effacés.
