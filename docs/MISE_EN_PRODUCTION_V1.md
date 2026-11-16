@@ -100,6 +100,8 @@ Revenir au dernier déploiement Netlify connu en cas d’erreur applicative et g
 
 ## Mise en service progressive
 
+Voir [la procédure opérationnelle Terrain 8](MISE_EN_SERVICE_TERRAIN8.md) pour les preuves attendues, le contrôle en production fermée et le retour à l’état fermé.
+
 - Production Netlify, configurer `PAYMENT_CHECKOUT_ENABLED=false`, `FEDAPAY_ENABLED=false`, `FEDAPAY_LIVE_APPROVED=false`, `ORDER_NOTIFICATIONS_ENABLED=false`.
 - Resend, renseigner `RESEND_API_KEY` et `RESEND_WEBHOOK_SECRET` en secrets de production, puis `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL` et `ORDER_TEST_EMAILS`. Créer un webhook distinct pour `/api/notifications/resend` sur l’origine réellement publiée. Vérifier le message de test dans l’historique Supabase et la livraison fournisseur signée. Pour cet envoi staff avec données fictives uniquement, utiliser temporairement `ORDER_EMAIL_DEMO_ENABLED=true` et une adresse de la liste de test.
 - FedaPay, réconcilier en lecture seule la transaction de recette `113943841` avant tout autre test financier. Confirmer le marchand Live `101915`, les clés et le webhook, puis obtenir l’accord sur le test réel et rapprocher la commande, le stock, le paiement et les e-mails.
