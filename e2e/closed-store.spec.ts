@@ -34,8 +34,10 @@ test('closed checkout keeps a synthetic basket, its amounts and the tracking lin
   expect(errors).toEqual([]);
 });
 
-test('an anonymous visitor cannot open the back-office', async ({ page }) => {
+test('an anonymous visitor stays on the local build when redirected to the admin login', async ({ page }) => {
+  const localOrigin = new URL(test.info().project.use.baseURL ?? 'http://127.0.0.1:3000').origin;
   await page.goto('/admin');
-  await expect(page).toHaveURL(/\/admin\/login$/);
+  // Never accept a successful assertion against the published production site.
+  await expect(page).toHaveURL(url => url.origin === localOrigin && url.pathname === '/admin/login');
   await expect(page.getByRole('button', { name: 'Ouvrir le studio' })).toBeVisible();
 });
