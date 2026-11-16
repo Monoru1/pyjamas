@@ -37,5 +37,6 @@ sanitized_errors() {
 }
 
 # query_file <url variable name> <sql file> <output file>: unaligned, pipe-separated, tuples only.
-query_file() { sql_tool "psql \"\$$1\" -X -q -At -F '|' -v ON_ERROR_STOP=1 -f '$2'" > "$3"; }
-query() { sql_tool "psql \"\$$1\" -X -q -At -v ON_ERROR_STOP=1 -c \"\$QUERY\""; }
+# Both read nothing from stdin: inside a `while read` loop they must not swallow the loop's input.
+query_file() { sql_tool "psql \"\$$1\" -X -q -At -F '|' -v ON_ERROR_STOP=1 -f '$2'" < /dev/null > "$3"; }
+query() { sql_tool "psql \"\$$1\" -X -q -At -v ON_ERROR_STOP=1 -c \"\$QUERY\"" < /dev/null; }

@@ -30,8 +30,8 @@ echo "   production ${server:0:2}, outils $tools, serveur de restauration ${targ
 [ "$tools" -ge "${server:0:2}" ] && [ "${target_version:0:2}" -ge "${server:0:2}" ] || fail "outils ou serveur de restauration plus anciens que la production"
 
 echo "1/5 Sauvegarde complète de la production (lecture seule)…"
-sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --file='$backup/full.dump'" 2> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump complet"; }
-sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --no-owner --schema=public --schema=auth --schema=supabase_migrations --file='$backup/commerce.dump'" 2>> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump des schémas commerciaux"; }
+sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --file='$backup/full.dump'" < /dev/null 2> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump complet"; }
+sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --no-owner --schema=public --schema=auth --schema=supabase_migrations --file='$backup/commerce.dump'" < /dev/null 2>> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump des schémas commerciaux"; }
 QUERY="$COMMERCIAL_FINGERPRINT" query PROD_DB_URL > "$evidence/production.fingerprint"
 QUERY="$MIGRATION_HISTORY" query PROD_DB_URL > "$evidence/production.migrations"
 QUERY="$TABLE_COUNTS" query PROD_DB_URL > "$evidence/production.table-counts"
@@ -50,8 +50,8 @@ QUERY="select e.extname || '|' || n.nspname from pg_extension e join pg_namespac
   else echo "$ext" >> "$evidence/extensions-absentes.txt"; fi
 done
 # The target already has an empty public schema: every other entry of the dump is restored, and any error is fatal.
-sql_tool "pg_restore --list '$backup/commerce.dump'" | grep -vE '^[0-9]+; [0-9]+ [0-9]+ SCHEMA - public ' > "$backup/restore.toc"
-if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/commerce.dump'" > "$backup/restore.log" 2>&1; then
+sql_tool "pg_restore --list '$backup/commerce.dump'" < /dev/null | grep -vE '^[0-9]+; [0-9]+ [0-9]+ SCHEMA - public ' > "$backup/restore.toc"
+if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/commerce.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
   sanitized_errors "$backup/restore.log"; fail "pg_restore a rencontré une erreur (journal complet conservé hors publication)"
 fi
 grep -qiE 'error|warning: errors ignored' "$backup/restore.log" && { sanitized_errors "$backup/restore.log"; fail "pg_restore a signalé une erreur"; }
@@ -72,7 +72,7 @@ awk -F'|' '$2 == "BLOQUANT" { total++; if ($4 != "t") { failed++; print "   BLOQ
 
 echo "5/5 Répétition générale de la migration V1 sur la copie restaurée…"
 node scripts/build-production-migration.mjs > "$backup/v1-production.sql"
-sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=1 -f '$backup/v1-production.sql'" > "$backup/migration-copy.log" 2>&1 || { sanitized_errors "$backup/migration-copy.log"; fail "la migration échoue sur la copie restaurée"; }
+sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=1 -f '$backup/v1-production.sql'" < /dev/null > "$backup/migration-copy.log" 2>&1 || { sanitized_errors "$backup/migration-copy.log"; fail "la migration échoue sur la copie restaurée"; }
 query_file TARGET_URL supabase/production/postflight.sql "$evidence/postflight-copy.txt"
 awk -F'|' '{ total++; if ($3 != "t") { failed++; print "   POSTFLIGHT EN ÉCHEC : " $2 } } END { print "   " total - failed " contrôle(s) de postflight validé(s) sur " total; exit failed > 0 || total == 0 }' "$evidence/postflight-copy.txt" || fail "postflight sur la copie"
 QUERY="$COMMERCIAL_FINGERPRINT" query TARGET_URL > "$evidence/migrated-copy.fingerprint"

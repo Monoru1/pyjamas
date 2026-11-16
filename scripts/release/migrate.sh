@@ -33,7 +33,7 @@ node scripts/build-production-migration.mjs > "$work/v1-production.sql"
 echo "   identique à la transaction répétée (sha256 $(value sha256_migration | cut -c1-12)…)"
 
 echo "4/5 Application en production : dix migrations, une seule transaction…"
-if ! sql_tool "psql \"\$PROD_DB_URL\" -X -q -v ON_ERROR_STOP=1 -f '$work/v1-production.sql'" > "$work/migration.log" 2>&1; then
+if ! sql_tool "psql \"\$PROD_DB_URL\" -X -q -v ON_ERROR_STOP=1 -f '$work/v1-production.sql'" < /dev/null > "$work/migration.log" 2>&1; then
   sanitized_errors "$work/migration.log"
   echo "MIGRATION ANNULÉE : la transaction a été entièrement défaite, la production est inchangée."; exit 1
 fi
