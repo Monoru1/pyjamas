@@ -1,7 +1,7 @@
 const benefits = [
   ['Cadeau pret', 'Une piece qui se glisse naturellement sous le sapin.'],
   ['Confort choisi', 'Tailles et disponibilités confirmées par la boutique.'],
-  ['Commande fluide', 'Le panier prepare un message WhatsApp clair.'],
+  ['Votre sélection', 'Retrouvez vos tailles et vos quantités dans le panier.'],
 ];
 
 export function ProductBenefits() {

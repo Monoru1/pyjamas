@@ -63,6 +63,17 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
         run: npm run build
 
+      - name: Install browser for desktop and mobile smoke tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke with synthetic cart and payments disabled
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://fixture.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-public-key
+          FEDAPAY_ENABLED: 'false'
+          PAYMENT_CHECKOUT_ENABLED: 'false'
+          ORDER_NOTIFICATIONS_ENABLED: 'false'
+        run: npm run test:e2e
+
   commerce-postgres:
     runs-on: ubuntu-latest
     services:

@@ -17,12 +17,13 @@
 2. Relire **Derniers mouvements du personnel**.
 3. Vérifier la liste des comptes actifs avec le responsable technique.
 
-## Valeurs provisoires du 16 novembre 2026
-Le stock (30 unités par taille commercialisée) et le prix (30 000 FCFA par lot) ont été décidés à titre provisoire. Tant que la boutique ne les a pas confirmés :
-- la vente publique en ligne reste fermée ;
-- chaque valeur se corrige depuis **Produits & stocks** : **Enregistrer le prix** pour le prix, **Corriger une quantité** pour le stock, avec le motif « inventaire du JJ/MM ».
+## Confirmation des prix et de l'inventaire
+Les prix et quantités existants ne doivent pas être remplacés par une valeur uniforme. Confirmer chaque taille avec la boutique, ainsi que l'unité vendue (pièce ou lot et composition).
 
-Les mouvements provisoires sont reconnaissables dans l'historique à leur motif « PROVISOIRE V1 ».
+- La vente publique en ligne reste fermée jusqu'à validation.
+- **Enregistrer le prix** applique le prix confirmé pour la taille.
+- **Réceptionner des marchandises** ajoute uniquement une livraison réellement reçue, avec sa référence.
+- **Corriger une quantité** traite un écart d'inventaire motivé ; tenir compte des réservations et des commandes payées restant à remettre.
 
 ## Ouverture et fermeture de la vente en ligne
 Les interrupteurs de paiement et de notifications ne sont pas dans l'administration : ce sont des réglages techniques de l'hébergement. Pour fermer la vente en urgence, appeler le responsable technique. Voir `docs/MISE_EN_PRODUCTION_V1.md`.

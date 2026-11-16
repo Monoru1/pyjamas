@@ -51,23 +51,18 @@ show('Postflight (contrôles en échec)', post.filter(c => !c.ok).map(c => `${c.
 if (post.some(c => !c.ok)) throw new Error('Postflight failed');
 show('Second passage', refused || 'NON REFUSÉ'); if (!refused) throw new Error('Second run was not refused');
 show('État inchangé après refus', JSON.stringify(await state(db)) === JSON.stringify(after) ? 'oui' : 'NON');
-// Provisional catalogue on the migrated database.
+// Old runbooks must fail without changing prices, quantities, history or movements.
 const provisional = readFileSync('supabase/production/provisional-catalogue.sql', 'utf8');
-const staff = '55555555-5555-4555-8555-555555555551';
-await db.exec(`insert into auth.users values('${staff}'); insert into profiles(id,role,is_active) values('${staff}','admin',true);`);
-let guard = ''; try { await db.exec(provisional); } catch (error) { guard = error.message; await db.exec('rollback'); }
-show('Catalogue provisoire sans confirmation des lots', guard || 'NON REFUSÉ'); if (!/not confirmed/.test(guard)) throw new Error('Lot guard missing');
-await db.exec(`select set_config('app.provisional_staff_id','${staff}',false); select set_config('app.lots_confirmed','oui',false);`);
-await db.exec(provisional);
-const catalogue = (await db.query(`select string_agg(v.sku || ':' || v.price || ':' || v.stock_quantity, ',' order by v.sku) variants, (select base_price from products) base_price,
-  (select string_agg(kind || ' ' || stock_before || '→' || stock_after, ',' order by stock_before) from staff_stock_movements) movements,
-  (select string_agg(before_data->>'price', ',' order by before_data->>'price') from activity_logs where action='provisional_price') old_prices,
-  (select unit_price || '|' || line_total from order_items) historical_line, (select auth.uid() is null) identity_cleared from product_variants v`)).rows[0];
-show('Catalogue provisoire appliqué', catalogue);
-if (catalogue.variants !== 'REP-M:30000.00:30,REP-S:30000.00:30' || catalogue.movements !== 'adjustment 0→30,adjustment 7→30' || catalogue.old_prices !== '15000.00,18000.00'
-  || catalogue.historical_line !== '15000.00|15000.00' || catalogue.base_price !== '30000.00' || !catalogue.identity_cleared) throw new Error('Provisional catalogue mismatch');
-let twice = ''; try { await db.exec(provisional); } catch (error) { twice = error.message; await db.exec('rollback'); }
-show('Catalogue provisoire, second passage', twice || 'NON REFUSÉ'); if (!twice) throw new Error('Provisional catalogue ran twice');
+const catalogueBefore = JSON.stringify(await state(db));
+for (const legacyConfirmation of [false, true]) {
+  if (legacyConfirmation) await db.exec("select set_config('app.lots_confirmed','oui',false); select set_config('app.provisional_price','30000',false); select set_config('app.provisional_stock','30',false);");
+  let refused = '';
+  try { await db.exec(provisional); } catch (error) { refused = error.message; }
+  if (!refused.includes('Provisional catalogue disabled')) throw new Error('Retired catalogue script was not blocked');
+  if (JSON.stringify(await state(db)) !== catalogueBefore) throw new Error('Retired script changed the catalogue');
+  if ((await db.query('select count(*)::int n from staff_stock_movements')).rows[0].n !== 0) throw new Error('Retired script wrote a movement');
+}
+show('Ancien catalogue uniforme', 'refusé, même avec les anciennes confirmations ; données inchangées');
 await db.close();
 
 db = await database(true);
