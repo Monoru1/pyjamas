@@ -11,6 +11,8 @@ const versions = ['20261029093122', '20261029105353', '20261029105807', '2026102
 const files = readdirSync('supabase/migrations');
 const tag = '$v1_migration_body$';
 const keepPhotos = process.argv.includes('--keep-historical-photos');
+// --compact records version and name only (no SQL copy in the history): half the size, for SQL connectors with a payload limit.
+const compact = process.argv.includes('--compact');
 const fingerprint = `select
   (select count(*) from public.products) products, (select count(*) from public.product_variants) variants,
   (select count(*) from public.orders) orders, (select count(*) from public.order_items) order_items,
@@ -34,7 +36,8 @@ for (const version of versions) {
   if (sql.includes(tag) || /\b(begin|commit|rollback)\s*;/i.test(sql.replace(/\$\$[\s\S]*?\$\$/g, ''))) throw new Error('Unsafe to bundle ' + file);
   const name = file.slice(version.length + 1, -4);
   out.push(`\n-- ===== ${file} =====`, sql.trimEnd(),
-    `insert into supabase_migrations.schema_migrations(version, name, statements) values ('${version}', '${name}', array[${tag}${sql}${tag}]);`);
+    compact ? `insert into supabase_migrations.schema_migrations(version, name) values ('${version}', '${name}');`
+      : `insert into supabase_migrations.schema_migrations(version, name, statements) values ('${version}', '${name}', array[${tag}${sql}${tag}]);`);
 }
 if (!keepPhotos) out.push('\n-- ===== Historical order lines stay untouched: undo the photo backfill of order_reconciliation =====',
   'update public.order_items set image_url = null where image_url is not null;');

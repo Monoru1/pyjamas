@@ -25,6 +25,23 @@ Les dix migrations s'appliquent en une seule transaction, dans l'ordre des versi
 
 Dépendances vérifiées : `fedapay_commerce` remplace deux contraintes créées par `sandbox_payment_acceptance` et modifie `payment_attempts` ; `live_test_price_quotes` réaligne `products.base_price` sur le prix minimal des variantes actives (bloqué par le préflight s'il y a un écart) ; `order_reconciliation` remplit `order_items.image_url` avec la photo actuelle ; `physical_stock_receipts` interdit au personnel d'écrire `stock_quantity` hors de `admin_record_stock`, ce qui rend l'ancien écran de stock inopérant jusqu'à la fusion de la PR #14.
 
+## Sauvegarde et preuve de restauration (prérequis de la migration)
+
+État du préflight exécuté sur la production le 16 novembre 2026 : 11 contrôles bloquants validés sur 11 ; 56 versions ; 18 produits, 53 variantes, stock total 551 ; 9 commandes de test, 11 lignes, 5 clients, 402 000 FCFA ; empreinte catalogue `e8602adf188a2bad5f54d8a269a5ed96`, empreinte commandes `a42e571da59febbee26c278814548ebb`.
+
+```bash
+export PROD_DB_URL='…'   # Supabase → Connect → Session pooler (IPv4). Ne jamais l'écrire ailleurs.
+bash scripts/production-backup-drill.sh
+```
+
+Le script ne fait que lire la production. Il produit `backups/<horodatage>/full.dump` (sauvegarde complète), restaure les schémas commerciaux dans un PostgreSQL Docker jetable, compare la copie à la production, puis joue la migration V1 et le postflight sur cette copie. Il s'arrête avec « NE PAS MIGRER » au premier écart. Aucun service payant. Prérequis : Docker, Node.js ; l'image `postgres:17` fournit `pg_dump` dans la version du serveur.
+
+La preuve est `backups/<horodatage>/PREUVE.txt`. Les empreintes `catalogue` et `empreinte_commandes` qu'il contient doivent être celles du préflight ci-dessus. Le dossier `backups/` est ignoré par Git et contient des données clients : le conserver dans un espace protégé. Les fichiers du Storage ne font pas partie d'une sauvegarde SQL ; la migration V1 ne les touche pas.
+
+Pour restaurer la production à partir de cette sauvegarde : `pg_restore --clean --if-exists --dbname "$PROD_DB_URL" backups/<horodatage>/full.dump`, uniquement sur décision du propriétaire.
+
+Avec un connecteur SQL limité en taille, `node scripts/build-production-migration.mjs --compact` produit la même transaction sans recopier le SQL dans l'historique.
+
 ## Commandes pour la session autorisée sur Supabase
 
 `PROD_DB_URL` est la chaîne de connexion PostgreSQL de `pukvrerdloudfiphomsj` (Supabase → Connect). Elle se place dans une variable d'environnement locale, jamais dans Git, un rapport ou une conversation.
