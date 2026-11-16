@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { CheckoutButton } from '@/features/cart/components/checkout-button';
 import { checkoutConfiguration } from '@/lib/payments/fedapay';
@@ -40,6 +41,7 @@ export default async function CartPage() {
         <aside className="space-y-4 lg:sticky lg:top-28 lg:self-start">
           {payment && <CustomerForm onlinePayment />}
           <CartSummary />
+          {!payment && <Link href="/paiement" className="inline-flex min-h-11 items-center text-sm underline">Suivre mon dernier paiement</Link>}
           {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} liveTest={payment.liveTest} />}
         </aside>
       </div>

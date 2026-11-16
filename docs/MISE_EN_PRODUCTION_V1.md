@@ -2,7 +2,13 @@
 
 Production Supabase `pukvrerdloudfiphomsj`. Recette Supabase `oxhymanjibveayhcaqvj`. Le site est un canal de vente de la boutique physique. Une livraison reçue par le personnel augmente le stock disponible. La réservation du site réduit le disponible immédiatement. Le paiement vérifié engage la quantité jusqu’à sa remise.
 
-## Migration
+## État publié — 16 novembre 2026
+
+La PR #14 est fusionnée, `main` et la production Netlify sont à `4efb9d4`. La production contient **66 migrations**, 18 produits, 53 variantes, 551 unités et 9 commandes historiques. La migration V1 est terminée : **ne pas rejouer les procédures de migration ci-dessous**, conservées comme historique technique. Sauvegarde/restauration : run GitHub Actions `43879477683` ; migration : `43880456079`.
+
+Prix actuellement enregistrés : 10 000–45 000 FCFA. Aucun prix uniforme ni quantité uniforme n’est autorisé. Paiements et commandes publiques restent fermés.
+
+## Migration (historique — déjà exécutée)
 
 Le 13 novembre 2026, la production comptait 18 produits, 53 variantes et 9 commandes. Le contrôle a retrouvé les contraintes historiques attendues sur `payment_attempts`. Les prix indicatifs des produits étaient déjà alignés sur le prix minimal de leurs variantes actives. Onze lignes de commandes étaient candidates au remplissage de la nouvelle colonne de photo depuis le catalogue actuel. Ce remplissage ne peut pas restituer la photo originale lorsque celle-ci n’était pas conservée.
 
@@ -82,18 +88,11 @@ Avec un connecteur SQL à la place de `psql` : exécuter le contenu de chaque fi
 
 Par défaut, la transaction laisse les lignes de commande existantes sans photo : le remplissage prévu par `order_reconciliation` y mettrait la photo actuelle du catalogue, pas celle vendue à l'époque. L'option `--keep-historical-photos` l'applique ; elle exige l'accord explicite du propriétaire.
 
-## Catalogue provisoire (décision du 16 novembre 2026)
+## Validation du catalogue par la boutique
 
-30 unités par taille commercialisée et 30 000 FCFA par lot, à confirmer par la boutique. À exécuter après le postflight :
+Ne pas appliquer 30 unités par taille ni 30 000 FCFA par lot. L'ancien script `supabase/production/provisional-catalogue.sql` est neutralisé et refuse toute exécution, y compris avec ses anciennes confirmations.
 
-```bash
-psql "$PROD_DB_URL" -X -v ON_ERROR_STOP=1 \
-  -c "select set_config('app.provisional_staff_id', '<UUID d''un profil admin actif>', false)" \
-  -c "select set_config('app.lots_confirmed', 'oui', false)" \
-  -f supabase/production/provisional-catalogue.sql
-```
-
-Le script refuse de tourner tant que `app.lots_confirmed` ne vaut pas `oui` : cette valeur ne se pose qu'après lecture de `catalogue-review.sql` avec la boutique, pour vérifier que chaque unité vendue est bien un lot. Les anciens prix sont conservés dans `activity_logs` (`provisional_price`). Le stock passe par `admin_record_stock` sous forme de correction motivée « PROVISOIRE V1 », jamais de réception. Les lignes de commande ne sont pas modifiées. Le prix provisoire devient visible sur le catalogue public dès son application, même paiement fermé.
+Depuis **Produits & stocks**, le personnel confirme chaque référence et taille : unité vendue (pièce ou lot et composition), prix et quantité physique. Le prix se corrige avec **Enregistrer le prix**. Une livraison réellement reçue passe par **Réceptionner des marchandises**, avec sa référence. Un écart d'inventaire passe par **Corriger une quantité**, avec son motif. Les réceptions, réservations et quantités payées à remettre restent distinctes. Conserver les anciennes commandes.
 
 ## Rétablissement
 

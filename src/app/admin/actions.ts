@@ -100,10 +100,8 @@ export async function toggleProduct(formData: FormData) {
   const active = formData.get('active') === 'true';
   const { error } = await supabase.from('products').update({ is_active: active }).eq('id', id);
   if (error) throw new Error('La disponibilité n’a pas pu être modifiée.');
-  revalidatePath('/');
-  revalidatePath('/catalogue');
+  refreshCatalog();
   revalidatePath('/admin');
-  revalidatePath('/admin/produits');
 }
 
 export async function updateProduct(formData: FormData) {
@@ -113,7 +111,7 @@ export async function updateProduct(formData: FormData) {
   const price = Math.max(0, Number(formData.get('base_price')) || 0);
   if (!id || !name) return;
 
-  await supabase.from('products').update({
+  const { error: productError } = await supabase.from('products').update({
     name_fr: name,
     description_fr: String(formData.get('description_fr') ?? '').trim() || null,
     base_price: price,
@@ -122,15 +120,17 @@ export async function updateProduct(formData: FormData) {
     is_featured: formData.get('is_featured') === 'on',
     is_new: formData.get('is_new') === 'on',
   }).eq('id', id);
-  const collectionIds = formData.getAll('collection_ids').map(String);
-  await supabase.from('product_collections').delete().eq('product_id', id);
+  if (productError) throw new Error('La fiche produit n’a pas pu être enregistrée.');
+  refreshCatalog();
+  const collectionIds = [...new Set(formData.getAll('collection_ids').map(String))];
+  const { error: unlinkError } = await supabase.from('product_collections').delete().eq('product_id', id);
+  if (unlinkError) throw new Error('La fiche a été enregistrée, mais les collections n’ont pas pu être modifiées.');
   if (collectionIds.length) {
-    await supabase.from('product_collections').insert(collectionIds.map(collection_id => ({ product_id: id, collection_id })));
+    const { error: linkError } = await supabase.from('product_collections').insert(collectionIds.map(collection_id => ({ product_id: id, collection_id })));
+    if (linkError) throw new Error('La fiche a été enregistrée, mais ses collections doivent être sélectionnées à nouveau.');
   }
 
-  revalidatePath('/');
-  revalidatePath('/catalogue');
-  revalidatePath('/admin/produits');
+  refreshCatalog();
 }
 
 export async function deleteVariant(formData: FormData) {
@@ -139,7 +139,7 @@ export async function deleteVariant(formData: FormData) {
   if (!id) return;
   const { error } = await supabase.from('product_variants').update({ is_active: false }).eq('id', id);
   if (error) throw new Error('La variante n’a pas pu être archivée.');
-  revalidatePath('/'); revalidatePath('/catalogue'); revalidatePath('/admin/produits');
+  refreshCatalog();
 }
 
 export async function uploadProductImage(formData: FormData) {
@@ -160,28 +160,29 @@ export async function uploadProductImage(formData: FormData) {
     .from('product_images')
     .select('id', { count: 'exact', head: true })
     .eq('product_id', productId);
-  await supabase.from('product_images').insert({
+  const { error: imageError } = await supabase.from('product_images').insert({
     product_id: productId,
     url: publicUrl.publicUrl,
     alt_fr: String(formData.get('alt_fr') ?? '').trim() || null,
     is_primary: (count ?? 0) === 0,
     sort_order: count ?? 0,
   });
+  if (imageError) throw new Error('Le fichier a été téléversé, mais son rattachement au produit a échoué.');
 
-  revalidatePath('/');
-  revalidatePath('/catalogue');
-  revalidatePath('/admin/produits');
+  refreshCatalog();
 }
 
 export async function setPrimaryProductImage(formData: FormData) {
   const supabase = await guardAdmin();
   const productId = String(formData.get('product_id'));
   const imageId = String(formData.get('image_id'));
-  await supabase.from('product_images').update({ is_primary: false }).eq('product_id', productId);
-  await supabase.from('product_images').update({ is_primary: true }).eq('id', imageId).eq('product_id', productId);
-  revalidatePath('/');
-  revalidatePath('/catalogue');
-  revalidatePath('/admin/produits');
+  const { data: image, error: lookupError } = await supabase.from('product_images').select('id').eq('id', imageId).eq('product_id', productId).single();
+  if (lookupError || !image) throw new Error('Image introuvable pour ce produit.');
+  const { error: clearError } = await supabase.from('product_images').update({ is_primary: false }).eq('product_id', productId);
+  if (clearError) throw new Error('La couverture n’a pas pu être modifiée.');
+  const { error: coverError } = await supabase.from('product_images').update({ is_primary: true }).eq('id', imageId).eq('product_id', productId);
+  refreshCatalog();
+  if (coverError) throw new Error('La couverture précédente a été retirée, mais la nouvelle sélection a échoué. Réessayez.');
 }
 
 export async function updateSiteSettings(formData: FormData) {
@@ -289,10 +290,9 @@ export async function createProduct(formData: FormData) {
 export async function archiveProduct(formData: FormData) {
   const supabase = await guardAdmin();
   const id = String(formData.get('id'));
-  await supabase.from('products').update({ is_active: false, deleted_at: new Date().toISOString() }).eq('id', id);
-  revalidatePath('/');
-  revalidatePath('/catalogue');
-  revalidatePath('/admin/produits');
+  const { error } = await supabase.from('products').update({ is_active: false, deleted_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw new Error('Le produit n’a pas pu être retiré du catalogue.');
+  refreshCatalog();
 }
 
 export async function setPromotion(formData: FormData) {

@@ -40,3 +40,6 @@ pnpm-debug.log*
 backups/
 .migration.*/
 evidence*/
+
+/playwright-report/
+/test-results/

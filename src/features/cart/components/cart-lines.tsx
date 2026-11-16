@@ -43,6 +43,7 @@ export function CartLines() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 md:justify-end">
               <input
+                aria-label={`Quantité ${line.productName} · ${line.sizeLabel ?? 'taille unique'}`}
                 type="number"
                 min={1}
                 max={line.maxStock}
