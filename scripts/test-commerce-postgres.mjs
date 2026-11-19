@@ -7,7 +7,7 @@ const url = new URL(process.env.TEST_DATABASE_URL || 'invalid:');
 if (!['postgres:', 'postgresql:'].includes(url.protocol) || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || url.pathname !== '/mdp_test') throw new Error('Dedicated loopback mdp_test database required');
 const pool = new pg.Pool({ connectionString: url.toString(), max: 4 });
 const product = randomUUID(), variant = randomUUID();
-const customer = {name:'Fixture uniquement',phone:'2290100000000',email:'fixture@example.test',address:'Adresse de recette fictive',city:'Cotonou'};
+const customer = {name:'Fixture uniquement',phone:'2290100000000',email:'fixture@example.test',address:'Adresse de recette fictive',city:'Cotonou',emailConfirmation:true};
 const lines = [{variantId:variant,quantity:1}];
 async function reserve(key) {
   const {rows:[{quote}]}=await pool.query('select quote_shop_basket($1,0) quote',[JSON.stringify(lines)]);
@@ -33,7 +33,7 @@ try {
     to_jsonb(i) - 'image_url') order by o.id) snapshot
     from orders o join order_items i on i.order_id=o.id where o.order_number like 'LEGACY-%'`);
   const historyBefore = (await historicalSnapshot()).rows;
-  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113154852_physical_stock_receipts'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
+  for(const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113154852_physical_stock_receipts','20261119095000_paid_order_emails_only'])await pool.query(await readFile(`supabase/migrations/${name}.sql`,'utf8'));
   assert.deepEqual((await historicalSnapshot()).rows, historyBefore, 'All nine historical orders and line prices survive the migration');
   assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,1);
   const staff = randomUUID(), receiptKey = randomUUID();
@@ -71,6 +71,7 @@ try {
   assert.equal((await pool.query("select count(*)::int n from orders where order_number not like 'LEGACY-%'")).rows[0].n,1);
   assert.equal((await pool.query('select stock_quantity from product_variants where id=$1',[variant])).rows[0].stock_quantity,1);
   console.log('PASS concurrent idempotency: one order and one reservation');
+  assert.equal((await pool.query('select count(*)::int n from notification_jobs')).rows[0].n,0,'No email before payment');
   const payment=duplicate[0].rows[0].payment;
   await pool.query('update payment_attempts set provider_id=42 where id=$1',[payment.id]);
   const apply=()=>pool.query("select apply_shop_payment($1,42,1500,42,'sandbox','paid','fixture-event')",[payment.id]);

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { trustedSiteOrigin } from '@/lib/security/urls';
 import { paymentDeployment } from './fedapay';
 import { operationsDatabase } from './operations';
-import { emailEvent, isEmailKind, renderOrderEmail, demoEmailOrder } from './order-email';
+import { isEmailKind, renderOrderEmail, demoEmailOrder } from './order-email';
 import { loadOrderRecord, orderEmailData } from '@/lib/orders/order-record';
 
 const emailAddress = z.email();
@@ -24,9 +24,7 @@ export function allowedEmail(to: string, testOnly = false) {
 export function demoEmailEnabled(origin: string, env = process.env) {
   const deployment = paymentDeployment(env);
   if (deployment.context === 'production') {
-    return env.ORDER_EMAIL_DEMO_ENABLED === 'true'
-      && origin === (env.SITE_ORIGIN || env.URL)
-      && env.NEXT_PUBLIC_SUPABASE_URL === 'https://pukvrerdloudfiphomsj.supabase.co';
+    return false;
   }
   return deployment.context === 'deploy-preview' && deployment.reviewId === '14'
     && origin === 'https://deploy-preview-14--pyjamas25.netlify.app'
@@ -82,14 +80,15 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
       continue;
     }
     const customer = kind.startsWith('customer_');
-    const event = emailEvent(kind);
+    // Defence in depth for legacy jobs, manual retries and older queue functions.
+    if (!['admin_email', 'customer_email'].includes(kind) || order.paymentState !== 'paid' || order.source === 'notification_demo') {
+      await defer('paid_order_email_required', 3600, true);
+      continue;
+    }
     let trackingUrl: string | undefined;
     if (customer) {
       const { data: payment, error: paymentError } = await db.from('payment_attempts').select('customer,public_token').eq('order_id', job.order_id).maybeSingle();
-      const stateMatches = event === 'failed' ? order.paymentState === 'failed'
-        : order.paymentState === 'paid' && (event === 'paid' || event === order.status);
-      if (paymentError || !stateMatches || payment?.customer?.emailConfirmation !== true
-        || (kind !== 'customer_email' && payment.customer.emailTracking !== true)) {
+      if (paymentError || payment?.customer?.emailConfirmation !== true) {
         await defer(paymentError ? 'order_unavailable' : 'email_consent_or_payment_missing', 3600, !paymentError);
         continue;
       }

@@ -32,7 +32,7 @@ export default async function ProductsPage() {
   }
 
   return <div className="admin-page">
-    <header className="admin-heading"><div><p>CATALOGUE</p><h1>Produits & contenus.</h1><span>À la réception d’une livraison, enregistre les quantités reçues et ajoute les nouvelles références.</span></div></header>
+    <header className="admin-heading"><div><p>CATALOGUE</p><h1>Produits & contenus.</h1><span>Gérez les articles, les prix et les quantités disponibles à la vente.</span></div></header>
     <section className="admin-panel create-product-panel">
       <div className="admin-panel-title"><div><p>NOUVEL ARTICLE</p><h2>Ajouter au catalogue</h2></div></div>
       <form action={createProduct} className="product-edit-form">
@@ -64,31 +64,22 @@ export default async function ProductsPage() {
               <form action={updateVariantPrice}><input type="hidden" name="id" value={variant.id}/><input type="hidden" name="expected_price" value={variant.price}/><label>Prix FCFA<input aria-label={`Prix ${variant.sku}`} name="price" type="number" min="1" step="1" defaultValue={variant.price}/></label><button>Enregistrer le prix</button></form>
               <form action={deleteVariant} className="variant-delete"><input type="hidden" name="id" value={variant.id}/><button>Archiver la taille</button></form>
               <div className="variant-stock">
-                {stock ? <p>Physique calculé : {stock.physical} · Disponible : {stock.available} · Réservé : {stock.reserved} · Payé, à remettre : {stock.awaiting_handover}</p>
-                  : <p>État du stock indisponible.</p>}
-                {stock && <details><summary>Réceptionner des marchandises</summary>
-                  <form action={receiveStock}>
-                    <input type="hidden" name="id" value={variant.id}/>
-                    <input type="hidden" name="request_id" value={crypto.randomUUID()}/>
-                    <label>Quantité reçue<input name="stock" type="number" min="1" step="1" required/></label>
-                    <label>Référence de réception<input name="reason" maxLength={200} required/></label>
-                    <button>Valider la réception</button>
-                  </form>
-                </details>}
-                {stock && <details><summary>Corriger une quantité</summary>
+                {stock ? <>
+                  <p><strong>{product.is_active && stock.available > 0 ? 'Disponible' : 'Indisponible'}</strong></p>
                   <form action={updateVariantStock}>
                     <input type="hidden" name="id" value={variant.id}/>
                     <input type="hidden" name="request_id" value={crypto.randomUUID()}/>
                     <input type="hidden" name="expected_stock" value={stock.available}/>
-                    <label>Stock disponible corrigé<input name="stock" type="number" min="0" step="1" defaultValue={stock.available} required/></label>
-                    <label>Motif de la correction<input name="reason" maxLength={200} required/></label>
-                    <button>Enregistrer la correction</button>
+                    <input type="hidden" name="reason" value="Modification de quantité dans le catalogue"/>
+                    <label>Quantité en stock<input aria-label={`Quantité ${variant.sku}`} name="stock" type="number" min="0" step="1" defaultValue={stock.available} required/></label>
+                    <small>Quantité disponible à la vente. Les articles déjà commandés restent protégés.</small>
+                    <button>Enregistrer la quantité</button>
                   </form>
-                </details>}
+                </> : <p role="alert">Stock indisponible. Actualisez la page avant de modifier une quantité.</p>}
               </div>
             </div>;
           })}</div>
-          {!stockResult.error && <details><summary>Réceptionner une nouvelle taille</summary>
+          {!stockResult.error && <details><summary>Ajouter une taille</summary>
             <form action={receiveStock} className="product-edit-form">
               <input type="hidden" name="product_id" value={product.id}/>
               <input type="hidden" name="request_id" value={crypto.randomUUID()}/>
@@ -100,22 +91,22 @@ export default async function ProductsPage() {
                 <option>Unique</option>
               </select></label>
               <label>Prix FCFA<input name="price" type="number" min="1" step="1" defaultValue={product.base_price} required/></label>
-              <label>Quantité reçue<input name="stock" type="number" min="1" step="1" required/></label>
-              <label>Référence de réception<input name="reason" maxLength={200} required/></label>
-              <button>Valider la réception</button>
+              <label>Quantité en stock<input name="stock" type="number" min="1" step="1" required/></label>
+              <input type="hidden" name="reason" value={`Ajout de taille ${crypto.randomUUID()}`}/>
+              <button>Ajouter la taille</button>
             </form>
           </details>}
         </article>;
       })}
     </div></section>
     <section className="admin-panel">
-      <h2>Derniers mouvements du personnel</h2>
+      <details><summary>Historique des quantités</summary>
       {movementsResult.error ? <p>Historique indisponible.</p> : movementsResult.data.length === 0 ? <p>Aucun mouvement enregistré.</p> :
         <ul>{movementsResult.data.map(movement => <li key={movement.request_id}>
           <strong>{labelsByVariant.get(movement.variant_id) ?? movement.variant_id}</strong>
-          <p>{movement.kind === 'receipt' ? 'Réception' : 'Correction'} · {movement.stock_before} → {movement.stock_after} disponibles · {movement.reason}</p>
-          <small>{movementDate.format(new Date(movement.created_at))} · Personnel : {movement.staff_id}</small>
-        </li>)}</ul>}
+          <p>{movement.kind === 'receipt' ? 'Ajout' : 'Modification'} · {movement.stock_before} → {movement.stock_after} disponibles · {movement.reason}</p>
+          <small>{movementDate.format(new Date(movement.created_at))}</small>
+        </li>)}</ul>}</details>
     </section>
   </div>;
 }
