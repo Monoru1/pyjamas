@@ -42,19 +42,22 @@ function OrderContact({ reference, orderNumber }: { reference: string; orderNumb
   const [message, setMessage] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState('');
-  const requestId = useRef('');
+  // Each request id is bound to one exact message: a retry of the same text reuses it
+  // (idempotent), an edited text gets a new one (no idempotency conflict).
+  const pending = useRef<{ id: string; text: string } | null>(null);
   useEffect(() => { if (window.location.hash === '#contact') document.getElementById('contact')?.scrollIntoView(); }, []);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (state === 'sending') return;
-    // One identifier per message: a double click or a retry cannot send it twice.
-    if (!requestId.current) requestId.current = crypto.randomUUID();
+    const text = message.trim();
+    if (!pending.current || pending.current.text !== text) pending.current = { id: crypto.randomUUID(), text };
+    const { id } = pending.current;
     setState('sending'); setError('');
     try {
-      const response = await fetch('/api/orders/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reference, requestId: requestId.current, message }) });
+      const response = await fetch('/api/orders/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reference, requestId: id, message: text }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || data.sent !== true) throw new Error(data.error || 'Votre message n’a pas pu être envoyé.');
-      setState('sent'); setMessage(''); requestId.current = '';
+      setState('sent'); setMessage(''); pending.current = null;
     } catch (cause) { setState('idle'); setError(cause instanceof Error ? cause.message : 'Votre message n’a pas pu être envoyé.'); }
   }
   return <section id="contact" className="mt-8 border-t border-brand-primary/15 pt-6">
