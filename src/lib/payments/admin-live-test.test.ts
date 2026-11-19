@@ -165,3 +165,24 @@ it('resumes the same Live transaction after a rejected checkout link without cre
   expect((await resumed.json()).url).toBe('https://process.fedapay.com/fixture');
   expect(creates).toBe(1);
 });
+
+it('processes the real FedaPay Live webhook shape (no top-level id) exactly once', async () => {
+  const send = async (updated: string) => {
+    // Shape captured from webhook #10766 delivery of transaction 114300443 (trimmed).
+    const raw = JSON.stringify({ name: 'transaction.approved', object: 'transaction', entity: { klass: 'v1/transaction', id: 42, amount: 2000, fees: 36, amount_debited: 2036, status: 'approved', updated_at: updated, custom_metadata: { payment_id: 'ignored-when-bound' } }, account: { id: 101915 } });
+    const t = Math.floor(Date.now() / 1000);
+    const signature = createHmac('sha256', 'wh_fixture').update(`${t}.${raw}`).digest('hex');
+    return webhook(new Request(origin + '/api/payments/webhook', { method: 'POST', headers: { 'content-type': 'application/json', 'x-fedapay-signature': `t=${t},s=${signature}` }, body: raw }));
+  };
+  const { basket, token } = await priced();
+  expect((await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }))).status).toBe(200);
+  provider.status = 'approved';
+  expect((await send('2026-11-19T12:22:46.561Z')).status).toBe(200);
+  expect((await send('2026-11-19T12:22:46.561Z')).status).toBe(200);
+  expect((await send('2026-11-19T12:30:00.000Z')).status).toBe(200);
+  expect((await db.query<Record<string, unknown>>('select status, inventory_state from payment_attempts')).rows[0]).toMatchObject({ status: 'paid', inventory_state: 'committed' });
+  expect((await db.query<Record<string, unknown>>("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n).toBe(1);
+  expect((await db.query<Record<string, unknown>>("select count(*)::int n from payment_events where external_event like 'live:fedapay:transaction.approved:42:%'")).rows[0].n).toBe(2);
+  expect(await processNotificationJobs(5)).toBe(2);
+  expect(mails).toBe(2);
+});
