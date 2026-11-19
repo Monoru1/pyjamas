@@ -1,4 +1,5 @@
 import { getStoreSettings } from '@/lib/repositories/settings.repository';
+import { storeIdentity } from '@/lib/legal/store-identity';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,13 @@ export default async function ContactPage() {
               <p className="mt-2 text-white/65">Itinéraire, horaires et retrait.</p>
             </div>
           </div>
+          <address className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-5 text-sm not-italic leading-7 text-white/80 backdrop-blur">
+            <p className="font-semibold text-white">Coordonnées de la boutique</p>
+            <p className="mt-2">{storeIdentity.address}</p>
+            <p>Téléphone : <a className="underline" href={`tel:${storeIdentity.phone.replace(/\s/g, '')}`}>{storeIdentity.phone}</a></p>
+            <p>E-mail : <a className="underline" href={`mailto:${storeIdentity.email}`}>{storeIdentity.email}</a></p>
+            <p className="mt-2 text-white/65">Après un paiement confirmé, écrivez-nous depuis votre page de suivi de commande : votre référence est transmise automatiquement.</p>
+          </address>
           {whatsappPhone?<a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noreferrer" className="mt-8 inline-flex rounded-full bg-brand-accent px-6 py-3 text-sm font-semibold text-brand-evergreen shadow-[0_18px_55px_rgba(201,154,46,0.28)] transition hover:-translate-y-0.5">
             Écrire sur WhatsApp
           </a>:<p className="mt-8 text-sm">Le contact WhatsApp sera annoncé prochainement.</p>}

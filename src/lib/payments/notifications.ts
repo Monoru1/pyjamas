@@ -7,7 +7,17 @@ import { isEmailKind, renderOrderEmail, demoEmailOrder } from './order-email';
 import { loadOrderRecord, orderEmailData } from '@/lib/orders/order-record';
 
 const emailAddress = z.email();
-type Mail = { from: string; to: string; subject: string; text: string; html?: string };
+type Mail = { from: string; to: string | string[]; subject: string; text: string; html?: string; reply_to?: string };
+
+/** Staff recipients for paid-order alerts: ORDER_ADMIN_EMAIL may list several addresses (comma separated). */
+export function staffRecipients(value = process.env.ORDER_ADMIN_EMAIL) {
+  const seen = new Set<string>();
+  return (value || '').split(',').map(item => item.trim()).filter(item => {
+    const key = item.toLowerCase();
+    if (!item || seen.has(key) || !emailAddress.safeParse(item).success) return false;
+    seen.add(key); return true;
+  }).slice(0, 5);
+}
 
 class EmailDeliveryError extends Error {
   constructor(readonly permanent: boolean, code: string) { super(code); }
@@ -35,9 +45,20 @@ export function demoEmailEnabled(origin: string, env = process.env) {
 
 export async function sendOrderEmail(mail: Mail, id: string, fetcher: typeof fetch = fetch, demoOrigin?: string) {
   if (demoOrigin ? !demoEmailEnabled(demoOrigin) : process.env.ORDER_NOTIFICATIONS_ENABLED !== 'true') throw new Error('notifications_disabled');
-  if (!allowedEmail(mail.to, Boolean(demoOrigin))) throw new EmailDeliveryError(true, 'test_recipient_not_allowed');
+  return postResendEmail(mail, `order-${id}`, fetcher, Boolean(demoOrigin));
+}
+
+/** Customer question about a paid order, sent to the shop staff with the customer as reply-to. */
+export async function sendShopContactEmail(mail: Mail, requestId: string, fetcher: typeof fetch = fetch) {
+  return postResendEmail(mail, `contact-${requestId}`, fetcher, false);
+}
+
+async function postResendEmail(mail: Mail, idempotencyKey: string, fetcher: typeof fetch, testOnly: boolean) {
+  const recipients = Array.isArray(mail.to) ? mail.to : [mail.to];
+  if (!recipients.length || !recipients.every(to => allowedEmail(to, testOnly))) throw new EmailDeliveryError(true, 'test_recipient_not_allowed');
+  if (!process.env.RESEND_API_KEY) throw new EmailDeliveryError(false, 'email_not_configured');
   const response = await fetcher('https://api.resend.com/emails', {
-    method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `order-${id}` },
+    method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
     redirect: 'error', body: JSON.stringify(mail), signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) {
@@ -95,13 +116,14 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
       if (payment.public_token) trackingUrl = `${trustedSiteOrigin(process.env.SITE_ORIGIN)}/paiement?reference=${encodeURIComponent(payment.public_token)}`;
     }
     const from = process.env.ORDER_EMAIL_FROM;
-    const to = customer ? order.client.email : process.env.ORDER_ADMIN_EMAIL;
+    const staff = staffRecipients();
+    const to: string | string[] | undefined = customer ? order.client.email ?? undefined : staff.length ? staff : undefined;
     const demo = order.source === 'notification_demo';
     if (!process.env.RESEND_API_KEY || !from || !to) {
       await defer('email_not_configured_or_order_unavailable', 3600);
       continue;
     }
-    if ((demo && paymentDeployment().context === 'production') || !allowedEmail(to, demo)) {
+    if ((demo && paymentDeployment().context === 'production') || !(Array.isArray(to) ? to : [to]).every(address => allowedEmail(address, demo))) {
       await defer('test_recipient_not_allowed', 3600, true);
       continue;
     }
@@ -117,7 +139,7 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
     const origin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL);
     const contact = emailAddress.safeParse(process.env.ORDER_CONTACT_EMAIL);
     const { subject, html, text } = renderOrderEmail(kind, demo ? demoEmailOrder : orderEmailData(order), origin, contact.data, trackingUrl);
-    const { data: started, error: startError } = await update({ first_delivery_at: job.first_delivery_at || new Date().toISOString(), recipient: to }).select('id');
+    const { data: started, error: startError } = await update({ first_delivery_at: job.first_delivery_at || new Date().toISOString(), recipient: Array.isArray(to) ? to.join(', ') : to }).select('id');
     if (startError || started?.length !== 1) continue;
     try {
       const providerId = await sendOrderEmail({ from, to, subject, html, text }, job.id);

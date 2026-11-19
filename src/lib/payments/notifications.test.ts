@@ -100,7 +100,7 @@ it('sends exactly the persisted order: reference, lines, amounts, recipient and 
  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify({id:'provider-message'})));vi.stubGlobal('fetch',fetcher);
  expect(await processNotificationJobs(1)).toBe(1);
  const mail=JSON.parse(fetcher.mock.calls[0][1].body);
- expect(mail.subject).toBe('Paiement confirmé · TEST');expect(mail.to).toBe('admin@example.test');
+ expect(mail.subject).toBe('Paiement confirmé · TEST');expect(mail.to).toEqual(['admin@example.test']);
  expect(mail.text).toContain('2 × Pyjama fixture (Rouge, M) · 2\u202f000 FCFA');expect(mail.text).toContain('Total commande · 2\u202f000 FCFA');
  expect(mail.html).toContain(`/admin/commandes/${paidOrder.id}"`);
  expect(updates).toContainEqual(expect.objectContaining({recipient:'admin@example.test'}));
