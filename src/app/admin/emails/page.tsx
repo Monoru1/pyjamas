@@ -2,12 +2,12 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { trustedSiteOrigin } from '@/lib/security/urls';
-import {  emailLabel, isEmailKind, renderOrderEmail } from '@/lib/payments/order-email';
+import { emailLabel, isEmailKind, renderOrderEmail } from '@/lib/payments/order-email';
 import { loadOrderRecord, orderEmailData } from '@/lib/orders/order-record';
 import { UUID_PATTERN } from '@/lib/payments/read-body';
 
 export default async function EmailPreview({ searchParams }: {
-  searchParams: Promise<{ modele?: string; resultat?: string; commande?: string }>;
+  searchParams: Promise<{ modele?: string; commande?: string }>;
 }) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
@@ -23,11 +23,11 @@ export default async function EmailPreview({ searchParams }: {
   if (real.paymentState !== 'paid') return <div className="admin-page"><h1>E-mails de commande</h1><p>Aucun e-mail de confirmation ne sera envoyé tant que le paiement n’est pas confirmé.</p><Link href={`/admin/commandes/${real.id}`}>Retour à la commande</Link></div>;
   const message = renderOrderEmail(kind, orderEmailData(real), origin);
   return <div className="admin-page">
-    <header className="admin-heading"><div><h1>Modèles d’e-mail</h1><p>{real ? `Prévisualisation staff de la commande ${real.reference}. Aucun envoi possible depuis cet écran.` : 'Les données affichées sont fictives.'}</p></div>
-      {real ? <Link href={`/admin/commandes/${real.id}`}>Retour à la commande</Link> : <Link href="/admin/paiements">Historique des envois</Link>}
+    <header className="admin-heading"><div><h1>Modèles d’e-mail</h1><p>Prévisualisation de la commande {real.reference}. Les e-mails sont envoyés automatiquement après paiement.</p></div>
+      <Link href={`/admin/commandes/${real.id}`}>Retour à la commande</Link>
     </header>
     <form className="mb-4 flex flex-wrap items-end gap-3" method="get">
-      {real && <input type="hidden" name="commande" value={real.id} />}
+      <input type="hidden" name="commande" value={real.id} />
       <label className="grid min-w-0 max-w-full gap-1">Modèle<select name="modele" defaultValue={kind} className="max-w-full rounded-lg border bg-white p-2">
         {(['customer_email', 'admin_email'] as const).map(value => <option key={value} value={value}>{emailLabel(value)}</option>)}
       </select></label>

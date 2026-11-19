@@ -30,7 +30,7 @@ export function checkPaymentReadiness(env, target) {
     check('live approval stays disabled in sandbox', env.FEDAPAY_LIVE_APPROVED !== 'true');
   } else if (target === 'live-test') {
     check('private Live test explicitly enabled', env.PAYMENT_LIVE_TEST_ENABLED === 'true');
-    check('only Netlify PR 14 preview', env.CONTEXT === 'deploy-preview' && env.REVIEW_ID === '14' && site?.origin === 'https://deploy-preview-14--pyjamas25.netlify.app');
+    check('only Netlify PR 20 preview', env.CONTEXT === 'deploy-preview' && env.REVIEW_ID === '20' && site?.origin === 'https://deploy-preview-20--pyjamas25.netlify.app');
     check('exact isolated recipe database', env.NEXT_PUBLIC_SUPABASE_URL === 'https://oxhymanjibveayhcaqvj.supabase.co' && env.PAYMENT_DATABASE_ISOLATED === 'true');
     check('public live approval stays disabled', env.FEDAPAY_LIVE_APPROVED === 'false');
     check('expected Live merchant', env.FEDAPAY_ACCOUNT_ID === '101915');
