@@ -2,35 +2,61 @@
 
 ## Accès
 
-Ouvrir https://pyjamas25.netlify.app/admin et utiliser son compte personnel autorisé. La production possède actuellement un seul administrateur actif. Ne jamais partager son mot de passe. Une connexion réelle doit être validée avant la remise de la boutique.
+Ouvrir https://pyjamas25.netlify.app/admin et se connecter avec son compte personnel autorisé. Ne jamais partager son mot de passe. En cas d'oubli, utiliser **Mot de passe oublié** sur la page de connexion.
 
-## Produits et quantités
+## 1. Recevoir une commande
 
-1. Ouvrir **Produits & stocks**. Ajouter un article avec son nom, sa description, son prix et ses tailles. La fiche est créée masquée.
-2. Ajouter les photos dans **Modifier la fiche** et choisir la couverture. Vérifier les tailles et les prix en FCFA.
-3. Pour chaque taille, saisir la **Quantité en stock**, puis **Enregistrer la quantité**. Ce champ représente les articles disponibles à vendre ; les articles déjà commandés restent protégés. Après une nouvelle livraison, compter le total disponible et saisir ce total.
-4. Si une autre vente ou modification est intervenue, actualiser la page, vérifier le nouveau chiffre et recommencer. Ne pas forcer l’ancienne quantité.
-5. Cocher **En ligne** quand la fiche est complète. À zéro, une taille devient indisponible. **Ajouter une taille** permet de créer une taille supplémentaire avec son prix et sa quantité. **Historique des quantités** conserve les changements.
+Après un paiement confirmé par FedaPay, un e-mail « nouvelle commande à préparer » arrive sur `lamaisondespyjamas@gmail.com` et `sakryad@gmail.com`. Le client reçoit sa propre confirmation s'il a laissé son e-mail.
 
-## Commandes
+Ouvrir **Commandes** : la liste se met à jour seule. Ouvrir la fiche pour voir les articles, tailles, quantités, montant et coordonnées du client.
 
-1. Ouvrir **Commandes** et filtrer sur les commandes payées. Ouvrir la fiche pour consulter les articles, tailles, quantités et coordonnées du client.
-2. Préparer uniquement après affichage du paiement confirmé. Un retour du navigateur ou une capture du client ne suffit pas. Une anomalie signalée sur la fiche exige une vérification avant remise.
-3. Suivre les étapes proposées : confirmer, préparer, prête, puis remise/livrée. Marquer la remise uniquement après le retrait ou la livraison effective. Le stock a déjà été pris en compte ; ne pas le diminuer une seconde fois.
-4. Une commande non payée ou refusée ne doit pas être préparée. Ne pas modifier manuellement son état de paiement.
+## 2. Vérifier le paiement
 
-## E-mails
+Ne préparer **que** les commandes affichées comme payées dans la fiche. Seul FedaPay (notification signée ou vérification automatique du serveur) peut marquer une commande payée : aucun bouton ne le permet, et c'est voulu.
 
-Après paiement confirmé, le client ayant choisi l’e-mail reçoit sa confirmation et le personnel reçoit une alerte à préparer. Les commandes abandonnées et les changements de préparation ne déclenchent aucun message.
+Ne suffisent jamais : une capture d'écran du client, un SMS Mobile Money transféré, un retour du navigateur. Si le client affirme avoir payé et que la fiche ne l'indique pas, attendre quelques minutes (vérification automatique toutes les 5 minutes), puis consulter **Paiements** et prévenir le responsable. Une commande signalée **à vérifier** ne doit pas être remise avant contrôle.
 
-Le destinataire opérationnel configuré est celui du seul administrateur actif : `sakryad@gmail.com`. Faire modifier ce réglage par le responsable si la boutique utilise une boîte partagée.
+Le client paie les frais FedaPay en plus du prix des articles : il est normal que le montant débité soit légèrement supérieur au total de la commande.
 
-Dans la fiche commande, **Accepté par Resend** signifie que le prestataire a accepté l’envoi. **Livré** signifie qu’un événement de livraison a été reçu. Cela ne prouve pas la lecture ni le placement dans la boîte principale. En cas d’échec technique, la file réessaie automatiquement. Une alerte bloquée doit être contrôlée avant toute relance manuelle ; ne jamais créer un second message à la main.
+## 3. Préparer, puis « Prête »
 
-## Incident et fermeture
+Dans la fiche, suivre les boutons dans l'ordre : **Prendre en charge** → **Passer en préparation** → **Marquer comme prête**. Le stock a déjà été retiré au paiement : ne pas le diminuer une seconde fois.
 
-Prévenir le responsable. Il coupe `PAYMENT_CHECKOUT_ENABLED` et redéploie pour suspendre les nouvelles commandes. Les paiements déjà engagés doivent continuer à être rapprochés quand le prestataire fonctionne. Ne supprimer ni commande, ni réservation, ni historique. Le responsable peut restaurer le déploiement Netlify précédent après vérification de ses interrupteurs effectifs ; une restauration de base exige une décision séparée.
+## 4. « Livrée »
 
-## Avant ouverture
+Cliquer **Marquer comme livrée** uniquement après la remise effective (retrait en boutique ou livraison faite). Le suivi client affiche alors « Paiement confirmé — Commande livrée ».
 
-Les ventes, paiements publics et notifications restent fermés. Il faut valider les secrets de production, une connexion administrateur, le catalogue physique, les conditions de livraison et un test financier réel expressément autorisé. Le parcours de test courant est la PR #21 sur la base de recette isolée, limité à 100 FCFA et réservé au personnel. L’autorisation du test et l’accord d’ouverture sont deux décisions distinctes.
+Une commande non payée ou refusée ne se prépare pas. **Refuser / annuler** ne rembourse pas le client : tout remboursement est une décision du responsable.
+
+## 5. Répondre à un client
+
+Les clients peuvent écrire de trois façons :
+
+- **WhatsApp** au +229 01 97 33 88 43 : le bouton du suivi de commande et de l'e-mail de confirmation pré-remplit un message avec la référence de commande (MDP-…). Toujours retrouver la commande par cette référence.
+- **Formulaire de contact** de la page de suivi : le message arrive par e-mail aux deux adresses du personnel. Répondre directement à l'e-mail ; la réponse part vers le client.
+- **E-mail** à lamaisondespyjamas@gmail.com.
+
+Ne jamais demander au client un code Mobile Money, un mot de passe ou un code reçu par SMS.
+
+## 6. Modifier un produit ou une quantité
+
+1. Ouvrir **Produits & stocks**. Un nouvel article est créé masqué ; ajouter photos, tailles et prix en FCFA dans **Modifier la fiche**.
+2. Pour chaque taille, saisir la **Quantité en stock** (articles disponibles à vendre), puis **Enregistrer la quantité**. Après un réassort, compter le total réellement disponible et saisir ce total.
+3. Si la page signale une autre modification ou vente entre-temps, actualiser, vérifier le nouveau chiffre et recommencer. Ne pas forcer l'ancienne valeur.
+4. Cocher **En ligne** seulement quand la fiche est complète. À zéro, une taille devient indisponible. **Historique des quantités** garde la trace des changements.
+
+Les prix et quantités se changent uniquement après validation du responsable.
+
+## 7. Problème de paiement
+
+- Client débité mais commande non payée après 15 minutes : noter la référence, l'heure et le numéro Mobile Money, prévenir le responsable. Ne rien modifier à la main.
+- Paiement refusé ou abandonné : la réservation se libère seule ; le client peut recommencer.
+- Incident général : le responsable coupe `PAYMENT_CHECKOUT_ENABLED` et redéploie. Les nouvelles ventes s'arrêtent, le suivi et la confirmation des paiements déjà engagés continuent. Ne supprimer ni commande, ni réservation, ni historique.
+
+## 8. Problème d'e-mail
+
+Dans la fiche commande, **Accepté par Resend** signifie que l'envoi est parti ; **Livré** signifie que la messagerie du destinataire l'a reçu (pas qu'il l'a lu, ni qu'il n'est pas en indésirables). Un échec technique est réessayé automatiquement. Ne jamais renvoyer un second message à la main. Si un client ne trouve pas sa confirmation : lui faire vérifier les indésirables, puis lui envoyer le lien de suivi ou répondre sur WhatsApp.
+
+## Points encore à décider par le responsable
+
+Frais et zones de livraison, conditions de retour/échange/remboursement et durées de conservation des données ne sont pas encore fixés. En attendant, ne rien promettre au client sur ces sujets : transmettre au responsable.

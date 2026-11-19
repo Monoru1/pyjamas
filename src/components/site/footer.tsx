@@ -1,4 +1,5 @@
 import { BrandLogo } from '@/components/brand/brand-logo';
+import { storeIdentity } from '@/lib/legal/store-identity';
 
 const navigationLinks = [
   ['Édition Noël', '/collections'],
@@ -11,7 +12,8 @@ const navigationLinks = [
 const socialLinks = [
   ['Instagram', 'https://www.instagram.com/lamaisondespyjamas?igsh=MTlicHVteTN0MTJvcw=='],
   ['TikTok', 'https://www.tiktok.com/@lamaison_des_pyjamas?is_from_webapp=1&sender_device=pc'],
-  ['WhatsApp', 'https://wa.me/22997338843'],
+  // Same validated number as the contact page, tracking page and order emails.
+  ['WhatsApp', `https://wa.me/${storeIdentity.whatsapp.replace(/\D/g, '')}`],
 ];
 
 export function Footer() {
