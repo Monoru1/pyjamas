@@ -42,7 +42,7 @@ export default async function CartPage() {
           {payment && <CustomerForm onlinePayment />}
           <CartSummary />
           {!payment && <Link href="/paiement" className="inline-flex min-h-11 items-center text-sm underline">Suivre mon dernier paiement</Link>}
-          {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} liveTest={payment.liveTest} />}
+          {payment && <CheckoutButton mode={payment.environment} shipping={payment.shipping} liveTest={payment.liveTest || payment.adminTest} />}
         </aside>
       </div>
     </main>
