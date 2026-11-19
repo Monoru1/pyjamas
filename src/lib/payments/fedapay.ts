@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'partially_refunded';
 export type ProviderTransaction = { id: number; amount: number | string; status: string; currency?: { iso: string }; currency_id?: number; account_id?: number; merchant_reference?: string; custom_metadata?: { payment_id?: string; purpose?: string; order_id?: string } };
@@ -66,9 +66,20 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
     origin: new URL(origin).origin, environment: environment as 'sandbox' | 'live',
     accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping, liveTest, adminTest,
     adminTestAmount: adminTest ? adminTestAmount : undefined,
+    adminTestKey: adminTest ? adminTestIdempotencyKey(Number(env.FEDAPAY_ACCOUNT_ID), adminTestAmount, env.PAYMENT_ADMIN_TEST_EXPIRES_AT || '') : undefined,
     staffOnly: environment === 'sandbox' || liveTest || adminTest,
     testCeiling: liveTest ? testCeiling : undefined, authorizationId: liveTest ? env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID : undefined,
     apiOrigin: environment === 'live' ? 'https://api.fedapay.com' : 'https://sandbox-api.fedapay.com' };
+}
+
+/**
+ * One owner authorization = one payment. Every admin test checkout reuses this
+ * key, so create_shop_payment's advisory lock and the unique idempotency key make
+ * concurrent or repeated attempts resolve to the same payment atomically.
+ */
+export function adminTestIdempotencyKey(account: number, amount: number, expiresAt: string) {
+  const hex = createHash('sha256').update(`admin-live-test:${account}:${amount}:${expiresAt}`).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 /** Admission can stop independently while callbacks and reconciliation finish old payments. */

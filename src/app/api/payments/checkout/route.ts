@@ -27,6 +27,8 @@ export async function POST(request: Request) {
       if (!allowed) return Response.json({ error: 'Test réservé à l’équipe.' }, { status: 403 });
     }
     const input = parsed.data;
+    // Server-side key: all attempts of one authorization share one payment row.
+    if (config.adminTest) input.idempotencyKey = config.adminTestKey!;
     const db = paymentDatabase();
     const subject = createHmac('sha256', config.webhookSecret).update(input.customer.phone).digest('hex');
     const { data: budget, error: budgetError } = await db.rpc('consume_order_request_budget', { p_subject: subject });
@@ -46,10 +48,10 @@ export async function POST(request: Request) {
       }
     }
     if (config.adminTest && !existing) {
-      // One private Live test at a time: never open a second debit while a
-      // previous one is pending or already paid.
+      // A previous authorization's payment blocks a new one unless it is
+      // definitively expired: failed/cancelled transactions stay payable.
       const { data: open, error: openError } = await db.from('payment_attempts').select('id')
-        .eq('environment', 'live').in('status', ['pending', 'paid', 'refunded', 'partially_refunded']).limit(1);
+        .eq('environment', 'live').in('status', ['pending', 'failed', 'cancelled', 'paid', 'refunded', 'partially_refunded']).limit(1);
       if (openError || (open?.length ?? 0) > 0) return Response.json({ error: 'Un paiement de test existe déjà. Consultez son suivi avant toute nouvelle tentative.' }, { status: 409 });
     }
     let quote:ShopQuote;

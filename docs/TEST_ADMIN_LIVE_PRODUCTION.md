@@ -11,7 +11,11 @@ sans ouvrir la boutique au public. Il ne vaut pas GO commercial.
 - Le bouton de paiement et l'API `/api/payments/checkout` sont réservés aux comptes `is_admin` ;
   un visiteur reçoit 403 sans réservation de stock ni appel FedaPay.
 - Le total doit être exactement `PAYMENT_ADMIN_TEST_AMOUNT_XOF` (montant approuvé par le propriétaire).
-- Un seul paiement Live ouvert ou payé à la fois : toute nouvelle tentative reçoit 409.
+- Une autorisation = un paiement : la clé d'idempotence est dérivée côté serveur du marchand, du montant
+  et de l'expiration ; les tentatives répétées ou simultanées retombent atomiquement sur le même paiement
+  (verrou de `create_shop_payment`).
+- Un paiement Live `pending`, `failed`, `cancelled`, payé ou remboursé bloque toute nouvelle autorisation
+  (une transaction refusée ou annulée reste payable chez FedaPay) ; seul `expired` libère le test.
 - `PAYMENT_ADMIN_TEST_EXPIRES_AT` (ISO 8601, au plus 72 h dans le futur) ferme les nouvelles
   admissions ; webhooks et rapprochement continuent de fonctionner après expiration.
 - Le paiement suit le circuit commercial normal : `create_shop_payment`, webhook signé,

@@ -46,7 +46,7 @@ afterAll(async () => { await db.close(); });
 beforeEach(async () => {
   creates = 0; mails = 0; provider = {}; fixture.admin = true;
   for (const [key, value] of Object.entries(production)) vi.stubEnv(key, value);
-  await db.exec(`truncate notification_jobs,inventory_movements,payment_events,payment_attempts,order_items,order_status_history,orders,customers,product_variants,products,event_request_limits cascade;
+  await db.exec(`truncate notification_jobs,inventory_movements,payment_events,payment_attempts,order_items,order_status_history,orders,customers,product_variants,products,event_request_limits,order_request_limits cascade;
  insert into currencies(code,name,symbol) values('XOF','Franc CFA','FCFA') on conflict do nothing;
  insert into products(id,slug,name_fr,base_price,currency_code,is_active) values('${product}','admin-fixture','Fixture uniquement',1500,'XOF',true);
  insert into product_variants(id,product_id,sku,price,stock_quantity,is_active,size_label,color_name_fr) values('${variant}','${product}','ADMIN-S',1500,3,true,'S','Vert');`);
@@ -99,7 +99,7 @@ it('runs one admin Live payment end to end and blocks a second debit', async () 
   // Same request resumes the same payment; a different basket cannot open a second one.
   expect((await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }))).status).toBe(200);
   expect(creates).toBe(1);
-  const other = await priced();
+  const other = await priced({ ...input(), customer: { ...input().customer, name: 'Autre fixture' } });
   expect((await checkout(request('/api/payments/checkout', { ...other.basket, quoteToken: other.token }))).status).toBe(409);
   expect(creates).toBe(1);
   provider.status = 'approved';
@@ -111,4 +111,41 @@ it('runs one admin Live payment end to end and blocks a second debit', async () 
   expect(await processNotificationJobs(3)).toBe(2);
   expect(await processNotificationJobs(2)).toBe(0);
   expect(mails).toBe(2);
+});
+
+it('maps concurrent admin checkouts onto one payment and one FedaPay transaction', async () => {
+  const a = await priced();
+  const b = await priced({ ...input(), customer: { ...input().customer, name: 'Autre fixture' } });
+  const results = await Promise.all([
+    checkout(request('/api/payments/checkout', { ...a.basket, quoteToken: a.token })),
+    checkout(request('/api/payments/checkout', { ...b.basket, quoteToken: b.token })),
+    checkout(request('/api/payments/checkout', { ...a.basket, idempotencyKey: randomUUID(), quoteToken: a.token })),
+  ]);
+  // One wins; the identical twin waits on the initialization claim, the other basket conflicts.
+  expect(results.map(r => r.status).sort()).toEqual([200, 409, 409]);
+  expect(creates).toBe(1);
+  expect((await checkout(request('/api/payments/checkout', { ...a.basket, idempotencyKey: randomUUID(), quoteToken: a.token }))).status).toBe(200);
+  expect(creates).toBe(1);
+  expect((await db.query<Record<string, unknown>>('select count(*)::int n from payment_attempts')).rows[0].n).toBe(1);
+  expect((await db.query<Record<string, unknown>>("select count(*)::int n from inventory_movements where kind='reserve'")).rows[0].n).toBe(1);
+});
+
+it('keeps a declined or cancelled transaction as the only payable payment', async () => {
+  const { basket, token } = await priced();
+  expect((await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }))).status).toBe(200);
+  provider.status = 'declined';
+  expect((await signedEvent(101, 'transaction.declined')).status).toBe(200);
+  expect((await db.query<Record<string, unknown>>('select status from payment_attempts')).rows[0].status).toBe('failed');
+  // The same authorization resumes the same transaction; no new debit is created.
+  expect((await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }))).status).toBe(200);
+  expect(creates).toBe(1);
+  // A new authorization cannot open a second payment while the first stays payable.
+  vi.stubEnv('PAYMENT_ADMIN_TEST_EXPIRES_AT', new Date(Date.now() + 7200_000).toISOString());
+  const next = await priced();
+  expect((await checkout(request('/api/payments/checkout', { ...next.basket, quoteToken: next.token }))).status).toBe(409);
+  expect(creates).toBe(1);
+  provider.status = 'approved';
+  expect((await signedEvent(102)).status).toBe(200);
+  expect((await db.query<Record<string, unknown>>('select status from payment_attempts')).rows[0].status).toBe('paid');
+  expect((await db.query<Record<string, unknown>>("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n).toBe(1);
 });
