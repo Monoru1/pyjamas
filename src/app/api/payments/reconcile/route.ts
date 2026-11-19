@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { paymentDatabase, reconcilePayment } from '@/lib/payments/server';
-import { paymentConfiguration } from '@/lib/payments/fedapay';
+import { existingPaymentsConfiguration } from '@/lib/payments/fedapay';
 import { processNotificationJobs } from '@/lib/payments/notifications';
 export const runtime = 'nodejs';
 export async function POST(request: Request) {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   if (process.env.FEDAPAY_ENABLED === 'true') {
     try {
       const db = paymentDatabase();
-      const environment = paymentConfiguration().environment;
+      const environment = existingPaymentsConfiguration().environment;
       const dueAt = new Date().toISOString();
       // Keep the batch small enough for the scheduled function to finish.
       const { data, error } = await db.from('payment_attempts').select('id,provider_id')

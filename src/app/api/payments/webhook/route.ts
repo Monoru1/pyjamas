@@ -1,5 +1,5 @@
 import { readLimitedBody, requireJsonRequest, HttpInputError, UUID_PATTERN } from '@/lib/payments/read-body';
-import { paymentConfiguration, verifyWebhook } from '@/lib/payments/fedapay';
+import { existingPaymentsConfiguration, verifyWebhook } from '@/lib/payments/fedapay';
 import { paymentDatabase, reconcilePayment } from '@/lib/payments/server';
 export const runtime = 'nodejs';
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const signingSecret=process.env.FEDAPAY_WEBHOOK_SECRET;
     if(!signingSecret)return Response.json({error:'Signature non configurée.'},{status:503});
     if (!verifyWebhook(raw, request.headers.get('x-fedapay-signature'), signingSecret)) return Response.json({ error: 'Signature invalide.' }, { status: 400 });
-    const config = paymentConfiguration();
+    const config = existingPaymentsConfiguration();
     const event = JSON.parse(raw) as WebhookEvent;
     // Real FedaPay Live deliveries carry no top-level id: only the entity id is required.
     if (!Number.isSafeInteger(event.entity?.id) || (event.entity!.id as number) < 1) return Response.json({ error: 'Événement invalide.' }, { status: 400 });

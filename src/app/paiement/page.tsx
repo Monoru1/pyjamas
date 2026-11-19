@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PaymentStatus } from './payment-status';
+import { storeIdentity } from '@/lib/legal/store-identity';
 
 export const metadata = {
   title: 'Suivi de paiement · La Maison des Pyjamas',
@@ -23,7 +24,7 @@ export default async function PaymentPage({ searchParams }: { searchParams: Prom
             Nous vérifions directement votre règlement auprès de FedaPay. Conservez cette page jusqu’à la confirmation.
           </p>
         </header>
-        <PaymentStatus reference={reference} />
+        <PaymentStatus reference={reference} whatsappPhone={storeIdentity.whatsapp} />
         <section className="mt-6 rounded-2xl border border-brand-primary/15 bg-white/80 p-5 sm:p-7">
           <h2 className="text-lg font-semibold">Quelques conseils utiles</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">

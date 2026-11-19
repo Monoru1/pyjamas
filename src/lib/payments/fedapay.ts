@@ -33,7 +33,13 @@ export function liveInspectionConfiguration(env: Record<string, string | undefin
   return { environment: 'live' as const, accountId, key: env.FEDAPAY_SECRET_KEY, apiOrigin: 'https://api.fedapay.com' };
 }
 
-export function paymentConfiguration(env: Record<string, string | undefined> = process.env) {
+/**
+ * admission=true (default): may NEW payments be created? Live production then needs
+ * FEDAPAY_LIVE_APPROVED or the private admin test. admission=false: handling of
+ * payments that ALREADY exist (tracking, signed webhooks, reconciliation) keeps
+ * working while new sales are suspended. FEDAPAY_ENABLED=false still stops everything.
+ */
+export function paymentConfiguration(env: Record<string, string | undefined> = process.env, { admission = true }: { admission?: boolean } = {}) {
   const environment = env.FEDAPAY_ENVIRONMENT;
   if (env.FEDAPAY_ENABLED !== 'true' || !['sandbox', 'live'].includes(environment || '')
     || !env.FEDAPAY_SECRET_KEY?.startsWith(`sk_${environment}_`) || !env.FEDAPAY_WEBHOOK_SECRET
@@ -60,7 +66,7 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   } else if (adminTest) {
     if (Number(env.FEDAPAY_ACCOUNT_ID) !== 101915 || !/^[1-9][0-9]*$/.test(env.PAYMENT_ADMIN_TEST_AMOUNT_XOF || '')
       || !Number.isSafeInteger(adminTestAmount) || adminTestAmount > 200_000) throw new Error('Test administrateur non autorisé.');
-  } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || deployment.context !== 'production')) throw new Error('Production non validée.');
+  } else if (environment === 'live' && (deployment.context !== 'production' || (admission && env.FEDAPAY_LIVE_APPROVED !== 'true'))) throw new Error('Production non validée.');
   const shipping = Number(env.PAYMENT_SHIPPING_XOF);
   if (!env.PAYMENT_SHIPPING_XOF || !Number.isSafeInteger(shipping) || shipping < 0 || shipping > 1_000_000) throw new Error('Tarif de livraison non configuré.');
   return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET,
@@ -81,6 +87,11 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
 export function adminTestIdempotencyKey(account: number, amount: number, expiresAt: string) {
   const hex = createHash('sha256').update(`admin-live-test:${account}:${amount}:${expiresAt}`).digest('hex');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+/** Existing payments only: never use it to create a new payment. */
+export function existingPaymentsConfiguration(env: Record<string, string | undefined> = process.env) {
+  return paymentConfiguration(env, { admission: false });
 }
 
 /** Admission can stop independently while callbacks and reconciliation finish old payments. */
@@ -142,7 +153,8 @@ export function validateTransaction(transaction: ProviderTransaction, payment: {
 }
 
 export async function providerRequest(path: string, init: RequestInit = {}, fetcher: typeof fetch = fetch): Promise<Record<string, unknown>> {
-  return requestProvider(paymentConfiguration(), path, init, fetcher);
+  // Creation of a transaction is gated by checkoutConfiguration() in the checkout route.
+  return requestProvider(existingPaymentsConfiguration(), path, init, fetcher);
 }
 
 export function inspectLiveProvider(path: string, fetcher: typeof fetch = fetch) {

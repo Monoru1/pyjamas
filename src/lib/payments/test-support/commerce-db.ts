@@ -59,7 +59,7 @@ export function sqlClient(db: PGlite) {
             const where = filters.map(([key,op,value]) => op === 'in'
               ? `${identifier(key)} in (${(value as string[]).map(bind).join(',')})`
               : `${identifier(key)} ${op} ${value === null ? 'null' : bind(value)}`).join(' and ');
-            let sql = update ? `update ${identifier(table)} set ${assignments}` : `select *, ${relation ? `(select jsonb_build_object('order_number',o.order_number,'needs_attention',o.needs_attention) from orders o where o.id=payment_attempts.order_id)` : 'null'} as orders from ${identifier(table)}`;
+            let sql = update ? `update ${identifier(table)} set ${assignments}` : `select *, ${relation ? `(select jsonb_build_object('order_number',o.order_number,'needs_attention',o.needs_attention,'status',o.status) from orders o where o.id=payment_attempts.order_id)` : 'null'} as orders from ${identifier(table)}`;
             if (where) sql += ` where ${where}`;
             if (update) sql += ' returning *';
             else { if (ordering) sql += ` order by ${ordering}`; if (count !== undefined) sql += ` limit ${Number(count)}`; }
