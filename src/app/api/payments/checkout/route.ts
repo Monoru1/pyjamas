@@ -45,6 +45,13 @@ export async function POST(request: Request) {
         return Response.json({ error: 'Le précédent test Live doit être rapproché avant un nouveau paiement.' }, { status: 409 });
       }
     }
+    if (config.adminTest && !existing) {
+      // One private Live test at a time: never open a second debit while a
+      // previous one is pending or already paid.
+      const { data: open, error: openError } = await db.from('payment_attempts').select('id')
+        .eq('environment', 'live').in('status', ['pending', 'paid', 'refunded', 'partially_refunded']).limit(1);
+      if (openError || (open?.length ?? 0) > 0) return Response.json({ error: 'Un paiement de test existe déjà. Consultez son suivi avant toute nouvelle tentative.' }, { status: 409 });
+    }
     let quote:ShopQuote;
     if(existing && !Array.isArray(existing)) {
       if(existing.request_hash!==hash || existing.environment!==config.environment || existing.merchant_account_id!==config.accountId)return Response.json({error:'Cette demande est déjà liée à une autre commande.'},{status:409});
@@ -58,6 +65,7 @@ export async function POST(request: Request) {
     }
     if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:quote.reserved?'Vérifiez puis confirmez le montant figé de votre commande réservée.':'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
     if(config.liveTest && quote.amount_xof>config.testCeiling!)return Response.json({error:'Montant supérieur au plafond de recette autorisé.'},{status:403});
+    if(config.adminTest && Number(quote.amount_xof)!==config.adminTestAmount)return Response.json({error:'Ce total ne correspond pas au montant de test autorisé par le propriétaire.'},{status:403});
     const args={p_key:input.idempotencyKey,p_hash:hash,p_customer:input.customer,p_lines:input.lines,p_account:config.accountId,p_shipping:config.shipping,p_expected_items:quote.items};
     const {data,error}=config.liveTest
       ? await db.rpc('create_authorized_live_test_payment',{...args,p_authorization:config.authorizationId,p_staff:staffId,p_ceiling:config.testCeiling})

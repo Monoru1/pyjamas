@@ -46,25 +46,38 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
   const origin = deployment.context === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (deployment.previewOrigin || env.PAYMENT_SITE_URL);
   if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
   const testCeiling = Number(env.PAYMENT_LIVE_TEST_MAX_XOF);
+  // Owner-approved private Live payment on production: admins only, one exact
+  // amount, never while the public opening flag is set.
+  const adminTest = !liveTest && environment === 'live' && deployment.context === 'production'
+    && env.FEDAPAY_LIVE_APPROVED !== 'true' && env.PAYMENT_ADMIN_TEST_ENABLED === 'true';
+  const adminTestAmount = Number(env.PAYMENT_ADMIN_TEST_AMOUNT_XOF);
   if (liveTest) {
     if (!isPrivateLiveRecipe(env)
       || Number(env.FEDAPAY_ACCOUNT_ID) !== 101915
       || !Number.isSafeInteger(testCeiling) || testCeiling < 1 || testCeiling > 100
       || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID || '')) throw new Error('Recette Live non autorisée.');
+  } else if (adminTest) {
+    if (Number(env.FEDAPAY_ACCOUNT_ID) !== 101915 || !/^[1-9][0-9]*$/.test(env.PAYMENT_ADMIN_TEST_AMOUNT_XOF || '')
+      || !Number.isSafeInteger(adminTestAmount) || adminTestAmount > 200_000) throw new Error('Test administrateur non autorisé.');
   } else if (environment === 'live' && (env.FEDAPAY_LIVE_APPROVED !== 'true' || deployment.context !== 'production')) throw new Error('Production non validée.');
   const shipping = Number(env.PAYMENT_SHIPPING_XOF);
   if (!env.PAYMENT_SHIPPING_XOF || !Number.isSafeInteger(shipping) || shipping < 0 || shipping > 1_000_000) throw new Error('Tarif de livraison non configuré.');
   return { key: env.FEDAPAY_SECRET_KEY, webhookSecret: env.FEDAPAY_WEBHOOK_SECRET,
     origin: new URL(origin).origin, environment: environment as 'sandbox' | 'live',
-    accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping, liveTest, staffOnly: environment === 'sandbox' || liveTest,
+    accountId: Number(env.FEDAPAY_ACCOUNT_ID), shipping, liveTest, adminTest,
+    adminTestAmount: adminTest ? adminTestAmount : undefined,
+    staffOnly: environment === 'sandbox' || liveTest || adminTest,
     testCeiling: liveTest ? testCeiling : undefined, authorizationId: liveTest ? env.PAYMENT_LIVE_TEST_AUTHORIZATION_ID : undefined,
     apiOrigin: environment === 'live' ? 'https://api.fedapay.com' : 'https://sandbox-api.fedapay.com' };
 }
 
 /** Admission can stop independently while callbacks and reconciliation finish old payments. */
-export function checkoutConfiguration(env: Record<string, string | undefined> = process.env) {
+export function checkoutConfiguration(env: Record<string, string | undefined> = process.env, now = Date.now()) {
   const config = paymentConfiguration(env);
   if (env.PAYMENT_CHECKOUT_ENABLED !== 'true') throw new Error('Nouvelles commandes suspendues.');
+  // Only new admissions expire; webhooks and reconciliation keep working.
+  const expiresAt = Date.parse(env.PAYMENT_ADMIN_TEST_EXPIRES_AT || '');
+  if (config.adminTest && (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + 72 * 3600_000)) throw new Error('Test administrateur expiré.');
   return config;
 }
 
