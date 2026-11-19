@@ -36,7 +36,7 @@ export function VariantPicker({ product }: VariantPickerProps) {
     return (
       <div className="rounded-3xl border border-dashed border-brand-primary/20 bg-white p-6">
         <p className="font-semibold">Tailles et disponibilités à confirmer auprès de la boutique.</p>
-        <p className="mt-3 text-sm text-foreground/60">Le prix affiché est provisoire. Ce modèle sera disponible à la commande après confirmation de ses tailles et de son stock.</p>
+        <p className="mt-3 text-sm text-foreground/60">Les tailles et la disponibilité de ce modèle sont à confirmer auprès de la boutique. L’ajout au panier sera possible lorsque ses variantes seront disponibles.</p>
       </div>
     );
   }

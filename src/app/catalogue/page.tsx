@@ -24,7 +24,7 @@ export default async function CataloguePage() {
             Le bonheur est encore plus doux <em className="text-[#f8d09c]">ensemble.</em>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-[#f5eee5]">
-            Découvrez les modèles du shooting. Prix provisoires ; tailles et disponibilités à confirmer auprès de la boutique.
+            Découvrez les modèles du shooting. Consultez les tailles, les prix et les disponibilités sur chaque fiche produit.
           </p>
         </section>
         <section aria-labelledby="shooting-title" className="space-y-5">
@@ -32,7 +32,7 @@ export default async function CataloguePage() {
               <p className="text-xs font-bold uppercase tracking-[.2em] text-[#b3203a]">Notre shooting</p>
               <h2 id="shooting-title" className="mt-2 font-serif text-3xl sm:text-4xl">Découvrez l’univers de Noël</h2>
               <p className="mt-2 text-sm text-[#52645d]">
-                Découvrez les vrais modèles de notre shooting de Noël. Les tailles et disponibilités des fiches produits sont mises à jour progressivement.
+                Retrouvez les modèles de notre shooting de Noël et choisissez parmi les tailles disponibles.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
