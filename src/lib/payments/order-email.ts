@@ -51,6 +51,8 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
   const actionUrl = customer ? customerTracking || `${origin}/contact` : `${origin}${adminPath}`;
   const prefix = order.demo ? `[DÉMONSTRATION] ${customer ? 'Acheteur' : 'Équipe'} — ` : '';
   const subject = `${prefix}${title} · ${order.reference}`.replace(/[\r\n]+/g, ' ');
+  // Paid customer email: direct entry to the order-scoped contact form on the tracking page.
+  const contactUrl = customer && event === 'paid' && trackingUrl ? `${trackingUrl}#contact` : undefined;
   const rows = order.lines.map(line => {
     const safePhoto = safeMediaUrl(line.photo);
     const photo = safePhoto ? new URL(safePhoto, origin).href : '';
@@ -64,7 +66,8 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
   ];
   const text = ['La Maison des Pyjamas', `${prefix}${title}`, description, `Commande ${order.reference}`,
     ...order.lines.map(line => `${line.quantity} × ${line.name}${[line.variant, line.size].some(Boolean) ? ` (${[line.variant, line.size].filter(Boolean).join(', ')})` : ''} · ${xof(line.total)}`),
-    ...detail.map(([label, amount]) => `${label} · ${amount}`), `${action} · ${actionUrl}`, contactEmail,
+    ...detail.map(([label, amount]) => `${label} · ${amount}`), `${action} · ${actionUrl}`,
+    contactUrl ? `Une question sur votre commande ? Contactez-nous · ${contactUrl}` : '', contactEmail,
   ].filter(Boolean).join('\n');
   const content = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fff6ec"><tr><td align="center" style="padding:20px 10px">
 <!--[if mso]><table role="presentation" width="580"><tr><td><![endif]-->
@@ -76,6 +79,7 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
 ${rows ? `<table width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #c99a2e"><thead><tr><th scope="col" align="left" style="padding-top:12px">Articles</th><th scope="col" align="right" style="padding-top:12px">Montant</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#fffaf3" style="margin-top:16px">${detail.map(([label, amount]) => `<tr><td style="padding:8px 12px">${label}</td><td align="right" style="padding:8px 12px"><strong>${amount}</strong></td></tr>`).join('')}</table>
 <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:22px"><tr><td bgcolor="#8f1428" style="border-radius:6px;mso-padding-alt:12px 18px"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 18px">${action}</a></td></tr></table>
+${contactUrl ? `<p style="margin:18px 0 0">Une question sur votre commande ? <a href="${escapeHtml(contactUrl)}" style="color:#8f1428">Contactez-nous</a></p>` : ''}
 </td></tr><tr><td bgcolor="#fffaf3" style="padding:18px 24px;font-size:13px;color:#65474e">La Maison des Pyjamas<br><a href="${origin}/contact" style="color:#8f1428">Contact boutique</a>${contactEmail ? ` · <a href="mailto:${escapeHtml(contactEmail)}" style="color:#8f1428">${escapeHtml(contactEmail)}</a>` : ''}</td></tr>
 </table><!--[if mso]></td></tr></table><![endif]--></td></tr></table>`;
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
