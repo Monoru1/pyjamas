@@ -149,3 +149,19 @@ it('keeps a declined or cancelled transaction as the only payable payment', asyn
   expect((await db.query<Record<string, unknown>>('select status from payment_attempts')).rows[0].status).toBe('paid');
   expect((await db.query<Record<string, unknown>>("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n).toBe(1);
 });
+
+it('resumes the same Live transaction after a rejected checkout link without creating another', async () => {
+  let host = 'https://pay.example.test/fixture';
+  const live = vi.mocked(fetch);
+  const base = live.getMockImplementation()!;
+  live.mockImplementation(async (url, init) => url === 'https://api.fedapay.com/v1/transactions/42/token' ? Response.json({ token: 'fixture', url: host }) : base(url as string, init));
+  const { basket, token } = await priced();
+  const failed = await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }));
+  expect(failed.status).toBe(503);
+  expect((await db.query<Record<string, unknown>>('select last_error from payment_attempts')).rows[0].last_error).toBe('initialization_failed:validate_checkout_url:host_pay.example.test');
+  host = 'https://process.fedapay.com/fixture';
+  const resumed = await checkout(request('/api/payments/checkout', { ...basket, quoteToken: token }));
+  expect(resumed.status).toBe(200);
+  expect((await resumed.json()).url).toBe('https://process.fedapay.com/fixture');
+  expect(creates).toBe(1);
+});

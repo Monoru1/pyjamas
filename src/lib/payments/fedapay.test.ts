@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { mapProviderStatus, paymentConfiguration, providerRequest, inspectLiveProvider, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
+import { CheckoutHostError, mapProviderStatus, paymentConfiguration, providerRequest, inspectLiveProvider, safeCheckoutUrl, checkoutTokenFromResponse, transactionFromResponse, validateTransaction, TransactionMismatchError, verifyWebhook } from './fedapay';
 
 const env = { FEDAPAY_ENABLED:'true', FEDAPAY_ENVIRONMENT:'sandbox', FEDAPAY_SECRET_KEY:'sk_sandbox_test', FEDAPAY_WEBHOOK_SECRET:'wh_test', SUPABASE_SERVICE_ROLE_KEY:'test', PAYMENT_SITE_URL:'https://example.com', FEDAPAY_ACCOUNT_ID:'42', PAYMENT_DATABASE_ISOLATED:'true', NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co', PAYMENT_SHIPPING_XOF:'0' };
 const body = '{"id":42,"name":"transaction.approved"}';
@@ -124,4 +124,13 @@ it('can read a bound Live transaction on PR 21 with the payment switches off', a
   } finally {
     vi.unstubAllEnvs();
   }
+});
+
+it('accepts the official FedaPay process host and reports only the hostname of a rejected link', () => {
+  expect(checkoutTokenFromResponse({ token: 'fixture', url: 'https://process.fedapay.com/fixture' }, 'live')).toBe('https://process.fedapay.com/fixture');
+  expect(safeCheckoutUrl('https://sandbox-process.fedapay.com/fixture', 'sandbox')).toContain('sandbox-process');
+  for (const url of ['https://sandbox-process.fedapay.com/x', 'https://process.fedapay.com.evil.test/x', 'http://process.fedapay.com/x', 'https://u:p@process.fedapay.com/x', 'https://process.fedapay.com:8443/x'])
+    expect(() => safeCheckoutUrl(url, 'live')).toThrow();
+  try { safeCheckoutUrl('https://pay.example.test/secret-token', 'live'); throw new Error('accepted'); }
+  catch (error) { expect(error).toBeInstanceOf(CheckoutHostError); expect((error as CheckoutHostError).host).toBe('pay.example.test'); expect(String((error as Error).message)).not.toContain('secret-token'); }
 });

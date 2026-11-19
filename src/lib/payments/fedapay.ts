@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { isFedaPayCheckoutUrl } from './checkout-hosts';
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'partially_refunded';
 export type ProviderTransaction = { id: number; amount: number | string; status: string; currency?: { iso: string }; currency_id?: number; account_id?: number; merchant_reference?: string; custom_metadata?: { payment_id?: string; purpose?: string; order_id?: string } };
@@ -178,9 +179,18 @@ export function transactionFromResponse(payload: Record<string, unknown>): Provi
   return transaction;
 }
 
+/** Carries only the rejected hostname (never the token) for diagnostics. */
+export class CheckoutHostError extends Error {
+  readonly host: string;
+  constructor(hostname: string) {
+    super('Lien de paiement non autorisé.'); this.name = 'CheckoutHostError';
+    this.host = hostname.toLowerCase().replace(/[^a-z0-9.-]/g, '').slice(0, 80) || 'unknown';
+  }
+}
+
 export function safeCheckoutUrl(value: unknown, environment: 'sandbox' | 'live' = 'sandbox') {
   if (typeof value !== 'string') throw new Error('Lien de paiement manquant.');
   const url = new URL(value);
-  if (url.protocol !== 'https:' || url.hostname !== (environment === 'live' ? 'checkout.fedapay.com' : 'sandbox-checkout.fedapay.com') || url.port || url.username || url.password) throw new Error('Lien de paiement non autorisé.');
+  if (!isFedaPayCheckoutUrl(url, environment)) throw new CheckoutHostError(url.hostname);
   return url.href;
 }
