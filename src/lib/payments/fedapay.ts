@@ -11,12 +11,12 @@ export function paymentDeployment(env:Record<string,string|undefined>=process.en
     previewOrigin:(built&&process.env.PAYMENT_BUILD_ORIGIN)||env.DEPLOY_PRIME_URL};
 }
 
-const recipeOrigin = 'https://deploy-preview-20--pyjamas25.netlify.app';
+const recipeOrigin = 'https://deploy-preview-21--pyjamas25.netlify.app';
 const recipeDatabase = 'https://oxhymanjibveayhcaqvj.supabase.co';
 
 function isPrivateLiveRecipe(env: Record<string, string | undefined>) {
   const deployment = paymentDeployment(env);
-  return deployment.context === 'deploy-preview' && deployment.reviewId === '20'
+  return deployment.context === 'deploy-preview' && deployment.reviewId === '21'
     && (deployment.previewOrigin || env.PAYMENT_SITE_URL) === recipeOrigin
     && env.NEXT_PUBLIC_SUPABASE_URL === recipeDatabase
     && env.PAYMENT_DATABASE_ISOLATED === 'true' && env.FEDAPAY_LIVE_APPROVED === 'false';

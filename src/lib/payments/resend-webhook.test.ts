@@ -14,15 +14,15 @@ const body = JSON.stringify({ type: 'email.delivered', created_at: '2026-11-13T1
 const sign = (payload: string, id = 'msg_1', at = Math.floor(Date.now() / 1000), with_ = key) =>
   ({ id, timestamp: String(at), signature: `v1,${createHmac('sha256', with_).update(`${id}.${at}.${payload}`).digest('base64')}` });
 const request = (payload: string, headers: { id: string; timestamp: string; signature: string }) =>
-  new Request('https://deploy-preview-14--pyjamas25.netlify.app/api/notifications/resend', { method: 'POST', body: payload,
+  new Request('https://deploy-preview-21--pyjamas25.netlify.app/api/notifications/resend', { method: 'POST', body: payload,
     headers: { 'content-type': 'application/json', 'svix-id': headers.id, 'svix-timestamp': headers.timestamp, 'svix-signature': headers.signature } });
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('RESEND_WEBHOOK_SECRET', secret);
   vi.stubEnv('PAYMENT_BUILD_CONTEXT', 'deploy-preview');
-  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
-  vi.stubEnv('PAYMENT_BUILD_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
+  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-21--pyjamas25.netlify.app');
+  vi.stubEnv('PAYMENT_BUILD_ORIGIN', 'https://deploy-preview-21--pyjamas25.netlify.app');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://oxhymanjibveayhcaqvj.supabase.co');
   vi.stubEnv('PAYMENT_DATABASE_ISOLATED', 'true');
   mocks.rpc.mockResolvedValue({ data: 'delivered', error: null });
@@ -81,7 +81,7 @@ it('rejects valid signed events on another preview or database before persistenc
   const signed = sign(body);
   vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-15--pyjamas25.netlify.app');
   expect((await POST(request(body, signed))).status).toBe(404);
-  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-14--pyjamas25.netlify.app');
+  vi.stubEnv('SITE_ORIGIN', 'https://deploy-preview-21--pyjamas25.netlify.app');
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://other.supabase.co');
   expect((await POST(request(body, signed))).status).toBe(404);
   expect(mocks.rpc).not.toHaveBeenCalled();

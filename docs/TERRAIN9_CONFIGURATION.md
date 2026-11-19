@@ -45,7 +45,7 @@ Le domaine Resend `ryadsaka.com` est vérifié, envoi activé en Europe. Les mes
 
 ## Test réel restant
 
-Le parcours Live isolé est désormais la prévisualisation de la PR #20 sur `oxhymanjibveayhcaqvj`, réservé au personnel et limité à 100 FCFA. Ses interrupteurs restent fermés. Il faut une nouvelle autorisation explicite et une autorisation technique valide pour ce test ; ne pas réutiliser silencieusement une ancienne autorisation.
+Le parcours Live isolé est désormais la prévisualisation de la PR #21 sur `oxhymanjibveayhcaqvj`, réservé au personnel et limité à 100 FCFA. Ses interrupteurs restent fermés. Il faut une nouvelle autorisation explicite et une autorisation technique valide pour ce test ; ne pas réutiliser silencieusement une ancienne autorisation.
 
 Avant le test, confirmer la transaction historique `113943841` auprès du prestataire et rapprocher son état par le circuit prévu, sans inventer de paiement ni libérer manuellement une réservation. Confirmer les clés Live et le webhook fournisseur. Ne jamais considérer le retour navigateur comme une preuve.
 

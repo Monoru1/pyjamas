@@ -33,4 +33,4 @@ Prévenir le responsable. Il coupe `PAYMENT_CHECKOUT_ENABLED` et redéploie pour
 
 ## Avant ouverture
 
-Les ventes, paiements publics et notifications restent fermés. Il faut valider les secrets de production, une connexion administrateur, le catalogue physique, les conditions de livraison et un test financier réel expressément autorisé. Le parcours de test courant est la PR #20 sur la base de recette isolée, limité à 100 FCFA et réservé au personnel. L’autorisation du test et l’accord d’ouverture sont deux décisions distinctes.
+Les ventes, paiements publics et notifications restent fermés. Il faut valider les secrets de production, une connexion administrateur, le catalogue physique, les conditions de livraison et un test financier réel expressément autorisé. Le parcours de test courant est la PR #21 sur la base de recette isolée, limité à 100 FCFA et réservé au personnel. L’autorisation du test et l’accord d’ouverture sont deux décisions distinctes.
