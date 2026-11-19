@@ -5,7 +5,6 @@ vi.mock('server-only', () => ({}));
 const fixture = vi.hoisted(() => ({ client: {} as ReturnType<typeof sqlClient> }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => fixture.client }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null } }) }, rpc: async () => ({ data: false }) }) }));
-vi.mock('@/lib/repositories/settings.repository', () => ({ getStoreSettings: async () => ({ whatsappPhone: '+229 01 97 33 88 43' }) }));
 import { POST as quote } from '@/app/api/payments/quote/route';
 import { POST as checkout } from '@/app/api/payments/checkout/route';
 import { POST as webhook } from '@/app/api/payments/webhook/route';
@@ -13,6 +12,7 @@ import { GET as status } from '@/app/api/payments/status/route';
 import { checkoutConfiguration, existingPaymentsConfiguration, paymentConfiguration } from './fedapay';
 import { processNotificationJobs } from './notifications';
 import { orderWhatsAppUrl } from '@/lib/orders/whatsapp';
+import { storeIdentity } from '@/lib/legal/store-identity';
 
 // Terrain 14: tracking and reconciliation of EXISTING orders do not depend on new-sales admission.
 let db: Awaited<ReturnType<typeof commerceDatabase>>;
@@ -122,7 +122,8 @@ it('adds an order-scoped WhatsApp button to the paid customer email only', async
   expect(await processNotificationJobs(5)).toBe(2);
   const customer = mails.find(mail => mail.to === 'cliente@example.test')!;
   const staff = mails.find(mail => mail.to !== 'cliente@example.test')!;
-  const expected = orderWhatsAppUrl('+229 01 97 33 88 43', orderNumber)!;
+  const expected = orderWhatsAppUrl(storeIdentity.whatsapp, orderNumber)!;
+  expect(expected.startsWith('https://wa.me/2290197338843?text=')).toBe(true);
   expect(String(customer.html)).toContain('Contacter la boutique sur WhatsApp');
   expect(String(customer.html)).toContain(expected.replace(/&/g, '&amp;').replace(/'/g, '&#39;'));
   expect(String(customer.text)).toContain(`Contacter la boutique sur WhatsApp · ${expected}`);

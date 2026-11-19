@@ -7,4 +7,7 @@ export const storeIdentity = {
   address: 'Cotonou, quartier Menontin, maison Abou Salamatou, C/2137, en face de la pharmacie Kindonou',
   phone: '+229 01 97 33 88 43',
   email: 'lamaisondespyjamas@gmail.com',
+  // Owner's WhatsApp (+229 97 33 88 43) in Benin's mandatory 10-digit format since 2025 (prefix 01).
+  // A constant, not a database setting: every retry of an order email must render identically.
+  whatsapp: '+229 01 97 33 88 43',
 } as const;

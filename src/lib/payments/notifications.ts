@@ -6,7 +6,7 @@ import { operationsDatabase } from './operations';
 import { isEmailKind, renderOrderEmail, demoEmailOrder } from './order-email';
 import { loadOrderRecord, orderEmailData } from '@/lib/orders/order-record';
 import { orderWhatsAppUrl } from '@/lib/orders/whatsapp';
-import { getStoreSettings } from '@/lib/repositories/settings.repository';
+import { storeIdentity } from '@/lib/legal/store-identity';
 
 const emailAddress = z.email();
 type Mail = { from: string; to: string | string[]; subject: string; text: string; html?: string; reply_to?: string };
@@ -141,8 +141,9 @@ export async function processNotificationJobs(limit = 2, jobId?: string) {
     const origin = trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL);
     const contact = emailAddress.safeParse(process.env.ORDER_CONTACT_EMAIL);
     const emailOrder = demo ? demoEmailOrder : orderEmailData(order);
-    // WhatsApp button with the order reference only; a settings outage never blocks the email.
-    const whatsappUrl = customer && !demo ? orderWhatsAppUrl(await getStoreSettings().then(value => value.whatsappPhone).catch(() => ''), emailOrder.reference) : null;
+    // Deterministic payload: retries reuse the same Resend idempotency key, so the
+    // WhatsApp button must never depend on a runtime lookup that could change.
+    const whatsappUrl = customer && !demo ? orderWhatsAppUrl(storeIdentity.whatsapp, emailOrder.reference) : null;
     const { subject, html, text } = renderOrderEmail(kind, emailOrder, origin, contact.data, trackingUrl, whatsappUrl);
     const { data: started, error: startError } = await update({ first_delivery_at: job.first_delivery_at || new Date().toISOString(), recipient: Array.isArray(to) ? to.join(', ') : to }).select('id');
     if (startError || started?.length !== 1) continue;
