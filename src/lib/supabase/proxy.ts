@@ -13,14 +13,21 @@ function loginRedirect() {
   return NextResponse.redirect(url);
 }
 
-export async function updateSession(request: NextRequest) {
+/** Forwards headers only: the request body must stay untouched for server actions. */
+export async function updateSession(request: NextRequest, headers: Headers = new Headers(request.headers)) {
   const pathname = request.nextUrl.pathname;
   // Critical: never call Supabase Auth on catalogue/home/media pages.
   if (!pathname.startsWith('/admin') || publicAdminPages.test(pathname)) {
-    return NextResponse.next({ request: { headers: request.headers } });
+    return NextResponse.next({ request: { headers } });
   }
 
-  let response = NextResponse.next({ request });
+  const forward = () => {
+    // request.cookies.set() keeps the Cookie header current; copy it, nothing else.
+    const cookie = request.headers.get('cookie');
+    if (cookie === null) headers.delete('cookie'); else headers.set('cookie', cookie);
+    return NextResponse.next({ request: { headers } });
+  };
+  let response = forward();
 
   try {
     const { supabaseUrl, supabaseKey } = getPublicEnv();
@@ -29,7 +36,7 @@ export async function updateSession(request: NextRequest) {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = forward();
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         },
       },
