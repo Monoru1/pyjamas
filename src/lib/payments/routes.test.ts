@@ -104,8 +104,8 @@ it('returns the new total before creating any order or provider transaction when
  expect(mocks.db.rpc.mock.calls.some(([name])=>name==='create_shop_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('live preview rejects anonymous staff access and an amount above the owner ceiling',async()=>{
- for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
- const req=()=>request(input,'https://deploy-preview-14--pyjamas25.netlify.app');
+ for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'20',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-20--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
+ const req=()=>request(input,'https://deploy-preview-20--pyjamas25.netlify.app');
  mocks.allowed=false;expect((await checkout(req())).status).toBe(403);
  mocks.allowed=true;
  mocks.db.from.mockReturnValueOnce(chain(null)).mockReturnValueOnce(chain({status:'expired',inventory_state:'released'}));
@@ -182,14 +182,14 @@ it('does not overwrite an intervening webhook when reconciliation fails', async(
 
 it('blocks a new private Live checkout until the old transaction and its inventory are reconciled', async () => {
  for (const [key, value] of Object.entries({
-  FEDAPAY_ENVIRONMENT:'live', FEDAPAY_SECRET_KEY:'sk_live_fixture', CONTEXT:'deploy-preview', REVIEW_ID:'14',
+  FEDAPAY_ENVIRONMENT:'live', FEDAPAY_SECRET_KEY:'sk_live_fixture', CONTEXT:'deploy-preview', REVIEW_ID:'20',
   FEDAPAY_ACCOUNT_ID:'101915', FEDAPAY_LIVE_APPROVED:'false',
-  PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',
+  PAYMENT_SITE_URL:'https://deploy-preview-20--pyjamas25.netlify.app',
   NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co', PAYMENT_LIVE_TEST_ENABLED:'true',
   PAYMENT_LIVE_TEST_MAX_XOF:'100', PAYMENT_LIVE_TEST_AUTHORIZATION_ID:payment.id,
  })) vi.stubEnv(key,value);
  mocks.db.from.mockReturnValueOnce(chain(null)).mockReturnValueOnce(chain({status:'pending',inventory_state:'reserved'}));
- const response = await checkout(request(input,'https://deploy-preview-14--pyjamas25.netlify.app'));
+ const response = await checkout(request(input,'https://deploy-preview-20--pyjamas25.netlify.app'));
  expect(response.status).toBe(409);
  expect((await response.json()).error).toContain('précédent test Live');
  expect(mocks.provider).not.toHaveBeenCalled();

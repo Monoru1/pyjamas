@@ -65,14 +65,14 @@ describe('FedaPay fail-closed configuration and webhooks', () => {
   });
 });
 
-it('allows live acceptance only on PR 14 and the exact isolated database with a strict ceiling',()=>{
- const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'14',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-14--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
+it('allows live acceptance only on PR 20 and the exact isolated database with a strict ceiling',()=>{
+ const acceptance={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'20',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-20--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'};
  expect(paymentConfiguration(acceptance)).toMatchObject({liveTest:true,staffOnly:true,testCeiling:100});
  for(const override of [{REVIEW_ID:'12'},{CONTEXT:'production'},{FEDAPAY_LIVE_APPROVED:'true'},{PAYMENT_SITE_URL:'https://other.netlify.app'},{NEXT_PUBLIC_SUPABASE_URL:'https://pukvrerdloudfiphomsj.supabase.co'},{PAYMENT_LIVE_TEST_ENABLED:'false'},{PAYMENT_LIVE_TEST_MAX_XOF:'101'},{PAYMENT_LIVE_TEST_AUTHORIZATION_ID:''},{FEDAPAY_SECRET_KEY:'sk_sandbox_fixture'}])expect(()=>paymentConfiguration({...acceptance,...override})).toThrow();
 });
 it('uses the real build metadata when Netlify does not provide CONTEXT/REVIEW_ID at runtime',()=>{
  try {
-  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_BUILD_REVIEW_ID:'14',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-14--pyjamas25.netlify.app'};
+  const values={...env,FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111',PAYMENT_BUILD_CONTEXT:'deploy-preview',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_BUILD_REVIEW_ID:'20',PAYMENT_BUILD_ORIGIN:'https://deploy-preview-20--pyjamas25.netlify.app'};
   for(const [key,value]of Object.entries(values))vi.stubEnv(key,value);
   vi.stubEnv('CONTEXT',undefined);vi.stubEnv('REVIEW_ID',undefined);
   expect(paymentConfiguration().liveTest).toBe(true);
@@ -102,13 +102,13 @@ it('validates documented token responses without accepting mixed environments or
  for(const value of [{url:token.url},{...token,url:'https://sandbox-checkout.fedapay.com/fixture'},{...token,url:'https://evil.example/fixture'},{...token,'v1/token':token}])expect(()=>checkoutTokenFromResponse(value,'live')).toThrow();
 });
 
-it('can read a bound Live transaction on PR 14 with the payment switches off', async () => {
+it('can read a bound Live transaction on PR 20 with the payment switches off', async () => {
   const settings = {
     ...env, FEDAPAY_ENABLED: 'false', PAYMENT_CHECKOUT_ENABLED: 'false',
     PAYMENT_LIVE_TEST_ENABLED: 'false', FEDAPAY_LIVE_APPROVED: 'false',
     FEDAPAY_ENVIRONMENT: 'live', FEDAPAY_ACCOUNT_ID: '101915', FEDAPAY_SECRET_KEY: 'sk_live_fixture',
-    FEDAPAY_WEBHOOK_SECRET: '', CONTEXT: 'deploy-preview', REVIEW_ID: '14',
-    PAYMENT_SITE_URL: 'https://deploy-preview-14--pyjamas25.netlify.app',
+    FEDAPAY_WEBHOOK_SECRET: '', CONTEXT: 'deploy-preview', REVIEW_ID: '20',
+    PAYMENT_SITE_URL: 'https://deploy-preview-20--pyjamas25.netlify.app',
     NEXT_PUBLIC_SUPABASE_URL: 'https://oxhymanjibveayhcaqvj.supabase.co',
   };
   try {

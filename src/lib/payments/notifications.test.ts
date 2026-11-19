@@ -113,20 +113,25 @@ it('blocks instead of sending when persisted amounts disagree',async()=>{
  expect(updates).toContainEqual(expect.objectContaining({status:'blocked',last_error:'order_data_inconsistent'}));
 });
 
-it('allows a production demonstration only for its canonical site and authorized recipient, with the queue off', async () => {
-  const origin = 'https://pyjamas25.netlify.app';
+it('never permits production demonstration sends, even with the former flag enabled', async () => {
   vi.stubEnv('PAYMENT_BUILD_CONTEXT', 'production');
-  vi.stubEnv('SITE_ORIGIN', origin);
-  vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://pukvrerdloudfiphomsj.supabase.co');
-  vi.stubEnv('ORDER_NOTIFICATIONS_ENABLED', 'false');
-  const mail = { from: 'sender@example.test', to: 'admin@example.test', subject: 'fixture', text: 'fixture' };
-  const fetcher = vi.fn().mockResolvedValue(new Response('{"id":"demo-fixture"}'));
-  await expect(sendOrderEmail(mail, 'demo', fetcher, origin)).rejects.toThrow('notifications_disabled');
   vi.stubEnv('ORDER_EMAIL_DEMO_ENABLED', 'true');
-  await expect(sendOrderEmail(mail, 'demo', fetcher, 'https://preview.example')).rejects.toThrow('notifications_disabled');
-  await expect(sendOrderEmail({ ...mail, to: 'other@example.test' }, 'demo', fetcher, origin)).rejects.toThrow('test_recipient_not_allowed');
-  await expect(sendOrderEmail(mail, 'operational', fetcher)).rejects.toThrow('notifications_disabled');
+  const fetcher = vi.fn();
+  await expect(sendOrderEmail({ from: 'sender@example.test', to: 'admin@example.test', subject: 'fixture', text: 'fixture' }, 'demo', fetcher, 'https://pyjamas25.netlify.app')).rejects.toThrow('notifications_disabled');
   expect(fetcher).not.toHaveBeenCalled();
-  await expect(sendOrderEmail(mail, 'demo', fetcher, origin)).resolves.toBe('demo-fixture');
-  expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
+it.each(['pending_payment', 'failed', 'unpaid'])('blocks legacy staff jobs for an order whose payment is %s', async paymentState => {
+  mocks.db.from.mockImplementation((table: string) => result(table === 'orders' ? { ...paidOrder, payment_state: paymentState } : table === 'order_items' ? [] : [{ id: 'job' }]));
+  const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+  expect(await processNotificationJobs(1)).toBe(0);
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(updates).toContainEqual(expect.objectContaining({ status: 'blocked', last_error: 'paid_order_email_required' }));
+});
+
+it('blocks obsolete failure emails even for a paid order', async () => {
+  mocks.db.rpc.mockResolvedValue({ data: { id: 'job', order_id: 'order', kind: 'staff_email_failed', lease_token: 'lease', attempts: 1 }, error: null });
+  const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+  expect(await processNotificationJobs(1)).toBe(0);
+  expect(fetcher).not.toHaveBeenCalled();
 });

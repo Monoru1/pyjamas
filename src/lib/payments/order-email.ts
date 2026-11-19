@@ -43,7 +43,7 @@ export function renderOrderEmail(kind: EmailKind, order: EmailOrder, origin: str
   const event = emailEvent(kind);
   const [title, summary] = events[event];
   const description = customer && event === 'paid'
-    ? 'Merci pour votre commande. Votre paiement a été vérifié. Nous vous informerons lorsque vos articles seront prêts.'
+    ? 'Merci pour votre commande. Votre paiement a été vérifié. Vous pouvez suivre la préparation de vos articles depuis le lien ci-dessous.'
     : summary;
   const customerTracking = trackingUrl || (order.demo ? `${origin}/paiement` : undefined);
   const adminPath = order.adminPath && /^\/admin\/commandes\/[0-9a-f-]{36}$/.test(order.adminPath) ? order.adminPath : '/admin/commandes';

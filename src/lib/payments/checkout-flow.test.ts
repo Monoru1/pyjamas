@@ -50,20 +50,21 @@ it('runs quote → reservation → provider double → signed webhook → confir
  const priced=await quote(request('/api/payments/quote',{lines:basket.lines}));expect(priced.status).toBe(200);const q=await priced.json();expect(q.quote.amount_xof).toBe(2000);
  const first=await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}));expect(first.status).toBe(200);const payment=await first.json();
  expect(creates).toBe(1);expect((await db.query<Record<string,unknown>>('select stock_quantity from product_variants')).rows[0].stock_quantity).toBe(0);
+ expect((await db.query('select id from notification_jobs')).rows).toEqual([]);
  const retry=await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}));expect(retry.status).toBe(200);expect(creates).toBe(1);
  expect((await db.query<Record<string,unknown>>('select count(*)::int n from orders')).rows[0].n).toBe(1);
  provider.status='approved';expect((await signedEvent()).status).toBe(200);expect((await signedEvent()).status).toBe(200);
  const confirmed=await status(new Request(origin+`/api/payments/status?reference=${payment.reference}&status=approved`));expect((await confirmed.json()).status).toBe('paid');
  expect((await db.query<Record<string,unknown>>("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n).toBe(1);
- expect(await processNotificationJobs(3)).toBe(3);expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(3);
- expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where status='sent'")).rows[0].n).toBe(3);
+ expect(await processNotificationJobs(3)).toBe(2);expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(2);
+ expect((await db.query<Record<string,unknown>>("select count(*)::int n from notification_jobs where status='sent'")).rows[0].n).toBe(2);
 });
 it('rejects a provider amount mismatch without confirming or notifying',async()=>{
  const basket=input();const q=await (await quote(request('/api/payments/quote',{lines:basket.lines}))).json();
  expect((await checkout(request('/api/payments/checkout',{...basket,quoteToken:q.quoteToken}))).status).toBe(200);
  provider.status='approved';provider.amount=1;expect((await signedEvent()).status).toBe(503);
  expect((await db.query<Record<string,unknown>>('select payment_state from orders')).rows[0].payment_state).toBe('pending_payment');
- expect(await processNotificationJobs(2)).toBe(1);expect(mails).toBe(1);
+ expect(await processNotificationJobs(2)).toBe(0);expect(mails).toBe(0);
 });
 it('never enqueues a customer email based on historical WhatsApp consent', async () => {
  const base = input();
@@ -75,7 +76,7 @@ it('never enqueues a customer email based on historical WhatsApp consent', async
  expect((await db.query("select kind from notification_jobs where kind = 'customer_email' or kind like '%whatsapp%'")).rows).toEqual([]);
 });
 
-it('queues one staff alert and each consented lifecycle event through the guarded staff workflow', async () => {
+it('keeps exactly two paid receipts through failure, provider recovery and staff fulfillment', async () => {
  const base = input();
  const basket = { ...base, customer: { ...base.customer, emailConfirmation: true, emailTracking: true } };
  const q = await (await quote(request('/api/payments/quote', { lines: basket.lines }))).json();
@@ -103,17 +104,14 @@ it('queues one staff alert and each consented lifecycle event through the guarde
    }
  });
  const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
- expect(kinds).toEqual([
-   'admin_email', 'customer_email', 'customer_email_delivered', 'customer_email_failed', 'customer_email_ready',
-   'staff_email_delivered', 'staff_email_failed', 'staff_email_new', 'staff_email_ready',
- ]);
+ expect(kinds).toEqual(['admin_email', 'customer_email']);
 });
 
-it('queues a demonstration order without touching payments or inventory', async () => {
+it('never queues demonstration notifications or touches payments or inventory', async () => {
  await db.exec(`insert into public.orders(order_number,source,status,currency_code,subtotal,total)
  values ('MDP-DEMO-NOTIFICATIONS','notification_demo','pending','XOF',25000,25000)`);
  const kinds = (await db.query<{ kind: string }>('select kind from notification_jobs order by kind')).rows.map(row => row.kind);
- expect(kinds).toEqual(['staff_email_new']);
+ expect(kinds).toEqual([]);
  expect((await db.query('select claim_order_email() as job')).rows).toEqual([{ job:null }]);
  expect((await db.query('select id from payment_attempts')).rows).toEqual([]);
  expect((await db.query('select id from inventory_movements')).rows).toEqual([]);

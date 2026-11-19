@@ -98,24 +98,30 @@ it('flags persisted amounts that disagree instead of trusting them', () => {
   expect(buildOrderRecord({ ...base, subtotal: 2000, discount_total: 0, total: 2000, delivery: null }, [line]).lines[0].variant).toBeNull();
 });
 
-it('queues each of the nine models exactly once, only from persisted business events', async () => {
+it('queues only two paid receipts once and no messages for unpaid, refused or fulfillment events', async () => {
   const paid = await order();
-  expect(await kinds(paid.order_id)).toEqual(['staff_email_new']);
+  expect(await kinds(paid.order_id)).toEqual([]);
   const event = crypto.randomUUID();
   await settle(paid, 'paid', event); await settle(paid, 'paid', event); await settle(paid, 'paid');
-  expect(await kinds(paid.order_id)).toEqual(['admin_email', 'customer_email', 'staff_email_new']);
+  expect(await kinds(paid.order_id)).toEqual(['admin_email', 'customer_email']);
   await asStaff();
   for (const [from, to] of [['pending', 'confirmed'], ['confirmed', 'preparing'], ['preparing', 'ready'], ['ready', 'delivered']]) await transition(paid.order_id, from, to);
   await asServer();
-  expect(await kinds(paid.order_id)).toEqual(['admin_email', 'customer_email', 'customer_email_delivered', 'customer_email_ready',
-    'staff_email_delivered', 'staff_email_new', 'staff_email_ready']);
+  expect(await kinds(paid.order_id)).toEqual(['admin_email', 'customer_email']);
   const refused = await order();
-  await settle(refused, 'failed'); await settle(refused, 'failed');
-  expect(await kinds(refused.order_id)).toEqual(['customer_email_failed', 'staff_email_failed', 'staff_email_new']);
-  const all = new Set([...(await kinds(paid.order_id)), ...(await kinds(refused.order_id))]);
-  expect([...all].sort()).toEqual([...emailKinds].sort());
+  for (const state of ['failed', 'cancelled', 'expired']) await settle(refused, state);
+  expect(await kinds(refused.order_id)).toEqual([]);
   expect(await rows('select order_id,kind,count(*) from notification_jobs group by 1,2 having count(*)>1')).toEqual([]);
-  expect((await rows<{ n: number }>("select count(*)::int n from order_status_history where order_id=$1 and changed_by=$2", [paid.order_id, staff]))[0].n).toBe(4);
+});
+
+it('never claims a legacy unpaid or obsolete email job, even on a manual retry', async () => {
+  const unpaid = await order();
+  const [{ id }] = await rows<{ id: string }>("insert into notification_jobs(order_id,kind) values($1,'staff_email_new') returning id", [unpaid.order_id]);
+  expect(await rows('select claim_order_email($1) job', [id])).toEqual([{ job: null }]);
+  await settle(unpaid);
+  expect(await rows('select claim_order_email($1) job', [id])).toEqual([{ job: null }]);
+  const claimed = await rows<{ job: { kind: string } }>("select claim_order_email(id) job from notification_jobs where order_id=$1 and kind='admin_email'", [unpaid.order_id]);
+  expect(claimed[0].job.kind).toBe('admin_email');
 });
 
 it('never lets staff, a buyer without consent or the public move an unpaid order forward', async () => {
@@ -137,7 +143,7 @@ it('never lets staff, a buyer without consent or the public move an unpaid order
   const quiet = silent.rows[0].payment as { id: string; order_id: string; amount_xof: number };
   await db.query('update payment_attempts set provider_id=77 where id=$1', [quiet.id]);
   await settle(quiet);
-  expect(await kinds(quiet.order_id)).toEqual(['admin_email', 'staff_email_new']);
+  expect(await kinds(quiet.order_id)).toEqual(['admin_email']);
 });
 
 it('converges on the same delivery state with duplicated and out-of-order Resend events', async () => {
@@ -194,7 +200,7 @@ it('exposes the order list and histories to staff only', async () => {
   const list = await rows<Row>("select * from admin_order_list where search_text like '%awa fixture%' order by created_at");
   expect(list.length).toBeGreaterThan(5);
   const multi = list.find(row => row.item_count === 3)!;
-  expect(multi).toMatchObject({ client_name: 'Awa Fixture', client_phone: '2290100000000', total: '51000.00', payment_state: 'pending_payment', notification_total: 1, notification_waiting: 1 });
+  expect(multi).toMatchObject({ client_name: 'Awa Fixture', client_phone: '2290100000000', total: '51000.00', payment_state: 'pending_payment', notification_total: 0, notification_waiting: 0 });
   expect(list.some(row => row.notification_failed === 1)).toBe(true);
   expect((await rows(`select id from admin_order_list where search_text like '%${String(multi.order_number).toLowerCase()}%'`)).length).toBe(1);
   await asServer();
