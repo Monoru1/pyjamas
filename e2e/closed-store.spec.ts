@@ -34,6 +34,15 @@ test('closed checkout keeps a synthetic basket, its amounts and the tracking lin
   expect(errors).toEqual([]);
 });
 
+test('checkout stays closed on the server even for a direct request', async ({ request }) => {
+  const response = await request.post('/api/payments/checkout', {
+    data: {},
+    maxRedirects: 0,
+  });
+  expect(response.status()).toBe(503);
+  expect(await response.json()).toEqual({ error: expect.stringContaining('Paiement indisponible') });
+});
+
 test('an anonymous visitor is redirected and the local admin login renders', async ({ page, request }) => {
   const localOrigin = new URL(test.info().project.use.baseURL ?? 'http://127.0.0.1:3000').origin;
   // Inspect the redirect without following it: a production redirect must never satisfy the local UI smoke test.
