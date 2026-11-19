@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { useCartStore } from '@/features/cart/cart.store';
 import { useCheckoutCustomerStore } from '@/features/checkout/customer-form.store';
 import type { ShopQuote } from '@/lib/payments/quotes';
+import { isFedaPayCheckoutUrl } from '@/lib/payments/checkout-hosts';
 
 export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'live';shipping:number;liveTest?:boolean}) {
   const lines=useCartStore(s=>s.lines);const refreshPrices=useCartStore(s=>s.refreshPrices);
@@ -34,7 +35,7 @@ export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'l
       if(data.reference){sessionStorage.setItem('mdp-payment-reference',data.reference);sessionStorage.setItem('mdp-shop-payment',JSON.stringify({fingerprint,key,reference:data.reference}));}
       if(!response.ok||!data.url){if(data.quote&&data.quoteToken){refreshPrices(data.quote.items);setReview({quote:data.quote,token:data.quoteToken,basket:basketKey});}throw new Error(data.error||'Paiement indisponible.');}
       const url=new URL(data.url);
-      if(data.internal?(url.origin!==window.location.origin||url.pathname!=='/paiement'):(url.protocol!=='https:'||url.hostname!==(mode==='live'?'checkout.fedapay.com':'sandbox-checkout.fedapay.com')||url.username||url.password||url.port))throw new Error('Lien de paiement invalide.');
+      if(data.internal?(url.origin!==window.location.origin||url.pathname!=='/paiement'):!isFedaPayCheckoutUrl(url,mode))throw new Error('Lien de paiement invalide.');
       window.location.assign(url.href);
     }catch(cause){setError(cause instanceof Error?cause.message:'Connexion interrompue.');}
     finally{locked.current=false;setBusy(false);}

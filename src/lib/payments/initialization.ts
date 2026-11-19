@@ -1,12 +1,12 @@
 import { paymentDatabase, resolvedTransaction, reconcilePayment } from './server';
-import { checkoutTokenFromResponse, paymentConfiguration, providerRequest, safeCheckoutUrl, validateTransaction, TransactionMismatchError, ProviderHttpError } from './fedapay';
+import { checkoutTokenFromResponse, paymentConfiguration, providerRequest, safeCheckoutUrl, validateTransaction, TransactionMismatchError, ProviderHttpError, CheckoutHostError } from './fedapay';
 
 export type StoredCheckout = { id: string; order_id: string; public_token: string; amount_xof: number; provider_id: number; checkout_url: string | null; status: string };
 export class CheckoutInitializationError extends Error {
   readonly code: string;
   constructor(readonly stage: string, cause: unknown) {
     super('Initialisation du lien de paiement différée.'); this.name = 'CheckoutInitializationError';
-    const reason = cause instanceof TransactionMismatchError ? cause.field : cause instanceof ProviderHttpError ? `http_${cause.status}` : cause instanceof Error && ['TimeoutError', 'AbortError'].includes(cause.name) ? 'timeout' : 'unavailable';
+    const reason = cause instanceof TransactionMismatchError ? cause.field : cause instanceof CheckoutHostError ? `host_${cause.host}` : cause instanceof ProviderHttpError ? `http_${cause.status}` : cause instanceof Error && ['TimeoutError', 'AbortError'].includes(cause.name) ? 'timeout' : 'unavailable';
     this.code = `initialization_failed:${stage}:${reason}`;
   }
 }
