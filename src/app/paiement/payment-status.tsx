@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { orderWhatsAppUrl } from '@/lib/orders/whatsapp';
 const labels: Record<string,string> = { pending:'En attente de confirmation', paid:'Paiement confirmé', failed:'Paiement refusé — nouvelle tentative possible chez FedaPay', cancelled:'Tentative annulée — nouvelle tentative possible chez FedaPay', expired:'Paiement expiré', refunded:'Paiement remboursé', partially_refunded:'Paiement partiellement remboursé' };
-export function PaymentStatus({ reference }: { reference: string }) {
-  const [result, setResult] = useState<{status:string;mode?:string;liveTest?:boolean;order?:{order_number:string;needs_attention:boolean}}>({ status:'pending' });
+const fulfilment: Record<string, string> = { pending: 'Commande en attente de prise en charge', confirmed: 'Commande prise en charge', preparing: 'Commande en préparation', ready: 'Commande prête', delivered: 'Commande livrée', cancelled: 'Commande annulée' };
+export function PaymentStatus({ reference, whatsappPhone = '' }: { reference: string; whatsappPhone?: string }) {
+  const [result, setResult] = useState<{status:string;mode?:string;liveTest?:boolean;order?:{order_number:string;needs_attention:boolean;status?:string}}>({ status:'pending' });
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -26,15 +28,21 @@ export function PaymentStatus({ reference }: { reference: string }) {
   return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status">
     {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
     {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
-    <h2 className="text-2xl">{labels[result.status] || labels.pending}</h2>
+    <h2 className="text-2xl">{labels[result.status] || labels.pending}{result.status === 'paid' && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
     {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
     <p className="mt-4 leading-7">Seule la vérification serveur auprès de FedaPay confirme le paiement. Le retour du navigateur ne vaut pas confirmation.</p>
     {result.order?.needs_attention && <p className="mt-3">La boutique doit vérifier votre commande avant son traitement.</p>}
     {error && <p className="mt-4 text-red-800" role="alert">{error}</p>}
     <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-5 min-h-11 underline">Actualiser le suivi</button>
     <p className="mt-3 text-sm">Le panier actuel reste disponible. Un changement de panier ne modifie pas les articles de cette commande.</p>
+    {result.status === 'paid' && result.order?.order_number && <WhatsAppContact url={orderWhatsAppUrl(whatsappPhone, result.order.order_number)} />}
     {result.status === 'paid' && result.order?.order_number && <OrderContact reference={reference || (typeof window !== 'undefined' ? sessionStorage.getItem('mdp-payment-reference') || '' : '')} orderNumber={result.order.order_number} />}
   </div>;
+}
+
+function WhatsAppContact({ url }: { url: string | null }) {
+  if (!url) return null;
+  return <a href={url} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#1f7a4d] px-6 text-sm font-bold text-white">Contacter la boutique sur WhatsApp</a>;
 }
 
 /** Order-scoped message to the shop. Confirmation only after the server reports a real send. */

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { PaymentStatus } from './payment-status';
+import { getStoreSettings } from '@/lib/repositories/settings.repository';
 
 export const metadata = {
   title: 'Suivi de paiement · La Maison des Pyjamas',
@@ -9,6 +10,7 @@ export const metadata = {
 
 export default async function PaymentPage({ searchParams }: { searchParams: Promise<{ reference?: string }> }) {
   const { reference = '' } = await searchParams;
+  const settings = await getStoreSettings().catch(() => null);
   return (
     <main className="relative min-h-[75vh] overflow-hidden bg-background px-4 py-12 text-foreground sm:px-6 sm:py-20">
       <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-0 h-72 w-72 rounded-full bg-brand-accent/20 blur-3xl" />
@@ -23,7 +25,7 @@ export default async function PaymentPage({ searchParams }: { searchParams: Prom
             Nous vérifions directement votre règlement auprès de FedaPay. Conservez cette page jusqu’à la confirmation.
           </p>
         </header>
-        <PaymentStatus reference={reference} />
+        <PaymentStatus reference={reference} whatsappPhone={settings?.whatsappPhone ?? ''} />
         <section className="mt-6 rounded-2xl border border-brand-primary/15 bg-white/80 p-5 sm:p-7">
           <h2 className="text-lg font-semibold">Quelques conseils utiles</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">

@@ -1,10 +1,10 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
-import { inspectLiveProvider, liveInspectionConfiguration, paymentConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
+import { inspectLiveProvider, liveInspectionConfiguration, existingPaymentsConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
 
 export function paymentDatabase(readOnlyLive = false) {
   if (readOnlyLive) liveInspectionConfiguration();
-  else paymentConfiguration();
+  else existingPaymentsConfiguration();
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
@@ -46,7 +46,7 @@ export async function readProviderInitializationLogs(providerId: number, readOnl
 
 export async function reconcilePayment(id: string, eventId: string, candidateProviderId?: number) {
   const db = paymentDatabase();
-  const config = paymentConfiguration();
+  const config = existingPaymentsConfiguration();
   const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id').eq('id', id).eq('environment', config.environment).single();
   if (error || !payment?.order_id || (!payment.provider_id && !candidateProviderId)) throw new Error('Paiement introuvable.');
   if (config.liveTest && (Number(payment.amount_xof) > config.testCeiling! || payment.merchant_account_id !== config.accountId)) throw new Error('Recette hors autorisation.');
