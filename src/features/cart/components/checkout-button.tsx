@@ -4,6 +4,7 @@ import { useCartStore } from '@/features/cart/cart.store';
 import { useCheckoutCustomerStore } from '@/features/checkout/customer-form.store';
 import type { ShopQuote } from '@/lib/payments/quotes';
 import { isFedaPayCheckoutUrl } from '@/lib/payments/checkout-hosts';
+import { internalTrackingUrl } from '@/lib/payments/tracking-url';
 
 export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'live';shipping:number;liveTest?:boolean}) {
   const lines=useCartStore(s=>s.lines);const refreshPrices=useCartStore(s=>s.refreshPrices);
@@ -37,8 +38,9 @@ export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'l
       if(data.reference){sessionStorage.setItem('mdp-payment-reference',data.reference);sessionStorage.setItem('mdp-shop-payment',JSON.stringify({fingerprint,key,reference:data.reference}));}
       if(data.terminal===true)sessionStorage.removeItem('mdp-shop-payment');
       if(!response.ok||!data.url){if(data.quote&&data.quoteToken){refreshPrices(data.quote.items);setReview({quote:data.quote,token:data.quoteToken,basket:basketKey});}throw new Error(data.error||'Paiement indisponible.');}
+      if(data.internal){const tracking=internalTrackingUrl(data.url,window.location.origin);if(!tracking)throw new Error('Lien de paiement invalide.');window.location.assign(tracking);return;}
       const url=new URL(data.url);
-      if(data.internal?(url.origin!==window.location.origin||url.pathname!=='/paiement'):!isFedaPayCheckoutUrl(url,mode))throw new Error('Lien de paiement invalide.');
+      if(!isFedaPayCheckoutUrl(url,mode))throw new Error('Lien de paiement invalide.');
       window.location.assign(url.href);
     }catch(cause){setError(cause instanceof Error?cause.message:'Connexion interrompue.');}
     finally{locked.current=false;setBusy(false);}

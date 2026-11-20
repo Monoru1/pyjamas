@@ -179,3 +179,17 @@ it('wording: only a server-confirmed `paid` ever says the payment is confirmed, 
   expect(describePayment({ status: 'pending' }, '', true).title).toBe('Paiement non finalisé');
   expect(describePayment({ status: 'paid' }, 'canceled', true).title).toBe('Paiement confirmé');
 });
+
+it('keeps checking refused/cancelled attempts (a retry may still be confirmed), stops only on settled states', async () => {
+  const { AWAITING_PROVIDER } = await import('@/app/paiement/payment-status');
+  for (const state of ['pending', 'failed', 'cancelled']) expect(AWAITING_PROVIDER).toContain(state);
+  for (const state of ['paid', 'expired', 'refunded', 'partially_refunded']) expect(AWAITING_PROVIDER).not.toContain(state);
+});
+
+it('re-anchors internal tracking links on the storefront in use, and only /paiement', async () => {
+  const { internalTrackingUrl } = await import('./tracking-url');
+  const legacy = 'https://pyjamas25.netlify.app';
+  expect(internalTrackingUrl('https://www.boutique-exemple.test/paiement?reference=abc', legacy)).toBe(`${legacy}/paiement?reference=abc`);
+  expect(internalTrackingUrl(`${legacy}/paiement?reference=abc`, legacy)).toBe(`${legacy}/paiement?reference=abc`);
+  for (const bad of ['https://evil.test/admin', `${legacy}/admin`, 'javascript:alert(1)//x/paiement', 'http://evil.test/paiement']) expect(internalTrackingUrl(bad, legacy)).toBeNull();
+});

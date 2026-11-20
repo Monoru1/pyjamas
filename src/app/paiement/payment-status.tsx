@@ -10,6 +10,12 @@ const POLL_MS = 5000;
 const POLL_BUDGET = 24; // About two minutes of automatic checks, then the page says so.
 const RECHECK_EVERY = 6; // Ask the server to re-read FedaPay about every 30 s (server-throttled).
 
+/**
+ * States in which FedaPay may still confirm a payment for this order (the customer can retry
+ * the same transaction after a refusal or cancellation), so the page keeps checking.
+ */
+export const AWAITING_PROVIDER = ['pending', 'failed', 'cancelled'];
+
 const fulfilment: Record<string, string> = { pending: 'Commande en attente de prise en charge', confirmed: 'Commande prise en charge', preparing: 'Commande en préparation', ready: 'Commande prête', delivered: 'Commande livrée', cancelled: 'Commande annulée' };
 const dateTime = (iso?: string) => { if (!iso) return ''; const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }) : ''; };
 
@@ -57,7 +63,7 @@ export function PaymentStatus({ reference, whatsappPhone = '', returnHint = '' }
         const saved = JSON.parse(sessionStorage.getItem('mdp-shop-payment') || 'null');
         // Server-confirmed terminal states only: paid ends the attempt, expired allows a NEW order.
         if (['paid', 'expired'].includes(data.status) && saved?.reference === token) sessionStorage.removeItem('mdp-shop-payment');
-        if (data.status !== 'pending') return; // Every other state needs no automatic wait.
+        if (!AWAITING_PROVIDER.includes(data.status)) return; // Paid, expired, refunded: nothing left to wait for.
         if (++attempts < POLL_BUDGET) timer = setTimeout(refresh, POLL_MS); else setStalled(true);
       } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Vérification indisponible.'); }
     }
