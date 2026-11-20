@@ -125,6 +125,15 @@ it('requires staff for read-only provider inspection and reports comparisons wit
  expect(JSON.stringify(result)).not.toContain('private@example.invalid');expect(JSON.stringify(result)).not.toContain('private-provider-token');
  expect(mocks.provider).not.toHaveBeenCalled();expect(mocks.db.rpc).not.toHaveBeenCalled();
 });
+it('keeps staff read-only inspection of existing payments available while new sales are closed',async()=>{
+ // Production Live with public sales suspended, exactly as during key rotation.
+ for(const [k,v] of Object.entries({CONTEXT:'production',PAYMENT_BUILD_CONTEXT:'production',FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',FEDAPAY_ACCOUNT_ID:'101915',PAYMENT_SITE_URL:'https://shop.example.test',PAYMENT_CHECKOUT_ENABLED:'false',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_ADMIN_TEST_ENABLED:'false',PAYMENT_LIVE_TEST_ENABLED:'false'}))vi.stubEnv(k,v);
+ const req=new Request(`https://shop.example.test/api/payments/inspect?payment=${payment.id}`);
+ mocks.db.from.mockImplementation(()=>chain({...payment,provider_id:42,purpose:'shop',merchant_account_id:42}));
+ const response=await inspect(req);expect(response.status).toBe(200);
+ expect(mocks.resolved).toHaveBeenCalledWith(42,false);expect(mocks.provider).not.toHaveBeenCalled();expect(mocks.db.rpc).not.toHaveBeenCalled();
+ vi.stubEnv('FEDAPAY_ENABLED','false');expect((await inspect(req)).status).toBe(503);
+});
 it('reconfirms and resumes the same reserved last unit after refresh without rereading available stock or creating a charge',async()=>{
  const parsed=checkoutSchema.parse(input);
  const hash=createHash('sha256').update(JSON.stringify({customer:parsed.customer,lines:parsed.lines})).digest('hex');
