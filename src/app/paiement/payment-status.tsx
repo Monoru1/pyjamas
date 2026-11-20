@@ -77,7 +77,7 @@ export function PaymentStatus({ reference, whatsappPhone = '', returnHint = '' }
   return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status" aria-live="polite">
     {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
     {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
-    <h2 className="text-2xl">{loaded ? view.title : 'Vérification en cours…'}{paid && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
+    <h2 className="text-2xl">{loaded ? view.title : error ? 'Suivi indisponible' : 'Vérification en cours…'}{paid && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
     {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
     {loaded && <p className="mt-4 leading-7">{view.body}</p>}
     <p className="mt-4 text-sm leading-6">Seule la vérification serveur auprès de FedaPay confirme un paiement. Le retour du navigateur ne vaut ni paiement ni annulation.</p>
