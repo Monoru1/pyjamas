@@ -193,3 +193,20 @@ it('re-anchors internal tracking links on the storefront in use, and only /paiem
   expect(internalTrackingUrl(`${legacy}/paiement?reference=abc`, legacy)).toBe(`${legacy}/paiement?reference=abc`);
   for (const bad of ['https://evil.test/admin', `${legacy}/admin`, 'javascript:alert(1)//x/paiement', 'http://evil.test/paiement']) expect(internalTrackingUrl(bad, legacy)).toBeNull();
 });
+
+it('with a custom domain, FedaPay returns the customer to the storefront where the cart lives', async () => {
+  vi.stubEnv('SITE_CUSTOM_DOMAIN', 'www.boutique-exemple.test');
+  const custom = 'https://www.boutique-exemple.test';
+  const priced = await (await quote(new Request(origin + '/api/payments/quote', { method: 'POST', headers: { origin, 'content-type': 'application/json' }, body: JSON.stringify({ lines }) }))).json();
+  // Started on the old Netlify address: callback stays there.
+  expect((await checkout(post('/api/payments/checkout', { idempotencyKey: randomUUID(), quoteToken: priced.quoteToken, customer, lines }))).status).toBe(200);
+  expect(String(provider.callback_url).startsWith(`${origin}/paiement?reference=`)).toBe(true);
+  // Started on the new domain: callback on the new domain.
+  await db.exec('truncate payment_events,inventory_movements,payment_attempts,order_items,order_status_history,orders,customers,order_request_limits cascade');
+  const fromCustom = new Request(custom + '/api/payments/checkout', { method: 'POST', headers: { origin: custom, 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomUUID(), quoteToken: priced.quoteToken, customer, lines }) });
+  expect((await checkout(fromCustom)).status).toBe(200);
+  expect(String(provider.callback_url).startsWith(`${custom}/paiement?reference=`)).toBe(true);
+  // Any other origin is refused before anything is created.
+  const hostile = new Request(custom + '/api/payments/checkout', { method: 'POST', headers: { origin: 'https://evil.test', 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomUUID(), quoteToken: priced.quoteToken, customer, lines }) });
+  expect((await checkout(hostile)).status).toBe(403);
+});

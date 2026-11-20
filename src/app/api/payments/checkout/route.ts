@@ -16,7 +16,10 @@ export async function POST(request: Request) {
   try {
     requireJsonRequest(request);
     const config = checkoutConfiguration();
-    requireBrowserOrigin(request, allowedBrowserOrigin(request, config.origin));
+    // The validated storefront the customer is on: FedaPay returns them THERE, where their
+    // cart and resume key live (origin-scoped storage), even during a domain transition.
+    const storefront = allowedBrowserOrigin(request, config.origin);
+    requireBrowserOrigin(request, storefront);
     const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
     if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });
     let staffId: string | undefined;
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
     paymentId = payment.id; reference = payment.public_token;
     if(Number(payment.amount_xof)!==Number(quote.amount_xof))return Response.json({error:'Une commande antérieure est déjà figée à un autre montant. Consultez son suivi avant de recommencer.',reference},{status:409});
     const referenceUrl = `/paiement?reference=${payment.public_token}`;
-    if (payment.status === 'paid') return Response.json({ url: `${config.origin}${referenceUrl}`, reference: payment.public_token, internal: true });
+    if (payment.status === 'paid') return Response.json({ url: `${storefront}${referenceUrl}`, reference: payment.public_token, internal: true });
     // Terminal attempt: the browser must drop its idempotency key so that a NEW order can be made.
     if (['expired', 'refunded', 'partially_refunded'].includes(payment.status)) return Response.json({ error: payment.status === 'expired' ? 'Ce paiement a expiré sans débit confirmé. Cliquez à nouveau pour créer une nouvelle commande.' : 'Cette demande est terminée. Consultez son suivi.', reference: payment.public_token, terminal: true }, { status: 409 });
     let providerId = payment.provider_id;
@@ -93,7 +96,7 @@ export async function POST(request: Request) {
       const transaction = transactionFromResponse(await providerRequest('/transactions', { method: 'POST', body: JSON.stringify({
         description: `${config.environment === 'sandbox' ? 'TEST · ' : ''}La Maison des Pyjamas · ${payment.id}`,
         amount: Number(payment.amount_xof), currency: { iso: 'XOF' },
-        callback_url: `${config.origin}${referenceUrl}`,
+        callback_url: `${storefront}${referenceUrl}`,
         merchant_reference: payment.id,
         custom_metadata: { payment_id: payment.id, purpose: 'shop', order_id: payment.order_id },
         customer: { firstname: parts[0], lastname: parts.slice(1).join(' ') || parts[0], email: input.customer.email, phone_number: { number: `+${input.customer.phone}`, country: 'bj' } },
