@@ -65,3 +65,27 @@ it('treats an object whose real owner is lost by a --no-owner restore as a genui
  const restoredWithOwner=schemaManifest(pre+tableWithOwner+aclWithOwnerPrivilegesFrozen+end);
  expect(schemaDifferences(production,restoredWithOwner)).toHaveLength(0);
 });
+
+// Terrain 14 (suite) — the first fix stopped at the auth-schema/owner issue; 6 DEFAULT ACL
+// differences remained in production (public schema, roles postgres/supabase_admin). Proven
+// on real PostgreSQL 17: pg_dump prints one ALTER DEFAULT PRIVILEGES line per distinct
+// grantee, ordered by grantee OID. Logical restore never preserves role OIDs — roles are
+// recreated fresh, in whatever order the restore happens to create them — so the exact same
+// final grants can print in a different line order after any restore, with no owner, grantee
+// or privilege ever actually differing. See docs/TERRAIN14_BACKUP_ACL_OWNERSHIP.md.
+it('treats a DEFAULT ACL statement-order swap from grantee recreation as no difference, but a real grant change as one',()=>{
+ const header='-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres';
+ const defacl=lines=>`--\n${header}\n--\n\n${lines.join('\n')}\n\n--\n`;
+ const grantAnon='ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO anon;';
+ const grantAuthenticated='ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO authenticated;';
+ const production=schemaManifest(pre+a+defacl([grantAnon,grantAuthenticated])+end);
+ // Same two statements, reversed — exactly what a restore produces when the disposable
+ // cluster happens to (re)create "authenticated" before "anon".
+ const reordered=schemaManifest(pre+a+defacl([grantAuthenticated,grantAnon])+end);
+ expect(schemaDifferences(production,reordered)).toHaveLength(0);
+ // A genuinely missing grantee, or a widened privilege, must still be caught.
+ const missingGrantee=schemaManifest(pre+a+defacl([grantAnon])+end);
+ expect(schemaDifferences(production,missingGrantee)).toHaveLength(1);
+ const widenedPrivilege=schemaManifest(pre+a+defacl([grantAnon,grantAuthenticated.replace('SELECT','SELECT,INSERT')])+end);
+ expect(schemaDifferences(production,widenedPrivilege)).toHaveLength(1);
+});

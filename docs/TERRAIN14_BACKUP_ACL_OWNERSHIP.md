@@ -1,6 +1,8 @@
-# Terrain 14 — Les 36 écarts de sauvegarde (run #8) : propriétaire perdu par `--no-owner`
+# Terrain 14 — Les écarts de sauvegarde : propriétaire perdu par `--no-owner`, puis ordre des lignes DEFAULT ACL
 
-## Constat initial
+> **Mise à jour (run production #44744772530)** : le correctif de la Partie 1 a bien éliminé les 30 écarts `auth.*`, mais **pas** les 6 `DEFAULT PRIVILEGES` de `public` — une cause distincte, documentée en Partie 2. La phrase de la Partie 1 affirmant que les blocs `DEFAULT ACL` n'ont « jamais de propriétaire propre, avec ou sans `--no-owner` » était inexacte : sans `--no-owner`, `pg_dump` affiche bien le véritable rôle grantor comme `Owner:`. Conservée ci-dessous telle qu'écrite à l'époque, par souci d'historique ; voir la Partie 2 pour le correctif exact.
+
+## Partie 1 — Constat initial
 
 Le run GitHub Actions #44736097374 (backup #8) a échoué : 691 objets des deux côtés, mais 36 blocs de schéma différaient par empreinte (`schema-sha256`). L'artefact `schema-comparison.json` montrait que les 36 différences portaient exclusivement sur des blocs `Type: ACL` ou `Type: DEFAULT ACL` — 30 dans le schéma `auth`, 6 `DEFAULT PRIVILEGES` pour les rôles `postgres` et `supabase_admin` dans `public`. Aucune table, fonction, contrainte, index, politique RLS ou donnée ne différait : les empreintes de données (`production.fingerprint` / `restored.fingerprint`), les comptages (`table-counts`) et les hachages de lignes (`table-hashes`) des deux côtés étaient identiques à l'octet près.
 
@@ -39,6 +41,43 @@ Aucune définition, aucun droit significatif, aucune politique RLS, aucune donn�
 - CI `release-rehearsal` (PostgreSQL 17 réel) : scénario reproduit en permanence dans `simulate-production.sh`, drill vert après correctif.
 - Avant/après reproduit manuellement sur PostgreSQL 17.12 local, avec et sans le correctif, sur le script final committé (pas une approximation) : échec identique au run #8 sans le correctif, zéro écart avec.
 
-## Hors périmètre, non modifié
+## Hors périmètre, non modifié (Partie 1)
 
 Aucune clé, aucun secret, aucune donnée commerciale, aucun prix, aucun stock. `PAYMENT_CHECKOUT_ENABLED=false` et `FEDAPAY_LIVE_APPROVED=false` inchangés. Aucune désactivation de clé Legacy Supabase n'est effectuée par ce correctif : elle reste subordonnée à un nouveau backup complet réussi (voir le corps du rapport de mission).
+
+## Partie 2 — Les 6 écarts restants (run production #44744772530) : ordre des lignes `DEFAULT ACL`, pas leur contenu
+
+### Constat
+
+Le premier backup-drill réel déclenché depuis `main` après la Partie 1 (run [#44744772530](https://github.com/Monoru1/pyjamas/actions/runs/44744772530)) a échoué : 691 objets des deux côtés, mais 6 différences — exactement les 6 `DEFAULT PRIVILEGES` du schéma `public` déjà repérées dans le constat initial (`FUNCTIONS`/`SEQUENCES`/`TABLES` × rôles `postgres`/`supabase_admin`). Les 30 écarts `auth.*` de la Partie 1 ont bien disparu ; seuls ces 6 ont survécu au premier correctif, preuve que leur cause est différente de l'écart de propriétaire d'objet.
+
+### Cause exacte, démontrée
+
+Sans `--no-owner`, l'en-tête d'un bloc `DEFAULT ACL` affiche réellement le rôle grantor (`Owner: postgres`, `Owner: supabase_admin` — vérifié directement avec un `pg_dump` 17.12 réel, voir ci-dessous). Chaque bloc peut contenir **plusieurs lignes** `ALTER DEFAULT PRIVILEGES ... GRANT/REVOKE ...`, une par bénéficiaire distinct, dans l'ordre où `pg_dump` parcourt le tableau `aclitem[]` stocké — un ordre déterminé par l'**OID du rôle bénéficiaire**.
+
+Une restauration logique ne préserve jamais les OID des rôles : `backup-drill.sh` recrée chaque rôle par son nom (`create role "$role"` pour chaque ligne de `select rolname from pg_roles ...`, sans `ORDER BY`), et PostgreSQL attribue les OID de façon strictement séquentielle à la création. Si l'ordre relatif de (re)création des rôles bénéficiaires sur la cible jetable ne reproduit pas exactement celui de production — plausible sur un catalogue de production qui a des années d'historique (`ALTER ROLE`, VACUUM, réorganisations physiques de `pg_roles`) — alors **les mêmes droits, accordés aux mêmes rôles**, s'impriment dans un ordre de lignes différent, sans qu'aucun droit n'ait changé.
+
+### Preuve reproduite
+
+Démontré sur PostgreSQL 17.12 réel, sans approximation :
+
+1. `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO dap3_anon, dap3_auth;` sur une base « production », avec `dap3_anon` (OID inférieur) créé avant `dap3_auth`. `pg_dump --schema-only` imprime alors la ligne pour `dap3_anon` avant celle pour `dap3_auth`.
+2. Dump complet (`pg_dump --format=custom`), puis recréation des deux mêmes rôles dans l'**ordre inverse** (`dap3_auth` d'abord, obtenant cette fois l'OID inférieur) avant `pg_restore` sur une base « restaurée » neuve.
+3. Re-dump de la base restaurée : les deux lignes `ALTER DEFAULT PRIVILEGES` sont **permutées** par rapport à la production — seul le `diff` texte change, aucune donnée ni aucun droit.
+4. Avec le correctif de `schema-manifest.mjs` (tri canonique des lignes d'un même bloc `DEFAULT ACL` avant hachage) : `schemaDifferences()` ne signale plus aucun écart entre les deux dumps. Un test direct confirme aussi qu'un bénéficiaire réellement manquant, ou un droit réellement élargi, reste détecté (voir `schema-manifest.test.mjs`).
+
+### Correctif
+
+`scripts/release/schema-manifest.mjs` : au sein d'un même bloc `DEFAULT ACL` uniquement (jamais pour un bloc `ACL` ordinaire — l'ordre y reste significatif, inchangé), les lignes individuelles `ALTER DEFAULT PRIVILEGES ...` sont triées avant le hachage. Un ajout, une suppression ou une modification de droit change toujours l'ensemble des lignes triées et reste donc détecté ; seul l'ordre, qui ne reflète qu'un artefact d'OID de restauration, cesse d'être significatif.
+
+`scripts/release/simulate-production.sh` : les `ALTER DEFAULT PRIVILEGES` de démonstration accordent désormais à **plusieurs** rôles (`anon, authenticated, service_role`) en une seule instruction au lieu d'un seul, pour que le job CI `release-rehearsal` exerce au moins la forme multi-bénéficiaire de ces blocs (la non-déterminisme exact observé en production tient à l'historique physique du catalogue `pg_roles`, difficile à forcer de façon fiable sur un cluster jetable tout neuf ; la preuve ci-dessus, avec un ordre de création inversé imposé explicitement, est la démonstration directe et contrôlée du mécanisme).
+
+### Validation
+
+- `schema-manifest.test.mjs` : nouveau test dédié — permutation de lignes `DEFAULT ACL` sans changement de contenu → 0 écart ; bénéficiaire manquant → 1 écart ; droit élargi → 1 écart. Suite complète toujours verte.
+- Reproduction directe sur PostgreSQL 17.12 (ordre de création de rôles inversé explicitement) : écart avant correctif, 0 écart après, sur le même module `schema-manifest.mjs`.
+- `backup-drill.sh` + `simulate-production.sh` (scénario multi-bénéficiaire) exécutés localement de bout en bout sur PostgreSQL 17 réel : `0 différence(s)`, `RÉUSSI`.
+
+### Hors périmètre, non modifié (Partie 2)
+
+Aucune clé, aucun secret, aucune donnée commerciale, aucun prix, aucun stock. Aucun contrôle d'intégrité n'est affaibli : la comparaison reste sensible à tout changement réel de droit, de bénéficiaire ou de propriétaire ; seul un artefact d'ordre d'impression sans aucune signification sémantique cesse d'être signalé. Aucune désactivation de clé Legacy Supabase n'est effectuée par ce correctif.

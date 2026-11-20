@@ -9,15 +9,32 @@ export function schemaManifest(sql) {
   const blocks = []; let name = 'preamble'; let lines = [];
   let dollar = null, quote = null, comment = 0, escapeSingle = false, standardStrings = true;
   const flush = () => {
-    const body = lines.join('\n').trim(); let object = name;
-    // DEFAULT ACL entries have no owner of their own (pg_dump always prints "Owner: -"
-    // for them, with or without --no-owner), so DEFAULT ACL blocks for different grantor
-    // roles share the same header, while their SQL still names the role. Preserve and
-    // identify each one; never discard a duplicate.
+    let body = lines.join('\n').trim(); let object = name;
+    // Without --no-owner, pg_dump DOES print the real grantor as "Owner:" for a DEFAULT ACL
+    // block, so two blocks for the same schema/objtype but different grantor roles normally
+    // get distinct headers already. Keep the explicit "Default ACL role:" tag regardless (it
+    // is free, and it still disambiguates the rare case of a dump taken with --no-owner, or
+    // any future pg_dump that goes back to printing "Owner: -" for these).
     if (body && name.includes('; Type: DEFAULT ACL;')) {
       const roles = [...body.matchAll(/^ALTER DEFAULT PRIVILEGES FOR ROLE ("(?:[^"]|"")*"|[^\s;]+)/gm)].map(m=>m[1]);
       if (!roles.length || new Set(roles).size !== 1) throw new Error('Ambiguous default ACL role: schema comparison refused');
       object += `; Default ACL role: ${roles[0]}`;
+      // pg_dump prints one "ALTER DEFAULT PRIVILEGES ... GRANT/REVOKE ..." line per distinct
+      // grantee, in the order it iterates the stored aclitem array — which follows grantee
+      // OID. Logical restore never preserves role OIDs (roles are recreated fresh, in
+      // whatever order the restore happens to create them), so the exact same final grants
+      // can legitimately print in a different line order after any restore, production
+      // disaster-recovery restores included, with no owner, grantee or privilege ever
+      // actually differing. Proven on real PostgreSQL 17: granting the same two roles in one
+      // statement, then recreating those roles in reversed order before restoring, swaps the
+      // printed line order with zero content change. Canonicalize by sorting the individual
+      // statement lines so the comparison is sensitive to WHAT is granted, never to the
+      // incidental order grantee roles were (re)created in — a genuine difference in content
+      // (an added, removed or changed grant) still changes the sorted text, since it changes
+      // the set of lines being sorted, not just their order.
+      const [header, ...tail] = body.split('\n');
+      const statements = tail.filter(l => l.length > 0).sort();
+      body = [header, '', ...statements].join('\n');
     }
     if (body) blocks.push({ object, sha256: hash(body) }); lines = [];
   };
