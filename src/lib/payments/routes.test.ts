@@ -87,6 +87,19 @@ it('invalid webhook never reaches reconciliation, valid replay uses the same eve
  expect((await webhook(signedEvent())).status).toBe(200);expect((await webhook(signedEvent())).status).toBe(200);
  expect(mocks.reconcile.mock.calls[0]).toEqual(mocks.reconcile.mock.calls[1]);
 });
+it('acknowledges signed events for transactions from other FedaPay channels without touching any payment',async()=>{
+ const sign=(entity:object)=>{const body=JSON.stringify({name:'transaction.created',object:'transaction',entity});const t=Math.floor(Date.now()/1000);
+  return new Request('https://preview.example.test/api/payments/webhook',{method:'POST',headers:{'content-type':'application/json','x-fedapay-signature':`t=${t},s=${createHmac('sha256','wh_fixture').update(`${t}.${body}`).digest('hex')}`},body});};
+ mocks.db.from.mockImplementation(()=>chain(null));
+ // Tap & Go in-store payment: unknown here, no checkout metadata.
+ const foreign=await webhook(sign({id:114311824,description:'Tap & Go Payment',custom_metadata:null}));
+ expect(foreign.status).toBe(200);expect(await foreign.json()).toEqual({received:true,ignored:true});expect(mocks.reconcile).not.toHaveBeenCalled();
+ // Our own checkout overtaking provider-id persistence still reconciles through its metadata.
+ expect((await webhook(sign({id:43,custom_metadata:{payment_id:payment.id}}))).status).toBe(200);
+ expect(mocks.reconcile).toHaveBeenCalledWith(payment.id,expect.stringContaining('transaction.created:43'),43);
+ // Malformed metadata stays retryable rather than silently dropped.
+ expect((await webhook(sign({id:44,custom_metadata:{payment_id:'not-a-uuid'}}))).status).toBe(503);
+});
 it('provider lookup failure makes webhook retryable',async()=>{
  mocks.db.from.mockImplementation(()=>chain({id:payment.id}));mocks.reconcile.mockRejectedValueOnce(new Error('provider unavailable'));
  expect((await webhook(signedEvent())).status).toBe(503);
