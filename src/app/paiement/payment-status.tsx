@@ -34,7 +34,9 @@ export function describePayment(result: Tracking, hint: ReturnHint, stalled: boo
   // pending: FedaPay has not confirmed anything. It also stays pending after a cancelled checkout.
   if (hint === 'canceled' || hint === 'declined' || stalled) return {
     title: 'Paiement non finalisé',
-    body: `FedaPay n’a confirmé aucun débit pour cette commande. Si vous avez annulé ou fermé la page de paiement, rien n’a été encaissé. ${resume} Si vous avez pourtant validé un paiement, ne payez pas une seconde fois : la vérification continue automatiquement.`,
+    body: `FedaPay n’a confirmé aucun débit pour cette commande. Si vous avez annulé ou fermé la page de paiement, rien n’a été encaissé. ${resume} Si vous avez pourtant validé un paiement, ne payez pas une seconde fois : ${stalled
+      ? 'cette page ne se met plus à jour d’elle-même. La boutique continue de vérifier auprès de FedaPay ; touchez « Actualiser le suivi » dans quelques minutes pour voir le résultat.'
+      : 'cette page continue de vérifier automatiquement auprès de FedaPay.'}`,
     action: 'resume' as const,
   };
   return { title: 'Paiement en cours de vérification', body: hint === 'approved'

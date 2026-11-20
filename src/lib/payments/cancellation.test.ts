@@ -180,6 +180,10 @@ it('wording: only a server-confirmed `paid` ever says the payment is confirmed, 
   }
   expect(describePayment({ status: 'pending' }, 'approved', false).title).toBe('Paiement en cours de vérification');
   expect(describePayment({ status: 'pending' }, '', true).title).toBe('Paiement non finalisé');
+  // After the page's polling budget, it must not promise automatic updates of the page.
+  expect(describePayment({ status: 'pending' }, 'canceled', true).body).toContain('Actualiser le suivi');
+  expect(describePayment({ status: 'pending' }, 'canceled', true).body).not.toContain('continue de vérifier automatiquement');
+  expect(describePayment({ status: 'pending' }, 'canceled', false).body).toContain('continue de vérifier automatiquement');
   expect(describePayment({ status: 'paid' }, 'canceled', true).title).toBe('Paiement confirmé');
 });
 
