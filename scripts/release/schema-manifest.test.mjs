@@ -31,3 +31,12 @@ it('accepts standard strings ending in backslashes and E strings with escaped qu
  expect(()=>schemaManifest(pre+standard+end)).not.toThrow();
  expect(()=>schemaManifest(pre+escaped+end)).not.toThrow();
 });
+
+it('distinguishes DEFAULT ACL grantor roles hidden by --no-owner in real dump headers',()=>{
+ const acl=role=>`-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -\n--\n\nALTER DEFAULT PRIVILEGES FOR ROLE ${role} IN SCHEMA public GRANT SELECT ON TABLES TO service_role;\n\n--\n`;
+ const source=schemaManifest(pre+a+acl('postgres')+acl('supabase_admin')+end);
+ const restored=schemaManifest(pre+acl('supabase_admin')+a+acl('postgres')+end);
+ expect(source).toEqual(restored);expect(source.filter(x=>x.object.includes('Default ACL role:'))).toHaveLength(2);
+ expect(schemaDifferences(source,schemaManifest(pre+a+acl('postgres')+end))).toHaveLength(1);
+ expect(()=>schemaManifest(pre+acl('postgres')+acl('postgres')+end)).toThrow('Duplicate');
+});

@@ -8,7 +8,18 @@ const hash = text => createHash('sha256').update(text).digest('hex');
 export function schemaManifest(sql) {
   const blocks = []; let name = 'preamble'; let lines = [];
   let dollar = null, quote = null, comment = 0, escapeSingle = false, standardStrings = true;
-  const flush = () => { const body = lines.join('\n').trim(); if (body) blocks.push({ object: name, sha256: hash(body) }); lines = []; };
+  const flush = () => {
+    const body = lines.join('\n').trim(); let object = name;
+    // --no-owner hides owner names in pg_dump headers. DEFAULT ACL blocks for
+    // different grantor roles then share the same header, while their SQL still
+    // names the role. Preserve and identify each one; never discard a duplicate.
+    if (body && name.includes('; Type: DEFAULT ACL;')) {
+      const roles = [...body.matchAll(/^ALTER DEFAULT PRIVILEGES FOR ROLE ("(?:[^"]|"")*"|[^\s;]+)/gm)].map(m=>m[1]);
+      if (!roles.length || new Set(roles).size !== 1) throw new Error('Ambiguous default ACL role: schema comparison refused');
+      object += `; Default ACL role: ${roles[0]}`;
+    }
+    if (body) blocks.push({ object, sha256: hash(body) }); lines = [];
+  };
   for (const line of sql.replace(/\r\n/g, '\n').split('\n')) {
     const outside = !dollar && !quote && !comment;
     if (outside && line === '--') continue;
@@ -43,5 +54,9 @@ if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
     const [input,output]=process.argv.slice(2); const manifest=schemaManifest(readFileSync(input,'utf8'));
     if(output)writeFileSync(output,JSON.stringify(manifest,null,2)+'\n');
     process.stdout.write(hash(JSON.stringify(manifest))+'\n');
-  } catch { console.error('Schema manifest generation failed; raw SQL remains private.');process.exitCode=1; }
+  } catch (error) {
+    const known=['Unterminated SQL literal or comment: schema comparison refused','Duplicate dump object label: schema comparison refused','Ambiguous default ACL role: schema comparison refused'];
+    const reason=error instanceof Error && known.includes(error.message)?error.message:'Input/output failure';
+    console.error(`Schema manifest generation failed: ${reason}; raw SQL remains private.`);process.exitCode=1;
+  }
 }
