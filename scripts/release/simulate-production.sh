@@ -18,7 +18,7 @@ const prior = [['20261020142232','sandbox_payment_acceptance'],['20261020142238'
 const all = new Map([...inventory.map(m => [m.version, m.name]), ...prior]);
 console.log('insert into supabase_migrations.schema_migrations(version,name) values ' + [...all].map(([v, n]) => \`('\${v}','\${n}')\`).join(',') + ';');" > "$snapshot.sql"
 sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=1" <<'SQL'
-do $$ declare r text; begin foreach r in array array['anon','authenticated','service_role','authenticator','supabase_admin','supabase_auth_admin','dashboard_user'] loop
+do $$ declare r text; begin foreach r in array array['anon','authenticated','service_role','authenticator','supabase_admin','supabase_auth_admin','dashboard_user','sim_second_owner'] loop
   if not exists (select 1 from pg_roles where rolname = r) then execute format('create role %I', r); end if; end loop; end $$;
 create schema auth; grant usage on schema auth to anon, authenticated, service_role, supabase_auth_admin;
 create table auth.users(id uuid primary key, email text unique, encrypted_password text, created_at timestamptz default now());
@@ -27,6 +27,14 @@ alter table auth.users owner to supabase_auth_admin; grant select on auth.users 
 create schema extensions; grant usage on schema extensions to anon, authenticated, service_role;
 create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key, statements text[], name text);
 create publication supabase_realtime;
+-- Supabase has default ACLs from multiple owners in the same schema. --no-owner
+-- emits identical headers for these blocks, even though FOR ROLE remains distinct.
+alter default privileges for role postgres in schema public grant select on tables to service_role;
+alter default privileges for role sim_second_owner in schema public grant select on tables to service_role;
+alter default privileges for role postgres in schema public grant execute on functions to service_role;
+alter default privileges for role sim_second_owner in schema public grant execute on functions to service_role;
+alter default privileges for role postgres in schema public grant usage on sequences to service_role;
+alter default privileges for role sim_second_owner in schema public grant usage on sequences to service_role;
 SQL
 sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=$stop -f '$snapshot'" > /dev/null 2>&1 || { echo "Snapshot failed to load"; exit 1; }
 sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=1 -f '$snapshot.sql'"
