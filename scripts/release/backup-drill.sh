@@ -65,10 +65,24 @@ sql_tool "pg_restore --list --schema=public --schema=auth --schema=supabase_migr
 awk 'FNR == NR { selected[$1] = 1; next }
   /^[0-9]+;/ && ($1 in selected || / SCHEMA - (auth|supabase_migrations) / || / (ACL|COMMENT) - SCHEMA (public|auth|supabase_migrations) /) && !/ SCHEMA - public /' \
   "$backup/selected.toc" "$backup/full.toc" > "$backup/restore.toc"
-if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/full.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
+# Keep real ownership during restore (no --no-owner): every object must end up owned by the
+# exact same role as in production, or the two independent schema_fingerprint() pg_dump calls
+# below (production vs. this restored copy) compute their ACL text against different implicit
+# per-owner baselines and disagree on auth-schema and platform-managed objects even though no
+# privilege actually changed. The admin connection is a superuser, and every owning role was
+# already (re)created above, so ALTER ... OWNER TO / SET SESSION AUTHORIZATION always succeed.
+if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/full.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
   sanitized_errors "$backup/restore.log"; fail "pg_restore a rencontré une erreur (journal complet conservé hors publication)"
 fi
 grep -qiE 'error|warning: errors ignored' "$backup/restore.log" && { sanitized_errors "$backup/restore.log"; fail "pg_restore a signalé une erreur"; }
+# The TOC above deliberately drops "SCHEMA - public" (it already exists, owned by the disposable
+# database's default owner, when "create database" ran) so pg_restore never issues an explicit
+# ALTER SCHEMA public OWNER TO for it. Now that ownership is compared for real (see above), that
+# default would silently differ from whatever role actually owns "public" in production — restore
+# it explicitly, or the comparison below rejects an otherwise faithful restore.
+public_owner="$(QUERY="select pg_get_userbyid(nspowner) from pg_namespace where nspname = 'public'" query PROD_DB_URL)"
+[[ "$public_owner" =~ ^[a-z_][a-z0-9_]*$ ]] || fail "propriétaire du schéma public invalide"
+QUERY="alter schema public owner to \"$public_owner\"" query TARGET_URL
 
 echo "3/5 Preuve : comparaison production / copie restaurée…"
 QUERY="$COMMERCIAL_FINGERPRINT" query TARGET_URL > "$evidence/restored.fingerprint"

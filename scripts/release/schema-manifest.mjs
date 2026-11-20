@@ -10,9 +10,10 @@ export function schemaManifest(sql) {
   let dollar = null, quote = null, comment = 0, escapeSingle = false, standardStrings = true;
   const flush = () => {
     const body = lines.join('\n').trim(); let object = name;
-    // --no-owner hides owner names in pg_dump headers. DEFAULT ACL blocks for
-    // different grantor roles then share the same header, while their SQL still
-    // names the role. Preserve and identify each one; never discard a duplicate.
+    // DEFAULT ACL entries have no owner of their own (pg_dump always prints "Owner: -"
+    // for them, with or without --no-owner), so DEFAULT ACL blocks for different grantor
+    // roles share the same header, while their SQL still names the role. Preserve and
+    // identify each one; never discard a duplicate.
     if (body && name.includes('; Type: DEFAULT ACL;')) {
       const roles = [...body.matchAll(/^ALTER DEFAULT PRIVILEGES FOR ROLE ("(?:[^"]|"")*"|[^\s;]+)/gm)].map(m=>m[1]);
       if (!roles.length || new Set(roles).size !== 1) throw new Error('Ambiguous default ACL role: schema comparison refused');

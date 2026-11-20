@@ -36,7 +36,14 @@ TABLE_HASHES="select table_schema || '.' || table_name || '=' ||
 export COMMERCIAL_FINGERPRINT MIGRATION_HISTORY TABLE_COUNTS TABLE_HASHES
 
 schema_fingerprint() {
-  sql_tool "pg_dump --dbname=\"\$$1\" --schema-only --no-owner --no-publications --no-subscriptions --schema=public --schema=auth --schema=supabase_migrations" < /dev/null > "$2"
+  # Keep real object ownership (no --no-owner): pg_dump's ACL text for an object is a diff
+  # against the implicit default privileges of ITS OWNER, so comparing two independently
+  # generated --no-owner dumps is only valid when every object is actually owned by the same
+  # role on both sides. The production database and the disposable restore target never agree
+  # on this for Supabase-managed roles (the auth schema is owned by supabase_auth_admin, and
+  # the "postgres"/"supabase_admin" ALTER DEFAULT PRIVILEGES entries are scoped to specific
+  # roles) unless ownership is restored faithfully, which backup-drill.sh now does.
+  sql_tool "pg_dump --dbname=\"\$$1\" --schema-only --no-publications --no-subscriptions --schema=public --schema=auth --schema=supabase_migrations" < /dev/null > "$2"
   node scripts/release/schema-manifest.mjs "$2" "$2.manifest.json"
 }
 
