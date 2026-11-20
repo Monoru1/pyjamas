@@ -37,8 +37,7 @@ export COMMERCIAL_FINGERPRINT MIGRATION_HISTORY TABLE_COUNTS TABLE_HASHES
 
 schema_fingerprint() {
   sql_tool "pg_dump --dbname=\"\$$1\" --schema-only --no-owner --no-publications --no-subscriptions --schema=public --schema=auth --schema=supabase_migrations" < /dev/null > "$2"
-  # pg_dump emits a per-run random restrict token and source/tool minor versions.
-  sed -E '/^\\(un)?restrict /d; /^-- Dumped (from database|by pg_dump) version /d' "$2" | sha256sum | cut -d' ' -f1
+  node scripts/release/schema-manifest.mjs "$2" "$2.manifest.json"
 }
 
 # Prints only the lines of a tool log that name the failing object, never data or statement text.
