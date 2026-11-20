@@ -115,7 +115,7 @@ jobs:
       - name: Backup, strict restore, comparison, preflight, rehearsal
         run: |
           echo "PROD_DB_URL=${DRILL_ADMIN_URL%/*}/prodsim" >> "$GITHUB_ENV"
-          PROD_DB_URL="${DRILL_ADMIN_URL%/*}/prodsim" RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh
+          BACKUP_MODE=v1-rehearsal PROD_DB_URL="${DRILL_ADMIN_URL%/*}/prodsim" RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh
       - name: A real pg_restore error stops the drill
         run: |
           # A public table that depends on a schema outside the restored set cannot be recreated on the copy.
@@ -124,7 +124,7 @@ jobs:
           grep -q "pg_restore a rencontré une erreur" negative.log
           docker exec -e TARGET="$PROD_DB_URL" lmp-pg17 sh -c 'psql "$TARGET" -X -q -v ON_ERROR_STOP=1 -c "drop table public.sim_child; drop schema sim_outside cascade"'
           rm -rf evidence backups evidence-negative
-          RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh > /dev/null
+          BACKUP_MODE=v1-rehearsal RELEASE_SHA="$GITHUB_SHA" bash scripts/release/backup-drill.sh > /dev/null
       - name: Encrypted backup round trip
         run: |
           gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 --output full.dump.gpg backups/full.dump 3<<<"fixture-passphrase-for-ci-only-0000"
@@ -135,8 +135,17 @@ jobs:
           DRILL_EVIDENCE_DIR=evidence RELEASE_SHA="$GITHUB_SHA" bash scripts/release/migrate.sh
           if DRILL_EVIDENCE_DIR=evidence RELEASE_SHA="$GITHUB_SHA" bash scripts/release/migrate.sh > second.log 2>&1; then echo "A second migration was accepted"; exit 1; fi
           grep -q "ARRÊT AVANT TOUTE ÉCRITURE" second.log
+      - name: Current backup accepts the migrated source and cannot authorize V1
+        run: |
+          RELEASE_SHA="$GITHUB_SHA" EVIDENCE_DIR=evidence-current bash scripts/release/backup-drill.sh
+          grep -qx 'backup_mode=current' evidence-current/PREUVE.txt
+          if grep -q 'sha256_migration=' evidence-current/PREUVE.txt; then echo "Current backup contains a migration proof"; exit 1; fi
+          if DRILL_EVIDENCE_DIR=evidence-current RELEASE_SHA="$GITHUB_SHA" bash scripts/release/migrate.sh > current-migration.log 2>&1; then echo "Current backup authorized migration"; exit 1; fi
+          grep -q "un backup courant" current-migration.log
+          if BACKUP_MODE=v1-rehearsal RELEASE_SHA="$GITHUB_SHA" EVIDENCE_DIR=evidence-v1-refused bash scripts/release/backup-drill.sh > migrated-v1.log 2>&1; then echo "V1 accepted an already migrated source"; exit 1; fi
+          grep -q "préflight de production" migrated-v1.log
       - name: Evidence holds no personal data
         run: |
-          if grep -rlE "example\.test|Cliente|2290100000000|not-a-real-hash" evidence evidence-migration; then echo "Personal data found in evidence"; exit 1; fi
+          if grep -rlE "example\.test|Cliente|2290100000000|not-a-real-hash" evidence evidence-current evidence-v1-refused evidence-migration; then echo "Personal data found in evidence"; exit 1; fi
           cat evidence/PREUVE.txt evidence-migration/PREUVE-MIGRATION.txt
 

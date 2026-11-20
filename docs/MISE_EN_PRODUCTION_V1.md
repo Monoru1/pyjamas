@@ -106,3 +106,25 @@ Voir [la procédure opérationnelle Terrain 8](MISE_EN_SERVICE_TERRAIN8.md) pour
 - Resend, renseigner `RESEND_API_KEY` et `RESEND_WEBHOOK_SECRET` en secrets de production, puis `ORDER_EMAIL_FROM`, `ORDER_ADMIN_EMAIL` et `ORDER_TEST_EMAILS`. Créer un webhook distinct pour `/api/notifications/resend` sur l’origine réellement publiée. Vérifier le message de test dans l’historique Supabase et la livraison fournisseur signée. Pour cet envoi staff avec données fictives uniquement, utiliser temporairement `ORDER_EMAIL_DEMO_ENABLED=true` et une adresse de la liste de test.
 - FedaPay, réconcilier en lecture seule la transaction de recette `113943841` avant tout autre test financier. Confirmer le marchand Live `101915`, les clés et le webhook, puis obtenir l’accord sur le test réel et rapprocher la commande, le stock, le paiement et les e-mails.
 - Faire confirmer par la boutique l’inventaire physique, les prix, les tarifs et zones de livraison, les moyens de paiement, les coordonnées et les conditions de vente et retour avant l’ouverture.
+
+## Sauvegarde courante après migration V1 — Terrain 12 (20 novembre 2026)
+
+Le workflow `production-release` distingue désormais trois phases explicites :
+
+| Phase | Référence autorisée | Opérations | Preuve de migration |
+| --- | --- | --- | --- |
+| `backup-drill` | SHA complet du commit `main` exécutant le workflow, CI verte | Dump complet, restauration isolée, comparaison du schéma et de toutes les lignes des schémas restaurés, stockage chiffré, relecture, rétention | Non : `backup_mode=current` |
+| `v1-rehearsal` | Référence historique PR #14, CI verte, confirmation `REPETER V1` | Même sauvegarde ; préflight historique strict sur la source en lecture seule ; V1 sur la copie isolée seulement | Oui, uniquement si tous les contrôles réussissent |
+| `production-migration` | Référence historique PR #14, CI verte, confirmation `MIGRER LA PRODUCTION` | Parcours historique conservé : preuve V1 récente du même workflow/commit, préflight strict récent, empreinte source inchangée et hash de transaction identique | Un backup courant est explicitement refusé avant toute requête SQL |
+
+La production actuelle est déjà migrée : ne lancer que `backup-drill`. Ne jamais sélectionner les phases historiques pour la validation de la rotation. Les scripts proviennent toujours du commit de confiance qui exécute le workflow (`github.sha`) ; une saisie d'un ancien SHA ne permet plus d'exécuter un ancien script de sauvegarde dans le parcours courant.
+
+Le job sans secret refuse un environnement `production` absent, illisible ou dépourvu de relecteur obligatoire. Les deux jobs accédant aux secrets conservent `environment: production`, `needs: verify` et la concurrence globale `production-release` sans annulation. Aucune protection n'est créée ou modifiée par ce correctif.
+
+La restauration utilise le même `full.dump` qui est ensuite chiffré et stocké, plutôt qu’un second dump indépendant. Elle reste strictement limitée aux schémas `public`, `auth` et `supabase_migrations`, comme auparavant ; le dump `full.dump` contient tous les schémas. Les objets Storage (photos et autres fichiers) ne sont pas inclus dans un dump PostgreSQL. Les versions des extensions non disponibles sur le serveur jetable figurent dans les preuves ; toute dépendance empêchant la restauration reste bloquante.
+
+Le stockage exige désormais la preuve de restauration/comparaison du dump exact. Toute nouvelle tentative efface l'ancienne preuve avant le dump. Le workflow exige une clé `sb_secret_` via `SUPABASE_SERVICE_ROLE_KEY`, envoyée dans `apikey` uniquement. Un rejet HTTP 401/403 indique explicitement le secret concerné sans afficher sa valeur. Le bucket doit rester privé ; seul le chiffrement AES-256 est envoyé. La relecture compare le ciphertext puis le dump déchiffré, avant toute suppression de rétention.
+
+Validation après fusion : attendre la CI verte de `main`, lancer ce workflow depuis `main`, phase `backup-drill`, `release_sha` = SHA complet courant de `main`, laisser les champs historiques vides. Le relecteur humain approuve ensuite le job protégé. L'artifact `release-evidence/PREUVE.txt` doit inclure `backup_mode=current`, `restauration_verifiee=true`, `type_cle_stockage=sb_secret`, le hash de l'objet chiffré, la relecture identique et la rétention. Sans ces éléments, ne pas déclarer la nouvelle clé validée et ne pas désactiver Legacy.
+
+Les comparaisons sont effectuées en lecture seule après le dump. Si des événements concurrents modifient une table, le contrôle peut refuser la sauvegarde ; il faut relancer une sauvegarde sur un état stabilisé, jamais supprimer la comparaison.

@@ -9,16 +9,16 @@ on:
       phase:
         description: Phase à exécuter
         type: choice
-        options: [backup-drill, production-migration]
+        options: [backup-drill, v1-rehearsal, production-migration]
         required: true
       release_sha:
-        description: Commit complet (40 caractères) à livrer, tête de la PR 14
+        description: "Commit complet : tête de main pour backup-drill ; référence PR 14 pour V1"
         required: true
       drill_run_id:
         description: "production-migration : numéro du run backup-drill réussi"
         required: false
       confirmation:
-        description: "production-migration : saisir MIGRER LA PRODUCTION"
+        description: "V1 : REPETER V1 pour la répétition ; MIGRER LA PRODUCTION pour la migration"
         required: false
 
 permissions:
@@ -43,6 +43,7 @@ jobs:
       - name: Référence de confiance, commit vérifié, CI verte
         env:
           GH_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA: ${{ github.sha }}
           PHASE: ${{ inputs.phase }}
           RELEASE_SHA: ${{ inputs.release_sha }}
           DRILL_RUN_ID: ${{ inputs.drill_run_id }}
@@ -58,16 +59,25 @@ jobs:
           environment="$(gh api "repos/$REPO/environments/production" 2>/dev/null)" || { echo "L'environnement « production » n'existe pas ou n'est pas lisible."; exit 1; }
           [ "$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<<"$environment")" -ge 1 ] \
             || { echo "L'environnement « production » n'exige aucune approbation : ajouter un relecteur obligatoire avant tout lancement."; exit 1; }
-          pr="$(gh api "repos/$REPO/pulls/14")"
-          if [ "$(jq -r '.merged' <<<"$pr")" = true ]; then
-            [ "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$RELEASE_SHA" ] || [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "Le commit n'est pas celui de la PR 14."; exit 1; }
+          case "$PHASE" in backup-drill|v1-rehearsal|production-migration) ;; *) echo "Phase invalide"; exit 1;; esac
+          if [ "$PHASE" = backup-drill ]; then
+            # The routine backup must execute the reviewed scripts of this exact main revision.
+            [ "$RELEASE_SHA" = "$WORKFLOW_SHA" ] || { echo "backup-drill exige le commit main de ce workflow."; exit 1; }
           else
-            [ "$(jq -r '.head.repo.full_name' <<<"$pr")" = "$REPO" ] || { echo "La PR 14 ne vient pas de ce dépôt."; exit 1; }
-            [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "release_sha n'est pas la tête actuelle de la PR 14."; exit 1; }
+            pr="$(gh api "repos/$REPO/pulls/14")"
+            if [ "$(jq -r '.merged' <<<"$pr")" = true ]; then
+              [ "$(jq -r '.merge_commit_sha' <<<"$pr")" = "$RELEASE_SHA" ] || [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "Le commit n'est pas celui de la PR 14."; exit 1; }
+            else
+              [ "$(jq -r '.head.repo.full_name' <<<"$pr")" = "$REPO" ] || { echo "La PR 14 ne vient pas de ce dépôt."; exit 1; }
+              [ "$(jq -r '.head.sha' <<<"$pr")" = "$RELEASE_SHA" ] || { echo "release_sha n'est pas la tête actuelle de la PR 14."; exit 1; }
+            fi
+          fi
+          if [ "$PHASE" = v1-rehearsal ]; then
+            [ "$CONFIRMATION" = "REPETER V1" ] || { echo "Confirmation historique REPETER V1 requise."; exit 1; }
           fi
           checks="$(gh api "repos/$REPO/commits/$RELEASE_SHA/check-runs?per_page=100")"
           for check in quality commerce-postgres release-rehearsal; do
-            [ "$(jq -r --arg n "$check" '[.check_runs[] | select(.name == $n)] | sort_by(.completed_at) | last | .conclusion' <<<"$checks")" = success ] \
+            [ "$(jq -r --arg n "$check" '[.check_runs[] | select(.name == $n)] | sort_by(.id) | last | if .status == "completed" then .conclusion else "pending" end' <<<"$checks")" = success ] \
               || { echo "Le contrôle CI « $check » n'est pas vert sur ce commit."; exit 1; }
           done
           if [ "$PHASE" = production-migration ]; then
@@ -75,35 +85,38 @@ jobs:
             [[ "$DRILL_RUN_ID" =~ ^[0-9]+$ ]] || { echo "drill_run_id est requis."; exit 1; }
             run="$(gh api "repos/$REPO/actions/runs/$DRILL_RUN_ID")"
             [ "$(jq -r '.path' <<<"$run")" = ".github/workflows/production-release.yml" ] && [ "$(jq -r '.conclusion' <<<"$run")" = success ] \
+              && [ "$(jq -r '.head_sha' <<<"$run")" = "$WORKFLOW_SHA" ] \
               && [ "$(jq -r '.head_branch' <<<"$run")" = "$DEFAULT_BRANCH" ] || { echo "Le run $DRILL_RUN_ID n'est pas un backup-drill réussi de ce workflow."; exit 1; }
           fi
           echo "Référence vérifiée : $RELEASE_SHA, phase $PHASE."
 
   backup-drill:
-    name: Sauvegarde, restauration prouvée, répétition
-    if: inputs.phase == 'backup-drill'
+    name: Sauvegarde, restauration prouvée et stockage
+    if: inputs.phase == 'backup-drill' || inputs.phase == 'v1-rehearsal'
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
     env:
       RELEASE_SHA: ${{ inputs.release_sha }}
+      BACKUP_MODE: ${{ inputs.phase == 'v1-rehearsal' && 'v1-rehearsal' || 'current' }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: PostgreSQL 17 jetable
         run: bash scripts/release/start-pg17.sh
-      - name: Sauvegarde, restauration stricte, comparaison, préflight, répétition de la migration
+      - name: Sauvegarde, restauration stricte et comparaison (V1 seulement sur demande explicite)
         env:
           PROD_DB_URL: ${{ secrets.PROD_DB_URL }}
         run: bash scripts/release/backup-drill.sh
       - name: Sauvegarde chiffrée dans le stockage privé, relecture, rétention
         env:
+          REQUIRE_SECRET_KEY: 'true'
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: bash scripts/release/store-backup.sh
@@ -133,7 +146,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
