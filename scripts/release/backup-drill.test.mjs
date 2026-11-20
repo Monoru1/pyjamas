@@ -164,9 +164,9 @@ else process.exit(1);
   }
 });
 
-it('preserves legacy JWT authorization only outside the modern-key-required workflow', () => {
+it('refuses Legacy JWT credentials even outside the workflow', () => {
   const f=fixture({SUPABASE_SERVICE_ROLE_KEY:'eyJfixture.legacy.signature', REQUIRE_SECRET_KEY:'false'});
   expect(f.run('backup-drill.sh').status).toBe(0); const r=f.run('store-backup.sh');
-  expect(r.status,r.stdout+r.stderr).toBe(0); expect(f.calls()).toContain('forbidden-bearer');
-  expect(f.proof()).toContain('type_cle_stockage=legacy-service-role');
+  expect(r.status,r.stdout+r.stderr).not.toBe(0); expect(f.calls()).not.toContain('forbidden-bearer');
+  expect(r.stdout).toContain('Legacy JWTs are refused');
 });
