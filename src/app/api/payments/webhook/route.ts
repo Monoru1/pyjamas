@@ -36,6 +36,10 @@ export async function POST(request: Request) {
     if (error) throw new Error('Base indisponible.');
     // Return retryable error for a webhook that overtakes the provider-id persistence.
     const candidate = event.entity?.custom_metadata?.payment_id;
+    // A transaction that is neither stored here nor tagged by our checkout belongs to
+    // another FedaPay channel of the same account (Tap & Go in store, payment pages).
+    // Acknowledge it so FedaPay stops retrying; nothing is read or changed.
+    if (!data?.id && candidate === undefined) return Response.json({ received: true, ignored: true });
     const id = data?.id ?? (typeof candidate === 'string' && UUID_PATTERN.test(candidate) ? candidate : null);
     if (!id) return Response.json({ error: 'Transaction non encore associée.' }, { status: 503 });
     await reconcilePayment(id, `fedapay:${eventKey}`, event.entity!.id as number);
