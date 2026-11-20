@@ -46,12 +46,17 @@ create schema supabase_migrations; create table supabase_migrations.schema_migra
 create publication supabase_realtime;
 -- Supabase has default ACLs from multiple owners in the same schema. --no-owner
 -- emits identical headers for these blocks, even though FOR ROLE remains distinct.
-alter default privileges for role postgres in schema public grant select on tables to service_role;
-alter default privileges for role sim_second_owner in schema public grant select on tables to service_role;
-alter default privileges for role postgres in schema public grant execute on functions to service_role;
-alter default privileges for role sim_second_owner in schema public grant execute on functions to service_role;
-alter default privileges for role postgres in schema public grant usage on sequences to service_role;
-alter default privileges for role sim_second_owner in schema public grant usage on sequences to service_role;
+-- Each statement below also grants to MULTIPLE roles at once (anon, authenticated,
+-- service_role): pg_dump prints one line per grantee, ordered by grantee OID, and this
+-- cluster's own role-recreation loop (backup-drill.sh) has no fixed creation order, so a
+-- restore can legitimately reprint these lines in a different order with nothing actually
+-- granted differently. See docs/TERRAIN14_BACKUP_ACL_OWNERSHIP.md ("Partie 2").
+alter default privileges for role postgres in schema public grant select on tables to anon, authenticated, service_role;
+alter default privileges for role sim_second_owner in schema public grant select on tables to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public grant execute on functions to anon, authenticated, service_role;
+alter default privileges for role sim_second_owner in schema public grant execute on functions to anon, authenticated, service_role;
+alter default privileges for role postgres in schema public grant usage on sequences to anon, authenticated, service_role;
+alter default privileges for role sim_second_owner in schema public grant usage on sequences to anon, authenticated, service_role;
 SQL
 sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=$stop -f '$snapshot'" > /dev/null 2>&1 || { echo "Snapshot failed to load"; exit 1; }
 sql_tool "psql \"\$TARGET_URL\" -X -q -v ON_ERROR_STOP=1 -f '$snapshot.sql'"
