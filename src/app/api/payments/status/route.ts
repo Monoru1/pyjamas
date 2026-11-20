@@ -6,6 +6,8 @@ export const runtime = 'nodejs';
 
 const orderStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
 const unsettled = ['pending', 'failed', 'cancelled'];
+// A locally expired reservation does not close the FedaPay transaction: a late approval must stay recoverable.
+const recheckable = [...unsettled, 'expired'];
 /** At most one tracking-triggered FedaPay read per payment in this window (scheduled runs count too). */
 const RECHECK_INTERVAL_MS = 30_000;
 
@@ -37,11 +39,11 @@ export async function GET(request: Request) {
     let data = await read();
     if (!data) return Response.json({ error: 'Paiement introuvable.' }, { status: 404 });
     let checkedNow = false;
-    if (params.get('recheck') === '1' && data.provider_id && unsettled.includes(data.status)) {
+    if (params.get('recheck') === '1' && data.provider_id && recheckable.includes(data.status)) {
       // Atomic claim: concurrent tabs or a scheduled run cannot multiply provider reads.
       const now = Date.now();
       const { data: claimed, error: claimError } = await db.from('payment_attempts').update({ updated_at: new Date(now).toISOString() })
-        .eq('id', data.id).in('status', unsettled).lt('updated_at', new Date(now - RECHECK_INTERVAL_MS).toISOString()).select('id');
+        .eq('id', data.id).in('status', recheckable).lt('updated_at', new Date(now - RECHECK_INTERVAL_MS).toISOString()).select('id');
       if (!claimError && claimed?.length === 1) {
         try { await reconcilePayment(data.id, `tracking:${crypto.randomUUID()}`); checkedNow = true; }
         catch { console.error('payment_tracking_recheck_failed', { paymentId: data.id }); }

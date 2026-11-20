@@ -27,7 +27,7 @@ export function describePayment(result: Tracking, hint: ReturnHint, stalled: boo
     case 'paid': return { title: 'Paiement confirmé', body: 'FedaPay a confirmé votre paiement. Votre commande est enregistrée et la boutique a été prévenue.', action: null };
     case 'failed': return { title: 'Paiement refusé', body: `FedaPay a refusé ce paiement : aucun débit n’a été confirmé. ${resume}`, action: 'resume' as const };
     case 'cancelled': return { title: 'Paiement annulé', body: `FedaPay indique que ce paiement a été annulé : aucun débit n’a été confirmé. ${resume}`, action: 'resume' as const };
-    case 'expired': return { title: 'Paiement expiré', body: 'Aucun paiement n’a été confirmé avant la fin du délai de réservation. Rien n’a été encaissé et les articles ont été remis en vente. Pour commander, recommencez depuis le panier.', action: 'restart' as const };
+    case 'expired': return { title: 'Paiement expiré', body: 'FedaPay n’a confirmé aucun paiement avant la fin du délai de réservation : les articles ont été remis en vente. Pour commander, recommencez depuis le panier. Si vous avez pourtant payé, actualisez le suivi : un paiement confirmé plus tard par FedaPay est toujours enregistré.', action: 'restart' as const };
     case 'refunded': return { title: 'Paiement remboursé', body: 'FedaPay indique que ce paiement a été remboursé.', action: null };
     case 'partially_refunded': return { title: 'Paiement partiellement remboursé', body: 'FedaPay indique qu’une partie de ce paiement a été remboursée.', action: null };
   }

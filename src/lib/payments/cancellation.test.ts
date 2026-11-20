@@ -126,7 +126,10 @@ it('never loses a payment approved after the local deadline: FedaPay wins, stock
   await age(`expires_at=now()-interval '1 minute', updated_at=now()-interval '1 minute'`);
   expect((await track(body.reference, true)).status).toBe('expired');
   provider.status = 'approved';
-  expect((await signed('transaction.approved')).status).toBe(200);
+  // Webhook lost: an explicit refresh re-reads FedaPay even for a locally expired attempt.
+  await age(`updated_at=now()-interval '1 minute'`);
+  expect(await track(body.reference, true)).toMatchObject({ status: 'paid', checkedNow: true });
+  expect((await signed('transaction.approved')).status).toBe(200); // Late delivery.
   expect((await signed('transaction.approved')).status).toBe(200); // Re-delivery.
   const tracked = await track(body.reference);
   expect(tracked.status).toBe('paid');
