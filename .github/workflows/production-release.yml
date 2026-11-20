@@ -126,7 +126,7 @@ jobs:
           docker rm -f lmp-pg17 > /dev/null 2>&1 || true
           rm -rf backups .migration.*
       - name: Preuves non sensibles
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: release-evidence

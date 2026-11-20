@@ -76,6 +76,17 @@ QUERY="$MIGRATION_HISTORY" query TARGET_URL > "$evidence/restored.migrations"
 QUERY="$TABLE_COUNTS" query TARGET_URL > "$evidence/restored.table-counts"
 QUERY="$TABLE_HASHES" query TARGET_URL > "$evidence/restored.table-hashes"
 schema_fingerprint TARGET_URL "$backup/restored.schema" > "$evidence/restored.schema-sha256"
+# Publish object identities and hashes only, never function definitions/default values.
+node --input-type=module - "$backup" "$evidence" <<'JS'
+import { readFileSync, writeFileSync } from 'node:fs';
+import { schemaDifferences } from './scripts/release/schema-manifest.mjs';
+const [backup,evidence]=process.argv.slice(2);
+const source=JSON.parse(readFileSync(`${backup}/production.schema.manifest.json`));
+const restored=JSON.parse(readFileSync(`${backup}/restored.schema.manifest.json`));
+const diff=schemaDifferences(source,restored);
+writeFileSync(`${evidence}/schema-comparison.json`,JSON.stringify({format:'pg-dump-object-blocks-v1',source_objects:source.length,restored_objects:restored.length,differences:diff},null,2)+'\n');
+console.log(`   Schémas : ${source.length} objets source, ${restored.length} objets restaurés, ${diff.length} différence(s).`);
+JS
 for kind in fingerprint migrations table-counts table-hashes schema-sha256; do
   diff "$evidence/production.$kind" "$evidence/restored.$kind" > /dev/null || fail "la copie restaurée diffère de la production ($kind)"
 done
