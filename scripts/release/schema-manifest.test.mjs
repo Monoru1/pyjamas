@@ -40,3 +40,28 @@ it('distinguishes DEFAULT ACL grantor roles hidden by --no-owner in real dump he
  expect(schemaDifferences(source,schemaManifest(pre+a+acl('postgres')+end))).toHaveLength(1);
  expect(()=>schemaManifest(pre+acl('postgres')+acl('postgres')+end)).toThrow('Duplicate');
 });
+
+// Terrain 14: a --no-owner restore flattens an object's real owner to the connecting admin
+// role. pg_dump's ACL text for an object is a diff against the CURRENT implicit default
+// privileges of its OWNER, so once ownership no longer matches between production and the
+// restored copy, an owner-only "REVOKE ALL ... FROM <owner>" bookkeeping line can silently
+// appear or disappear even though no grant to any other role ever changed. The header alone
+// (Owner: supabase_auth_admin vs Owner: -) already makes this detectable as a real schema
+// difference — see scripts/release/lib.sh and backup-drill.sh, which keep real ownership.
+it('treats an object whose real owner is lost by a --no-owner restore as a genuine difference',()=>{
+ const tableWithOwner=`-- Name: users; Type: TABLE; Schema: auth; Owner: supabase_auth_admin\n--\n\nCREATE TABLE auth.users (id uuid NOT NULL);\n\n--\n`;
+ const aclWithOwnerPrivilegesFrozen=`-- Name: TABLE users; Type: ACL; Schema: auth; Owner: supabase_auth_admin\n--\n\nREVOKE ALL ON TABLE auth.users FROM supabase_auth_admin;\nGRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER ON TABLE auth.users TO supabase_auth_admin;\nGRANT SELECT,INSERT,UPDATE,DELETE ON TABLE auth.users TO anon,authenticated,service_role;\n\n--\n`;
+ const tableNoOwner=`-- Name: users; Type: TABLE; Schema: auth; Owner: -\n--\n\nCREATE TABLE auth.users (id uuid NOT NULL);\n\n--\n`;
+ // Once the restored copy's connecting role IS the owner, its freshly materialized ACL
+ // already matches the current default, so the owner-only REVOKE ALL line disappears —
+ // every grant to anon/authenticated/service_role stays identical.
+ const aclOwnerFlattened=`-- Name: TABLE users; Type: ACL; Schema: auth; Owner: -\n--\n\nGRANT SELECT,INSERT,UPDATE,DELETE ON TABLE auth.users TO anon,authenticated,service_role;\n\n--\n`;
+ const production=schemaManifest(pre+tableWithOwner+aclWithOwnerPrivilegesFrozen+end);
+ const restoredWithoutOwner=schemaManifest(pre+tableNoOwner+aclOwnerFlattened+end);
+ const diff=schemaDifferences(production,restoredWithoutOwner);
+ expect(diff.map(d=>d.object).sort()).toEqual(['-- Name: TABLE users; Type: ACL; Schema: auth; Owner: -','-- Name: TABLE users; Type: ACL; Schema: auth; Owner: supabase_auth_admin','-- Name: users; Type: TABLE; Schema: auth; Owner: -','-- Name: users; Type: TABLE; Schema: auth; Owner: supabase_auth_admin'].sort());
+ // Preserving real ownership on both sides (what the fixed scripts do) makes the two
+ // independent pg_dump outputs agree again, with nothing lost for any other role.
+ const restoredWithOwner=schemaManifest(pre+tableWithOwner+aclWithOwnerPrivilegesFrozen+end);
+ expect(schemaDifferences(production,restoredWithOwner)).toHaveLength(0);
+});

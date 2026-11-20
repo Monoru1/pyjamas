@@ -24,6 +24,17 @@ create schema auth; grant usage on schema auth to anon, authenticated, service_r
 create table auth.users(id uuid primary key, email text unique, encrypted_password text, created_at timestamptz default now());
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
 alter table auth.users owner to supabase_auth_admin; grant select on auth.users to dashboard_user;
+-- Grant several roles at once on an auth table owned by supabase_auth_admin, and revoke the
+-- PostgreSQL 17 MAINTAIN privilege that a table materialized before PG17 existed never had
+-- for its own owner. A schema_fingerprint() comparison that drops real ownership (--no-owner
+-- on both independent pg_dump calls) computes this owner's ACL text against the CURRENT,
+-- MAINTAIN-inclusive default privileges on each side; after a --no-owner restore flattens the
+-- owner to the disposable admin role, that role's freshly materialized row already matches the
+-- current default exactly, so the explicit "REVOKE ALL ... FROM <owner>" bookkeeping line that
+-- production's own dump still needs silently disappears from the restored copy's dump, even
+-- though no grant to any other role ever changed. See docs/TERRAIN14_BACKUP_ACL_OWNERSHIP.md.
+revoke all on auth.users from public; grant select, insert, update, delete on auth.users to anon, authenticated, service_role;
+revoke maintain on auth.users from supabase_auth_admin;
 create schema extensions; grant usage on schema extensions to anon, authenticated, service_role;
 create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key, statements text[], name text);
 create publication supabase_realtime;
