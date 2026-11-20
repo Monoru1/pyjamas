@@ -34,7 +34,13 @@ alter table auth.users owner to supabase_auth_admin; grant select on auth.users 
 -- production's own dump still needs silently disappears from the restored copy's dump, even
 -- though no grant to any other role ever changed. See docs/TERRAIN14_BACKUP_ACL_OWNERSHIP.md.
 revoke all on auth.users from public; grant select, insert, update, delete on auth.users to anon, authenticated, service_role;
-revoke maintain on auth.users from supabase_auth_admin;
+-- MAINTAIN does not exist before PostgreSQL 17: skip it under SIM_TOLERANT (which exists so this
+-- snapshot still loads on an older local server) and keep it for the real PG17 CI rehearsal.
+do $$ begin
+  if current_setting('server_version_num')::int >= 170000 then
+    execute 'revoke maintain on auth.users from supabase_auth_admin';
+  end if;
+end $$;
 create schema extensions; grant usage on schema extensions to anon, authenticated, service_role;
 create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key, statements text[], name text);
 create publication supabase_realtime;

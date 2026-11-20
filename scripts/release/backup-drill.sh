@@ -75,6 +75,14 @@ if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-publica
   sanitized_errors "$backup/restore.log"; fail "pg_restore a rencontré une erreur (journal complet conservé hors publication)"
 fi
 grep -qiE 'error|warning: errors ignored' "$backup/restore.log" && { sanitized_errors "$backup/restore.log"; fail "pg_restore a signalé une erreur"; }
+# The TOC above deliberately drops "SCHEMA - public" (it already exists, owned by the disposable
+# database's default owner, when "create database" ran) so pg_restore never issues an explicit
+# ALTER SCHEMA public OWNER TO for it. Now that ownership is compared for real (see above), that
+# default would silently differ from whatever role actually owns "public" in production — restore
+# it explicitly, or the comparison below rejects an otherwise faithful restore.
+public_owner="$(QUERY="select pg_get_userbyid(nspowner) from pg_namespace where nspname = 'public'" query PROD_DB_URL)"
+[[ "$public_owner" =~ ^[a-z_][a-z0-9_]*$ ]] || fail "propriétaire du schéma public invalide"
+QUERY="alter schema public owner to \"$public_owner\"" query TARGET_URL
 
 echo "3/5 Preuve : comparaison production / copie restaurée…"
 QUERY="$COMMERCIAL_FINGERPRINT" query TARGET_URL > "$evidence/restored.fingerprint"

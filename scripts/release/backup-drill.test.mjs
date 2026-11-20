@@ -28,6 +28,7 @@ if(tool==='psql') {
     else fs.appendFileSync(process.env.CALLS,'historical-migration\\n');
   } else if(sql.includes('server_version_num')) console.log('170006');
   else if(sql.includes('select rolname')) console.log('anon');
+  else if(sql.includes('pg_get_userbyid')) console.log('postgres');
   else if(sql.includes('select e.extname')) {}
   else if(sql.includes('string_agg(d,')) console.log('public.products='+((process.env.FAILURE==='comparison' && a.join(' ').includes('/lmp_restore_drill'))?'DIFFERENT':'same'));
   else if(sql.includes('xpath(')) console.log('public.products=18');
