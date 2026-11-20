@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PaymentStatus } from './payment-status';
+import { PaymentStatus, type ReturnHint } from './payment-status';
 import { storeIdentity } from '@/lib/legal/store-identity';
 
 export const metadata = {
@@ -8,8 +8,12 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function PaymentPage({ searchParams }: { searchParams: Promise<{ reference?: string }> }) {
-  const { reference = '' } = await searchParams;
+// FedaPay appends ?id=…&status=… to the return URL. Only these exact words are read, as a wording hint.
+const returnHints: readonly ReturnHint[] = ['approved', 'declined', 'canceled'];
+
+export default async function PaymentPage({ searchParams }: { searchParams: Promise<{ reference?: string; status?: string }> }) {
+  const { reference = '', status = '' } = await searchParams;
+  const returnHint = (returnHints as readonly string[]).includes(status) ? status as ReturnHint : '';
   return (
     <main className="relative min-h-[75vh] overflow-hidden bg-background px-4 py-12 text-foreground sm:px-6 sm:py-20">
       <div aria-hidden="true" className="pointer-events-none absolute -right-24 top-0 h-72 w-72 rounded-full bg-brand-accent/20 blur-3xl" />
@@ -24,13 +28,14 @@ export default async function PaymentPage({ searchParams }: { searchParams: Prom
             Nous vérifions directement votre règlement auprès de FedaPay. Conservez cette page jusqu’à la confirmation.
           </p>
         </header>
-        <PaymentStatus reference={reference} whatsappPhone={storeIdentity.whatsapp} />
+        <PaymentStatus reference={reference} whatsappPhone={storeIdentity.whatsapp} returnHint={returnHint} />
         <section className="mt-6 rounded-2xl border border-brand-primary/15 bg-white/80 p-5 sm:p-7">
           <h2 className="text-lg font-semibold">Quelques conseils utiles</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6">
             <li>Ne payez pas une seconde fois tant que le premier règlement est en cours de vérification.</li>
             <li>Si votre banque vous demande une confirmation, terminez-la sur la page sécurisée de FedaPay.</li>
             <li>Si le statut tarde à changer, utilisez « Actualiser le suivi » sans recommencer votre commande.</li>
+            <li>Après un paiement confirmé, contactez la boutique sur WhatsApp pour organiser la livraison ou le retrait.</li>
           </ul>
         </section>
         <div className="mt-6 flex flex-wrap gap-5 text-sm">

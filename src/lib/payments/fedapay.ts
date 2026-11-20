@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { isFedaPayCheckoutUrl } from './checkout-hosts';
+import { customSiteOrigin } from '@/lib/security/site-domain';
 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'refunded' | 'partially_refunded';
 export type ProviderTransaction = { id: number; amount: number | string; status: string; currency?: { iso: string }; currency_id?: number; account_id?: number; merchant_reference?: string; custom_metadata?: { payment_id?: string; purpose?: string; order_id?: string } };
@@ -50,7 +51,8 @@ export function paymentConfiguration(env: Record<string, string | undefined> = p
     || !env.NEXT_PUBLIC_SUPABASE_URL || new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname === 'pukvrerdloudfiphomsj.supabase.co')) throw new Error('Base de test isolée requise.');
   const liveTest = environment === 'live' && env.PAYMENT_LIVE_TEST_ENABLED === 'true';
   const deployment=paymentDeployment(env);
-  const origin = deployment.context === 'production' ? (env.PAYMENT_SITE_URL || env.URL) : (deployment.previewOrigin || env.PAYMENT_SITE_URL);
+  // Production: once SITE_CUSTOM_DOMAIN is set, FedaPay sends customers back to that domain.
+  const origin = deployment.context === 'production' ? (customSiteOrigin(env) || env.PAYMENT_SITE_URL || env.URL) : (deployment.previewOrigin || env.PAYMENT_SITE_URL);
   if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).username || new URL(origin).password || new URL(origin).port) throw new Error('Adresse de retour non configurée.');
   const testCeiling = Number(env.PAYMENT_LIVE_TEST_MAX_XOF);
   // Owner-approved private Live payment on production: admins only, one exact

@@ -1,10 +1,53 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { orderWhatsAppUrl } from '@/lib/orders/whatsapp';
-const labels: Record<string,string> = { pending:'En attente de confirmation', paid:'Paiement confirmé', failed:'Paiement refusé — nouvelle tentative possible chez FedaPay', cancelled:'Tentative annulée — nouvelle tentative possible chez FedaPay', expired:'Paiement expiré', refunded:'Paiement remboursé', partially_refunded:'Paiement partiellement remboursé' };
+
+type Tracking = { status: string; mode?: string; liveTest?: boolean; reservedUntil?: string; order?: { order_number: string; needs_attention: boolean; status?: string } };
+/** What FedaPay appended to the return URL. A HINT for wording only, never a payment result. */
+export type ReturnHint = 'approved' | 'declined' | 'canceled' | '';
+
+const POLL_MS = 5000;
+const POLL_BUDGET = 24; // About two minutes of automatic checks, then the page says so.
+const RECHECK_EVERY = 6; // Ask the server to re-read FedaPay about every 30 s (server-throttled).
+
+/**
+ * States in which FedaPay may still confirm a payment for this order (the customer can retry
+ * the same transaction after a refusal or cancellation), so the page keeps checking.
+ */
+export const AWAITING_PROVIDER = ['pending', 'failed', 'cancelled'];
+
 const fulfilment: Record<string, string> = { pending: 'Commande en attente de prise en charge', confirmed: 'Commande prise en charge', preparing: 'Commande en préparation', ready: 'Commande prête', delivered: 'Commande livrée', cancelled: 'Commande annulée' };
-export function PaymentStatus({ reference, whatsappPhone = '' }: { reference: string; whatsappPhone?: string }) {
-  const [result, setResult] = useState<{status:string;mode?:string;liveTest?:boolean;order?:{order_number:string;needs_attention:boolean;status?:string}}>({ status:'pending' });
+const dateTime = (iso?: string) => { if (!iso) return ''; const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }) : ''; };
+
+/** Pure wording of the state. Exported for tests: the customer must never believe they paid when they did not. */
+export function describePayment(result: Tracking, hint: ReturnHint, stalled: boolean) {
+  const until = dateTime(result.reservedUntil);
+  const resume = until ? `Vous pouvez reprendre le paiement de cette même commande depuis le panier jusqu’au ${until}. Passé ce délai, la réservation est levée automatiquement.` : 'Vous pouvez reprendre le paiement de cette même commande depuis le panier.';
+  switch (result.status) {
+    case 'paid': return { title: 'Paiement confirmé', body: 'FedaPay a confirmé votre paiement. Votre commande est enregistrée et la boutique a été prévenue.', action: null };
+    case 'failed': return { title: 'Paiement refusé', body: `FedaPay a refusé ce paiement : aucun débit n’a été confirmé. ${resume}`, action: 'resume' as const };
+    case 'cancelled': return { title: 'Paiement annulé', body: `FedaPay indique que ce paiement a été annulé : aucun débit n’a été confirmé. ${resume}`, action: 'resume' as const };
+    case 'expired': return { title: 'Paiement expiré', body: 'FedaPay n’a confirmé aucun paiement avant la fin du délai de réservation : les articles ont été remis en vente. Pour commander, recommencez depuis le panier. Si vous avez pourtant payé, actualisez le suivi : un paiement confirmé plus tard par FedaPay est toujours enregistré.', action: 'restart' as const };
+    case 'refunded': return { title: 'Paiement remboursé', body: 'FedaPay indique que ce paiement a été remboursé.', action: null };
+    case 'partially_refunded': return { title: 'Paiement partiellement remboursé', body: 'FedaPay indique qu’une partie de ce paiement a été remboursée.', action: null };
+  }
+  // pending: FedaPay has not confirmed anything. It also stays pending after a cancelled checkout.
+  if (hint === 'canceled' || hint === 'declined' || stalled) return {
+    title: 'Paiement non finalisé',
+    body: `FedaPay n’a confirmé aucun débit pour cette commande. Si vous avez annulé ou fermé la page de paiement, rien n’a été encaissé. ${resume} Si vous avez pourtant validé un paiement, ne payez pas une seconde fois : ${stalled
+      ? 'cette page ne se met plus à jour d’elle-même. La boutique continue de vérifier auprès de FedaPay ; touchez « Actualiser le suivi » dans quelques minutes pour voir le résultat.'
+      : 'cette page continue de vérifier automatiquement auprès de FedaPay.'}`,
+    action: 'resume' as const,
+  };
+  return { title: 'Paiement en cours de vérification', body: hint === 'approved'
+    ? 'FedaPay vous a renvoyé vers la boutique. Nous attendons sa confirmation serveur avant d’enregistrer le paiement.'
+    : 'Nous attendons la confirmation de FedaPay. Si vous validez un paiement Mobile Money, confirmez-le sur votre téléphone.', action: null };
+}
+
+export function PaymentStatus({ reference, whatsappPhone = '', returnHint = '' }: { reference: string; whatsappPhone?: string; returnHint?: ReturnHint }) {
+  const [result, setResult] = useState<Tracking>({ status: 'pending' });
+  const [loaded, setLoaded] = useState(false);
+  const [stalled, setStalled] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   useEffect(() => {
@@ -13,36 +56,48 @@ export function PaymentStatus({ reference, whatsappPhone = '' }: { reference: st
     async function refresh() {
       try {
         if (!token) throw new Error('Référence manquante. Consultez le suivi depuis votre panier.');
-        const response = await fetch(`/api/payments/status?reference=${encodeURIComponent(token)}`, { cache:'no-store', signal:controller.signal });
+        // Return from FedaPay or manual refresh: ask the server to re-read FedaPay now.
+        const recheck = (attempts === 0 && (returnHint || retry > 0)) || (attempts > 0 && attempts % RECHECK_EVERY === 0);
+        const response = await fetch(`/api/payments/status?reference=${encodeURIComponent(token)}${recheck ? '&recheck=1' : ''}`, { cache: 'no-store', signal: controller.signal });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Vérification indisponible.');
-        setResult(data); setError('');
+        setResult(data); setLoaded(true); setError('');
         const saved = JSON.parse(sessionStorage.getItem('mdp-shop-payment') || 'null');
-        if (data.status === 'paid' && saved?.reference === token) sessionStorage.removeItem('mdp-shop-payment');
-        if (['pending','failed','cancelled'].includes(data.status) && ++attempts < 30) timer = setTimeout(refresh, 5000);
+        // Server-confirmed terminal states only: paid ends the attempt, expired allows a NEW order.
+        if (['paid', 'expired'].includes(data.status) && saved?.reference === token) sessionStorage.removeItem('mdp-shop-payment');
+        if (!AWAITING_PROVIDER.includes(data.status)) return; // Paid, expired, refunded: nothing left to wait for.
+        if (++attempts < POLL_BUDGET) timer = setTimeout(refresh, POLL_MS); else setStalled(true);
       } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'Vérification indisponible.'); }
     }
     void refresh();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [reference, retry]);
-  return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status">
+  }, [reference, retry, returnHint]);
+  const view = describePayment(result, returnHint, stalled);
+  const paid = result.status === 'paid' && Boolean(result.order?.order_number);
+  return <div className="mt-8 rounded-xl border border-brand-primary/20 bg-white p-6" role="status" aria-live="polite">
     {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
     {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
-    <h2 className="text-2xl">{labels[result.status] || labels.pending}{result.status === 'paid' && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
+    <h2 className="text-2xl">{loaded ? view.title : 'Vérification en cours…'}{paid && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
     {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
-    <p className="mt-4 leading-7">Seule la vérification serveur auprès de FedaPay confirme le paiement. Le retour du navigateur ne vaut pas confirmation.</p>
+    {loaded && <p className="mt-4 leading-7">{view.body}</p>}
+    <p className="mt-4 text-sm leading-6">Seule la vérification serveur auprès de FedaPay confirme un paiement. Le retour du navigateur ne vaut ni paiement ni annulation.</p>
     {result.order?.needs_attention && <p className="mt-3">La boutique doit vérifier votre commande avant son traitement.</p>}
     {error && <p className="mt-4 text-red-800" role="alert">{error}</p>}
-    <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-5 min-h-11 underline">Actualiser le suivi</button>
+    {loaded && view.action === 'resume' && <a href="/panier" className="mt-5 inline-flex min-h-12 items-center rounded-full bg-brand-primary px-6 text-sm font-bold text-white">Reprendre le paiement</a>}
+    {loaded && view.action === 'restart' && <a href="/panier" className="mt-5 inline-flex min-h-12 items-center rounded-full bg-brand-primary px-6 text-sm font-bold text-white">Recommencer ma commande</a>}
+    <button type="button" onClick={() => { setStalled(false); setRetry(value => value + 1); }} className="mt-5 block min-h-11 underline">Actualiser le suivi</button>
     <p className="mt-3 text-sm">Le panier actuel reste disponible. Un changement de panier ne modifie pas les articles de cette commande.</p>
-    {result.status === 'paid' && result.order?.order_number && <WhatsAppContact url={orderWhatsAppUrl(whatsappPhone, result.order.order_number)} />}
-    {result.status === 'paid' && result.order?.order_number && <OrderContact reference={reference || (typeof window !== 'undefined' ? sessionStorage.getItem('mdp-payment-reference') || '' : '')} orderNumber={result.order.order_number} />}
+    {paid && <WhatsAppContact url={orderWhatsAppUrl(whatsappPhone, result.order!.order_number)} />}
+    {paid && <OrderContact reference={reference || (typeof window !== 'undefined' ? sessionStorage.getItem('mdp-payment-reference') || '' : '')} orderNumber={result.order!.order_number} />}
   </div>;
 }
 
 function WhatsAppContact({ url }: { url: string | null }) {
   if (!url) return null;
-  return <a href={url} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-[#1f7a4d] px-6 text-sm font-bold text-white">Contacter la boutique sur WhatsApp</a>;
+  return <div className="mt-6 rounded-xl bg-green-50 p-4">
+    <p className="text-sm leading-6">Organisez maintenant la livraison ou le retrait de votre commande avec la boutique. Les modalités et frais de livraison sont convenus sur WhatsApp.</p>
+    <a href={url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 items-center rounded-full bg-[#1f7a4d] px-6 text-sm font-bold text-white">Organiser livraison ou retrait sur WhatsApp</a>
+  </div>;
 }
 
 /** Order-scoped message to the shop. Confirmation only after the server reports a real send. */

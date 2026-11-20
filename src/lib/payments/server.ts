@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import { reservationOverdue } from './reservation';
 import { inspectLiveProvider, liveInspectionConfiguration, existingPaymentsConfiguration, providerRequest, transactionFromResponse, validateTransaction, type ProviderTransaction } from './fedapay';
 
 export function paymentDatabase(readOnlyLive = false) {
@@ -44,15 +45,23 @@ export async function readProviderInitializationLogs(providerId: number, readOnl
   return { available: true, entries };
 }
 
+/** States in which FedaPay has not taken the money and the order still holds its stock. */
+const UNSETTLED = new Set(['pending', 'failed', 'cancelled']);
+
 export async function reconcilePayment(id: string, eventId: string, candidateProviderId?: number) {
   const db = paymentDatabase();
   const config = existingPaymentsConfiguration();
-  const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id').eq('id', id).eq('environment', config.environment).single();
+  const { data: payment, error } = await db.from('payment_attempts').select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id,expires_at').eq('id', id).eq('environment', config.environment).single();
   if (error || !payment?.order_id || (!payment.provider_id && !candidateProviderId)) throw new Error('Paiement introuvable.');
   if (config.liveTest && (Number(payment.amount_xof) > config.testCeiling! || payment.merchant_account_id !== config.accountId)) throw new Error('Recette hors autorisation.');
   const providerId = payment.provider_id ?? candidateProviderId!;
   const transaction = await resolvedTransaction(providerId);
-  const state = validateTransaction(transaction, { ...payment, provider_id: providerId });
+  const { expires_at: expiresAt, ...checked } = payment;
+  let state = validateTransaction(transaction, { ...checked, provider_id: providerId });
+  // Always read FedaPay first: a payment it confirms is never overridden. Only an
+  // unsettled attempt past its reservation deadline is closed, which releases its stock.
+  // If FedaPay later approves it, apply_shop_payment re-acquires the stock or flags the order.
+  if (UNSETTLED.has(state) && reservationOverdue(expiresAt)) state = 'expired';
   // Recover a signed webhook arriving after a provider-create timeout. Binding is
   // allowed only after an authenticated GET and all local/merchant checks.
   if (!payment.provider_id) {

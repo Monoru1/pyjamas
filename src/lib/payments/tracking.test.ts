@@ -134,6 +134,6 @@ it('adds an order-scoped WhatsApp button to the paid customer email only', async
 it('builds a WhatsApp link with the reference only, for mobile and desktop', () => {
   const url = orderWhatsAppUrl('+229 01 97 33 88 43', 'MDP-20261119-6E3AC2')!;
   expect(url.startsWith('https://wa.me/2290197338843?text=')).toBe(true);
-  expect(decodeURIComponent(url.split('text=')[1])).toBe("Bonjour La Maison des Pyjamas, je vous contacte concernant ma commande MDP-20261119-6E3AC2. J'aimerais avoir des informations sur ma commande.");
+  expect(decodeURIComponent(url.split('text=')[1])).toBe("Bonjour La Maison des Pyjamas, ma commande MDP-20261119-6E3AC2 est payée. Je souhaite organiser la livraison ou le retrait de ma commande.");
   for (const [phone, ref] of [['', 'MDP-20261119-6E3AC2'], ['12', 'MDP-20261119-6E3AC2'], ['2290197338843', ''], ['2290197338843', 'MDP-X<script>']]) expect(orderWhatsAppUrl(phone, ref)).toBeNull();
 });

@@ -4,11 +4,12 @@ import { createPublicClient } from '@/lib/supabase/public';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDeployment } from '@/lib/payments/fedapay';
 import { trustedSiteOrigin } from '@/lib/security/urls';
+import { allowedBrowserOrigin } from '@/lib/security/site-domain';
 import { readLimitedBody, requireBrowserOrigin, requireJsonRequest, HttpInputError } from '@/lib/payments/read-body';
 export const runtime='nodejs';
 export async function POST(request:Request) {
   try {
-    requireJsonRequest(request);requireBrowserOrigin(request,trustedSiteOrigin(process.env.SITE_ORIGIN||process.env.DEPLOY_PRIME_URL||process.env.PAYMENT_SITE_URL));
+    requireJsonRequest(request);requireBrowserOrigin(request,allowedBrowserOrigin(request,trustedSiteOrigin(process.env.SITE_ORIGIN||process.env.DEPLOY_PRIME_URL||process.env.PAYMENT_SITE_URL)));
     // Live preview quotes stay staff-only even while financial admission is off.
     if(process.env.FEDAPAY_ENVIRONMENT==='live'&&paymentDeployment().context!=='production') {
       const auth=await createClient();const {data:{user}}=await auth.auth.getUser();
