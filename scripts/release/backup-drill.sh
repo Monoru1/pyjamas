@@ -58,7 +58,13 @@ done
 # The target already has an empty public schema: every other entry of the dump is restored, and any error is fatal.
 # Restore the selected schemas from the EXACT archive that will be encrypted and stored.
 # A second independent pg_dump would not prove this archive's data or snapshot.
-sql_tool "pg_restore --list --schema=public --schema=auth --schema=supabase_migrations '$backup/full.dump'" < /dev/null | grep -vE '^[0-9]+; [0-9]+ [0-9]+ SCHEMA - public ' > "$backup/restore.toc"
+sql_tool "pg_restore --list '$backup/full.dump'" < /dev/null > "$backup/full.toc"
+sql_tool "pg_restore --list --schema=public --schema=auth --schema=supabase_migrations '$backup/full.dump'" < /dev/null > "$backup/selected.toc"
+# --schema filters object namespaces, but SCHEMA entries and their ACL/comments live in '-'.
+# Add those entries back from the full TOC, preserving its dependency order (public already exists).
+awk 'FNR == NR { selected[$1] = 1; next }
+  /^[0-9]+;/ && ($1 in selected || / SCHEMA - (auth|supabase_migrations) / || / (ACL|COMMENT) - SCHEMA (public|auth|supabase_migrations) /) && !/ SCHEMA - public /' \
+  "$backup/selected.toc" "$backup/full.toc" > "$backup/restore.toc"
 if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/full.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
   sanitized_errors "$backup/restore.log"; fail "pg_restore a rencontré une erreur (journal complet conservé hors publication)"
 fi
