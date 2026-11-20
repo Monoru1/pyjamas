@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase, resolvedTransaction, readProviderInitializationLogs } from '@/lib/payments/server';
-import { liveInspectionConfiguration, paymentConfiguration, paymentDeployment, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
+import { existingPaymentsConfiguration, liveInspectionConfiguration, paymentDeployment, validateTransaction, TransactionMismatchError } from '@/lib/payments/fedapay';
 import { UUID_PATTERN } from '@/lib/payments/read-body';
 
 export const runtime = 'nodejs';
@@ -15,7 +15,9 @@ export async function GET(request: Request) {
   if (!UUID_PATTERN.test(id)) return Response.json({ error: 'Référence invalide.' }, { status: 400, headers });
   try {
     const readOnlyLive = process.env.FEDAPAY_ENVIRONMENT === 'live' && paymentDeployment().context === 'deploy-preview';
-    const config = readOnlyLive ? liveInspectionConfiguration() : paymentConfiguration();
+    // Reading an existing transaction must keep working while new sales are closed
+    // (same configuration as signed webhooks and reconciliation). Never creates anything.
+    const config = readOnlyLive ? liveInspectionConfiguration() : existingPaymentsConfiguration();
     const { data: payment, error } = await paymentDatabase(readOnlyLive).from('payment_attempts')
       .select('id,provider_id,amount_xof,purpose,order_id,environment,merchant_account_id,last_error,checkout_url,inventory_state,status')
       .eq('id', id).eq('environment', config.environment).maybeSingle();
