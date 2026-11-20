@@ -15,6 +15,7 @@ value() { grep -m1 "^$1=" "$DRILL_EVIDENCE_DIR/PREUVE.txt" | cut -d= -f2-; }
 
 echo "1/5 Preuve de restauration…"
 [ -f "$DRILL_EVIDENCE_DIR/PREUVE.txt" ] || stop "aucune preuve de restauration"
+[ "$(value backup_mode)" = v1-rehearsal ] && [ "$(value restauration_verifiee)" = true ] || stop "une preuve historique V1 est requise ; un backup courant n'autorise jamais une migration"
 [ "$(value release_sha)" = "$RELEASE_SHA" ] || stop "la preuve de restauration concerne un autre commit"
 age=$(( ( $(date -u +%s) - $(date -u -d "$(value horodatage_utc)" +%s) ) / 3600 ))
 [ "$age" -ge 0 ] && [ "$age" -lt "${MAX_DRILL_AGE_HOURS:-12}" ] || stop "preuve de restauration trop ancienne (${age} h)"

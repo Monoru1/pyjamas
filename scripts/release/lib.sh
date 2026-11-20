@@ -28,7 +28,18 @@ TABLE_COUNTS="select table_schema || '.' || table_name || '=' ||
   (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
   from information_schema.tables where table_type = 'BASE TABLE' and (table_schema = 'public' or (table_schema, table_name) = ('auth', 'users'))
   order by 1"
-export COMMERCIAL_FINGERPRINT MIGRATION_HISTORY TABLE_COUNTS
+# Deterministic digests of ALL rows in every table covered by the strict restore, including
+# Auth and migration contents. Only digests leave the runner, never row values.
+TABLE_HASHES="select table_schema || '.' || table_name || '=' ||
+  (xpath('/row/h/text()', query_to_xml(format('select md5(coalesce(string_agg(d, %L order by d collate \"C\"), %L)) as h from (select md5(row_to_json(t)::text) d from %I.%I t) rows', '', '', table_schema, table_name), false, true, '')))[1]::text
+  from information_schema.tables where table_type = 'BASE TABLE' and table_schema in ('public', 'auth', 'supabase_migrations') order by 1"
+export COMMERCIAL_FINGERPRINT MIGRATION_HISTORY TABLE_COUNTS TABLE_HASHES
+
+schema_fingerprint() {
+  sql_tool "pg_dump --dbname=\"\$$1\" --schema-only --no-owner --no-publications --no-subscriptions --schema=public --schema=auth --schema=supabase_migrations" < /dev/null > "$2"
+  # pg_dump emits a per-run random restrict token and source/tool minor versions.
+  sed -E '/^\\(un)?restrict /d; /^-- Dumped (from database|by pg_dump) version /d' "$2" | sha256sum | cut -d' ' -f1
+}
 
 # Prints only the lines of a tool log that name the failing object, never data or statement text.
 sanitized_errors() {
