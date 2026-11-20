@@ -15,6 +15,7 @@ function fixture(overrides = {}) {
 const fs = require('node:fs'); const path = require('node:path');
 const tool = path.basename(process.argv[1]); const a = process.argv.slice(2);
 fs.appendFileSync(process.env.CALLS, tool + '\\n');
+if(tool==='pg_restore')fs.appendFileSync(process.env.CALLS,a.at(-1)+'\\n');
 const arg = flag => { const inline = a.find(x => x.startsWith(flag+'=')); return inline ? inline.slice(flag.length+1) : a[a.indexOf(flag)+1]; };
 const sql = a[a.indexOf('-c')+1] || '';
 if(tool==='psql') {
@@ -83,6 +84,7 @@ fs.writeFileSync(a[a.indexOf('--output')+1],output);
 it('backs up an already migrated source without any historical preflight or migration', () => {
   const f=fixture(); const r=f.run('backup-drill.sh'); expect(r.status, r.stdout+r.stderr).toBe(0);
   expect(f.proof()).toContain('backup_mode=current'); expect(f.proof()).toContain('restauration_verifiee=true');
+  expect(f.calls()).not.toContain('commerce.dump'); expect(f.calls()).toContain('full.dump');
   expect(f.calls()).not.toContain('historical-'); expect(f.proof()).not.toContain('sha256_migration=');
 });
 it('keeps the strict historical preflight for an old compatible source', () => {
@@ -160,4 +162,11 @@ else process.exit(1);
       REPO:'fixture/repo',REF:'refs/heads/main',DEFAULT_BRANCH:'main',PHASE:'backup-drill',WORKFLOW_SHA:'a'.repeat(40),RELEASE_SHA:'a'.repeat(40)}});
     if(protection==='valid')expect(r.status,r.stdout+r.stderr).toBe(0);else expect(r.status,r.stdout+r.stderr).not.toBe(0);
   }
+});
+
+it('preserves legacy JWT authorization only outside the modern-key-required workflow', () => {
+  const f=fixture({SUPABASE_SERVICE_ROLE_KEY:'eyJfixture.legacy.signature', REQUIRE_SECRET_KEY:'false'});
+  expect(f.run('backup-drill.sh').status).toBe(0); const r=f.run('store-backup.sh');
+  expect(r.status,r.stdout+r.stderr).toBe(0); expect(f.calls()).toContain('forbidden-bearer');
+  expect(f.proof()).toContain('type_cle_stockage=legacy-service-role');
 });

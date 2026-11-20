@@ -19,11 +19,14 @@ esac
 if [ "${REQUIRE_SECRET_KEY:-false}" = true ] && [ "$key_type" != sb_secret ]; then
   echo "SUPABASE_SERVICE_ROLE_KEY must be an sb_secret_ key for this run"; exit 1
 fi
+# Outside this workflow only, preserve the legacy JWT header for historical callers.
+authorization=()
+if [ "$key_type" = legacy-service-role ]; then authorization=(-H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY"); fi
 [ "${#BACKUP_PASSPHRASE}" -ge 24 ] || { echo "BACKUP_PASSPHRASE must be at least 24 characters"; exit 1; }
 api() { # api <method> <path> [curl args…] → prints HTTP status, body in $body_file
   local method="$1" path="$2"; shift 2
   curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$SUPABASE_URL/storage/v1/$path" \
-    -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" "$@"
+    -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" "${authorization[@]}" "$@"
 }
 body_file="$(mktemp)"; work="$(mktemp -d)"; trap 'rm -rf "$body_file" "$work"' EXIT
 # The API-key gateway authenticates sb_secret_ via apikey, never as a JWT bearer.

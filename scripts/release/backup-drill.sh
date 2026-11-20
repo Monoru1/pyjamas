@@ -36,7 +36,6 @@ echo "   production ${server:0:2}, outils $tools, serveur de restauration ${targ
 
 echo "1/5 Sauvegarde complète de la production (lecture seule)…"
 sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --file='$backup/full.dump'" < /dev/null 2> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump complet"; }
-sql_tool "pg_dump --dbname=\"\$PROD_DB_URL\" --format=custom --no-owner --schema=public --schema=auth --schema=supabase_migrations --file='$backup/commerce.dump'" < /dev/null 2>> "$backup/dump.log" || { sanitized_errors "$backup/dump.log"; fail "pg_dump des schémas commerciaux"; }
 QUERY="$COMMERCIAL_FINGERPRINT" query PROD_DB_URL > "$evidence/production.fingerprint"
 QUERY="$MIGRATION_HISTORY" query PROD_DB_URL > "$evidence/production.migrations"
 QUERY="$TABLE_COUNTS" query PROD_DB_URL > "$evidence/production.table-counts"
@@ -57,8 +56,10 @@ QUERY="select e.extname || '|' || n.nspname from pg_extension e join pg_namespac
   else echo "$ext" >> "$evidence/extensions-absentes.txt"; fi
 done
 # The target already has an empty public schema: every other entry of the dump is restored, and any error is fatal.
-sql_tool "pg_restore --list '$backup/commerce.dump'" < /dev/null | grep -vE '^[0-9]+; [0-9]+ [0-9]+ SCHEMA - public ' > "$backup/restore.toc"
-if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/commerce.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
+# Restore the selected schemas from the EXACT archive that will be encrypted and stored.
+# A second independent pg_dump would not prove this archive's data or snapshot.
+sql_tool "pg_restore --list --schema=public --schema=auth --schema=supabase_migrations '$backup/full.dump'" < /dev/null | grep -vE '^[0-9]+; [0-9]+ [0-9]+ SCHEMA - public ' > "$backup/restore.toc"
+if ! sql_tool "pg_restore --dbname=\"\$TARGET_URL\" --exit-on-error --no-owner --no-publications --no-subscriptions --use-list='$backup/restore.toc' '$backup/full.dump'" < /dev/null > "$backup/restore.log" 2>&1; then
   sanitized_errors "$backup/restore.log"; fail "pg_restore a rencontré une erreur (journal complet conservé hors publication)"
 fi
 grep -qiE 'error|warning: errors ignored' "$backup/restore.log" && { sanitized_errors "$backup/restore.log"; fail "pg_restore a signalé une erreur"; }
