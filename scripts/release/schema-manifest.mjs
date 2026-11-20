@@ -7,10 +7,12 @@ import { pathToFileURL } from 'node:url';
 const hash = text => createHash('sha256').update(text).digest('hex');
 export function schemaManifest(sql) {
   const blocks = []; let name = 'preamble'; let lines = [];
-  let dollar = null, quote = null, comment = 0;
+  let dollar = null, quote = null, comment = 0, escapeSingle = false, standardStrings = true;
   const flush = () => { const body = lines.join('\n').trim(); if (body) blocks.push({ object: name, sha256: hash(body) }); lines = []; };
   for (const line of sql.replace(/\r\n/g, '\n').split('\n')) {
     const outside = !dollar && !quote && !comment;
+    if (outside && line === '--') continue;
+    if (outside && /^SET standard_conforming_strings = (on|off);$/.test(line)) standardStrings = line.includes('= on;');
     if (outside && (/^\\(?:un)?restrict \S+$/.test(line) || /^-- Dumped (?:from database|by pg_dump) version /.test(line) || line === '-- PostgreSQL database dump complete')) continue;
     if (outside && /^-- Name: .*; Type: .*; Schema: .*; Owner: .*$/.test(line)) { flush(); name = line; }
     lines.push(line);
@@ -18,11 +20,11 @@ export function schemaManifest(sql) {
     for (let i = 0; i < line.length; i++) {
       const ch=line[i], next=line[i+1];
       if (dollar) { if (line.startsWith(dollar,i)) { i += dollar.length-1; dollar=null; } continue; }
-      if (quote) { if(ch==='\\' && quote==="'") { i++; continue; } if(ch===quote) { if(next===quote)i++;else quote=null; } continue; }
+      if (quote) { if(ch==='\\' && quote==="'" && escapeSingle) { i++; continue; } if(ch===quote) { if(next===quote)i++;else quote=null; } continue; }
       if (comment) { if(ch==='/'&&next==='*'){comment++;i++;}else if(ch==='*'&&next==='/'){comment--;i++;} continue; }
       if(ch==='-'&&next==='-')break;
       if(ch==='/'&&next==='*'){comment++;i++;continue;}
-      if(ch==='\''||ch==='"'){quote=ch;continue;}
+      if(ch==='\''||ch==='"'){quote=ch;escapeSingle=!standardStrings || (i>0 && /[eE]/.test(line[i-1]) && (i<2 || !/[A-Za-z0-9_$]/.test(line[i-2])));continue;}
       if(ch==='$'){const match=line.slice(i).match(/^\$(?:[a-zA-Z_][a-zA-Z0-9_]*)?\$/);if(match){dollar=match[0];i+=dollar.length-1;}}
     }
   }
