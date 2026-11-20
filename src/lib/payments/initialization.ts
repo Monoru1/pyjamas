@@ -1,7 +1,8 @@
 import { paymentDatabase, resolvedTransaction, reconcilePayment } from './server';
+import { reservationOverdue } from './reservation';
 import { checkoutTokenFromResponse, paymentConfiguration, providerRequest, safeCheckoutUrl, validateTransaction, TransactionMismatchError, ProviderHttpError, CheckoutHostError } from './fedapay';
 
-export type StoredCheckout = { id: string; order_id: string; public_token: string; amount_xof: number; provider_id: number; checkout_url: string | null; status: string };
+export type StoredCheckout = { id: string; order_id: string; public_token: string; amount_xof: number; provider_id: number; checkout_url: string | null; status: string; expires_at?: string | null };
 export class CheckoutInitializationError extends Error {
   readonly code: string;
   constructor(readonly stage: string, cause: unknown) {
@@ -15,10 +16,12 @@ export class CheckoutInitializationError extends Error {
 export async function initializeStoredCheckout(payment: StoredCheckout, config = paymentConfiguration()) {
   let stage = 'verify_provider_transaction';
   try {
-    const state = validateTransaction(await resolvedTransaction(payment.provider_id), { ...payment, purpose: 'shop', merchant_account_id: config.accountId });
-    if (['paid','expired','refunded','partially_refunded'].includes(state)) {
-      await reconcilePayment(payment.id, `checkout:${crypto.randomUUID()}`);
-      return { state, url: `${config.origin}/paiement?reference=${payment.public_token}`, internal: true };
+    const { expires_at: expiresAt, ...binding } = payment;
+    const state = validateTransaction(await resolvedTransaction(payment.provider_id), { ...binding, purpose: 'shop', merchant_account_id: config.accountId });
+    // A reservation past its deadline is closed by reconciliation, never resumed with an old link.
+    if (['paid','expired','refunded','partially_refunded'].includes(state) || reservationOverdue(expiresAt)) {
+      const settled = await reconcilePayment(payment.id, `checkout:${crypto.randomUUID()}`);
+      return { state: settled, url: `${config.origin}/paiement?reference=${payment.public_token}`, internal: true };
     }
     if (payment.checkout_url) return { state, url: safeCheckoutUrl(payment.checkout_url, config.environment), internal: false };
     stage = 'request_checkout_token';

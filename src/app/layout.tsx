@@ -1,3 +1,4 @@
+import { trustedSiteOrigin } from '@/lib/security/urls';
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { Footer } from '@/components/site/footer';
@@ -23,7 +24,8 @@ const inter = localFont({
 
 export const metadata: Metadata = {
   other: { 'mdp-build': process.env.BUILD_COMMIT_REF || 'local' },
-  metadataBase: new URL('https://pyjamas25.netlify.app'),
+  // Canonical/Open Graph URLs follow the configured custom domain once it is set.
+  metadataBase: new URL(trustedSiteOrigin(process.env.SITE_ORIGIN)),
   title: 'La Maison des Pyjamas',
   description: 'La Maison des Pyjamas — édition Noël 2026. Une sélection chaleureuse de pyjamas à partager en famille.',
   icons: {

@@ -46,6 +46,7 @@ export function sqlClient(db: PGlite) {
         eq(key: string, value: unknown) { filters.push([key,'=',value]); return builder; },
         is(key: string, value: unknown) { filters.push([key,'is',value]); return builder; },
         lte(key: string, value: unknown) { filters.push([key,'<=',value]); return builder; },
+        lt(key: string, value: unknown) { filters.push([key,'<',value]); return builder; },
         not(key: string, _op: string, value: unknown) { filters.push([key,'is not',value]); return builder; },
         order(key: string) { ordering = identifier(key); return builder; },
         limit(value: number) { count = value; return builder; },

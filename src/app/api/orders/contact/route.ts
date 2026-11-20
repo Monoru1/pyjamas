@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { allowedBrowserOrigin } from '@/lib/security/site-domain';
 import { z } from 'zod';
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError, UUID_PATTERN } from '@/lib/payments/read-body';
 import { operationsDatabase } from '@/lib/payments/operations';
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   try {
     requireJsonRequest(request);
     const origin = trustedSiteOrigin(process.env.SITE_ORIGIN);
-    requireBrowserOrigin(request, origin);
+    requireBrowserOrigin(request, allowedBrowserOrigin(request, origin));
     const parsed = input.safeParse(JSON.parse(await readLimitedBody(request, 4000)));
     if (!parsed.success) return Response.json({ error: 'Votre message doit contenir entre 5 et 1 500 caractères.' }, { status: 400 });
     const { reference, requestId, message } = parsed.data;

@@ -1,4 +1,5 @@
 import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputError } from '@/lib/payments/read-body';
+import { allowedBrowserOrigin } from '@/lib/security/site-domain';
 import { createHash, createHmac } from 'node:crypto';
 import { createQuoteToken, verifyQuoteToken, reservedPaymentQuote, type ShopQuote } from '@/lib/payments/quotes';
 import { checkoutSchema } from '@/lib/payments/checkout-input';
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   try {
     requireJsonRequest(request);
     const config = checkoutConfiguration();
-    requireBrowserOrigin(request, config.origin);
+    requireBrowserOrigin(request, allowedBrowserOrigin(request, config.origin));
     const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
     if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });
     let staffId: string | undefined;
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
-    const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id').eq('idempotency_key',input.idempotencyKey).maybeSingle();
+    const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id,status,public_token').eq('idempotency_key',input.idempotencyKey).maybeSingle();
     if(lookupError)throw new Error('Recherche de commande indisponible.');
     if (config.liveTest && (!existing || !existing.provider_id)) {
       const { data: previous, error: previousError } = await db.from('payment_attempts')
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
     let quote:ShopQuote;
     if(existing && !Array.isArray(existing)) {
       if(existing.request_hash!==hash || existing.environment!==config.environment || existing.merchant_account_id!==config.accountId)return Response.json({error:'Cette demande est déjà liée à une autre commande.'},{status:409});
+      // Never offer to resume an attempt that is already closed (e.g. reservation expired).
+      if(['expired','refunded','partially_refunded'].includes(existing.status))return Response.json({error:existing.status==='expired'?'Ce paiement a expiré sans débit confirmé. Cliquez à nouveau pour créer une nouvelle commande.':'Cette demande est terminée. Consultez son suivi.',reference:existing.public_token,terminal:true},{status:409});
       // Its final unit may already be reserved by THIS order. Do not check the
       // remaining public stock or reprice an immutable order when resuming it.
       quote=reservedPaymentQuote(existing);
@@ -78,7 +81,8 @@ export async function POST(request: Request) {
     if(Number(payment.amount_xof)!==Number(quote.amount_xof))return Response.json({error:'Une commande antérieure est déjà figée à un autre montant. Consultez son suivi avant de recommencer.',reference},{status:409});
     const referenceUrl = `/paiement?reference=${payment.public_token}`;
     if (payment.status === 'paid') return Response.json({ url: `${config.origin}${referenceUrl}`, reference: payment.public_token, internal: true });
-    if (['expired', 'refunded', 'partially_refunded'].includes(payment.status)) return Response.json({ error: 'Cette demande est terminée. Consultez son suivi.', reference: payment.public_token }, { status: 409 });
+    // Terminal attempt: the browser must drop its idempotency key so that a NEW order can be made.
+    if (['expired', 'refunded', 'partially_refunded'].includes(payment.status)) return Response.json({ error: payment.status === 'expired' ? 'Ce paiement a expiré sans débit confirmé. Cliquez à nouveau pour créer une nouvelle commande.' : 'Cette demande est terminée. Consultez son suivi.', reference: payment.public_token, terminal: true }, { status: 409 });
     let providerId = payment.provider_id;
     if (!providerId) {
       // Durable compare-and-set: only ONE worker may ever POST /transactions for
