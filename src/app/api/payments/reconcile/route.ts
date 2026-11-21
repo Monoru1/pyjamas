@@ -15,10 +15,11 @@ export async function POST(request: Request) {
       const db = paymentDatabase();
       const environment = existingPaymentsConfiguration().environment;
       const dueAt = new Date().toISOString();
-      // Keep the batch small enough for the scheduled function to finish.
+      // Keep the batch small enough for the scheduled function to finish. Four per 5-minute run
+      // (Terrain 16): with 30-minute reservations, overdue holds must be closed promptly.
       const { data, error } = await db.from('payment_attempts').select('id,provider_id')
         .eq('environment', environment).not('order_id', 'is', null)
-        .lte('next_reconcile_at', dueAt).order('next_reconcile_at').limit(2);
+        .lte('next_reconcile_at', dueAt).order('next_reconcile_at').limit(4);
       if (error) throw error;
       for (const item of data ?? []) {
         const retryAt = new Date(Date.now() + 600_000).toISOString();
