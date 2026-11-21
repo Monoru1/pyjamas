@@ -9,6 +9,17 @@ import { initializeStoredCheckout, CheckoutInitializationError } from '@/lib/pay
 import { checkoutConfiguration, providerRequest, transactionFromResponse, TransactionMismatchError } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
+/** Units a single connection may hold in unpaid reservations (SEC-001). Default 20. */
+function maxOpenUnitsPerClient(value = process.env.PAYMENT_MAX_OPEN_UNITS_PER_CLIENT) {
+  const parsed = Number(value);
+  return value && Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 200 ? parsed : 20;
+}
+/** Netlify overwrites x-nf-client-connection-ip at its edge. Without it, a shared restrictive bucket. */
+function checkoutClientFingerprint(request: Request, key: string) {
+  const address = (request.headers.get('x-nf-client-connection-ip') ?? '').trim().slice(0, 64) || 'unknown';
+  return createHmac('sha256', key).update(`checkout-client:${address}`).digest('hex');
+}
+
 export async function POST(request: Request) {
   let paymentId: string | undefined;
   let reference: string | undefined;
@@ -35,12 +46,18 @@ export async function POST(request: Request) {
     if (config.adminTest) input.idempotencyKey = config.adminTestKey!;
     const db = paymentDatabase();
     const subject = createHmac('sha256', config.webhookSecret).update(input.customer.phone).digest('hex');
-    const { data: budget, error: budgetError } = await db.rpc('consume_order_request_budget', { p_subject: subject });
-    if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
+    // SEC-001: keyed fingerprint of the connection (Netlify sets this header); never stored raw.
+    const client = checkoutClientFingerprint(request, config.webhookSecret);
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id,status,public_token').eq('idempotency_key',input.idempotencyKey).maybeSingle();
     if(lookupError)throw new Error('Recherche de commande indisponible.');
+    // Resuming an existing order never reserves more units, so only NEW baskets count against the cap.
+    const units = existing ? 0 : input.lines.reduce((sum, line) => sum + line.quantity, 0);
+    const { data: verdict, error: budgetError } = await db.rpc('consume_checkout_budget', { p_client: client, p_subject: subject, p_units: units, p_max_open_units: maxOpenUnitsPerClient() });
+    if (budgetError || verdict !== 'ok') return Response.json({ error: verdict === 'client_units'
+      ? 'Des articles sont déjà réservés en attente de paiement depuis votre connexion. Finalisez ce paiement ou réessayez plus tard.'
+      : 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     if (config.liveTest && (!existing || !existing.provider_id)) {
       const { data: previous, error: previousError } = await db.from('payment_attempts')
         .select('status,inventory_state').eq('environment', 'live').eq('provider_id', 113943841).maybeSingle();
@@ -79,8 +96,12 @@ export async function POST(request: Request) {
       ? await db.rpc('create_authorized_live_test_payment',{...args,p_authorization:config.authorizationId,p_staff:staffId,p_ceiling:config.testCeiling})
       : await db.rpc('create_shop_payment',{...args,p_environment:config.environment});
     if (error || !data) return Response.json({ error: 'Article indisponible, stock insuffisant ou demande modifiée.' }, { status: 409 });
-    const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string };
+    const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string; creator?: boolean };
     paymentId = payment.id; reference = payment.public_token;
+    if (payment.creator) {
+      const { error: tagError } = await db.from('payment_attempts').update({ client_fingerprint: client }).eq('id', payment.id).is('client_fingerprint', null).select('id');
+      if (tagError) console.error('payment_client_tag_failed', { paymentId: payment.id });
+    }
     if(Number(payment.amount_xof)!==Number(quote.amount_xof))return Response.json({error:'Une commande antérieure est déjà figée à un autre montant. Consultez son suivi avant de recommencer.',reference},{status:409});
     const referenceUrl = `/paiement?reference=${payment.public_token}`;
     if (payment.status === 'paid') return Response.json({ url: `${storefront}${referenceUrl}`, reference: payment.public_token, internal: true });
