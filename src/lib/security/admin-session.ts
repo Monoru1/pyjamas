@@ -17,6 +17,13 @@ export function supabaseCookieOptions(production = process.env.NODE_ENV === 'pro
   return { path: '/', sameSite: 'lax' as const, secure: production, maxAge: ADMIN_SESSION_MAX_AGE_SECONDS };
 }
 
+/** The SSR SDK applies its own default maxAge before calling the cookie adapter. */
+export function capAdminCookieAge<T extends { maxAge?: number }>(options: T): T {
+  return options.maxAge !== undefined && options.maxAge > ADMIN_SESSION_MAX_AGE_SECONDS
+    ? { ...options, maxAge: ADMIN_SESSION_MAX_AGE_SECONDS }
+    : options;
+}
+
 type AmrEntry = { method?: unknown; timestamp?: unknown };
 
 /** Unix seconds of the latest primary authentication in the `amr` claim, or null. */

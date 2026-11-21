@@ -108,6 +108,10 @@ export type Database = {
       quote_shop_basket: { Args: {p_lines: Json; p_shipping: number}; Returns: Json };
       admin_transition_order: { Args: { p_order_id: string; p_expected_status: OrderStatus; p_new_status: OrderStatus }; Returns: undefined };
       admin_update_order_status: { Args: { p_order_id: string; p_new_status: OrderStatus }; Returns: undefined };
+      admin_email_otp_status: { Args: never; Returns: 'denied' | 'legacy' | 'required' | 'verified' };
+      issue_admin_email_otp: { Args: { p_user: string; p_session: string; p_challenge: string; p_digest: string | null }; Returns: Json };
+      finish_admin_email_otp_delivery: { Args: { p_user: string; p_session: string; p_challenge: string; p_accepted: boolean }; Returns: boolean };
+      verify_admin_email_otp: { Args: { p_user: string; p_session: string; p_digest: string }; Returns: boolean };
       is_admin: { Args: never; Returns: boolean };
       is_admin_account: { Args: never; Returns: boolean };
       is_manager: { Args: never; Returns: boolean };
