@@ -9,6 +9,22 @@ import { initializeStoredCheckout, CheckoutInitializationError } from '@/lib/pay
 import { checkoutConfiguration, providerRequest, transactionFromResponse, TransactionMismatchError } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
+const clientReservationLimitMessage = 'Des articles sont déjà réservés en attente de paiement depuis votre connexion. Finalisez ce paiement ou réessayez plus tard.';
+
+/** Units a single connection may hold in unpaid reservations (SEC-001). Default 20. */
+function maxOpenUnitsPerClient(value = process.env.PAYMENT_MAX_OPEN_UNITS_PER_CLIENT) {
+  const parsed = Number(value);
+  return value && Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 200 ? parsed : 20;
+}
+function checkoutFingerprintKey(value = process.env.CHECKOUT_FINGERPRINT_SECRET) {
+  return value && value.length >= 32 ? value : undefined;
+}
+/** Netlify overwrites x-nf-client-connection-ip at its edge. Without it, a shared restrictive bucket. */
+function checkoutClientFingerprint(request: Request, key: string) {
+  const address = (request.headers.get('x-nf-client-connection-ip') ?? '').trim().slice(0, 64) || 'unknown';
+  return createHmac('sha256', key).update(`checkout-client:${address}`).digest('hex');
+}
+
 export async function POST(request: Request) {
   let paymentId: string | undefined;
   let reference: string | undefined;
@@ -39,13 +55,22 @@ export async function POST(request: Request) {
     // Server-side key: all attempts of one authorization share one payment row.
     if (config.adminTest) input.idempotencyKey = config.adminTestKey!;
     const db = paymentDatabase();
-    const subject = createHmac('sha256', config.webhookSecret).update(input.customer.phone).digest('hex');
-    const { data: budget, error: budgetError } = await db.rpc('consume_order_request_budget', { p_subject: subject });
-    if (budgetError || !budget) return Response.json({ error: 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
+    // SEC-008: dedicated fingerprint key; falls back to the webhook secret until it is set.
+    const fingerprintKey = checkoutFingerprintKey() ?? config.webhookSecret;
+    const subject = createHmac('sha256', fingerprintKey).update(input.customer.phone).digest('hex');
+    // SEC-001: keyed fingerprint of the connection (Netlify sets this header); never stored raw.
+    const client = checkoutClientFingerprint(request, fingerprintKey);
+    const maxOpenUnits = maxOpenUnitsPerClient();
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id,status,public_token').eq('idempotency_key',input.idempotencyKey).maybeSingle();
     if(lookupError)throw new Error('Recherche de commande indisponible.');
+    // Resuming an existing order never reserves more units, so only NEW baskets count against the cap.
+    const units = existing ? 0 : input.lines.reduce((sum, line) => sum + line.quantity, 0);
+    const { data: verdict, error: budgetError } = await db.rpc('consume_checkout_budget', { p_client: client, p_subject: subject, p_units: units, p_max_open_units: maxOpenUnits });
+    if (budgetError || verdict !== 'ok') return Response.json({ error: verdict === 'client_units'
+      ? clientReservationLimitMessage
+      : 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     if (config.liveTest && (!existing || !existing.provider_id)) {
       const { data: previous, error: previousError } = await db.from('payment_attempts')
         .select('status,inventory_state').eq('environment', 'live').eq('provider_id', 113943841).maybeSingle();
@@ -79,10 +104,13 @@ export async function POST(request: Request) {
     if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:quote.reserved?'Vérifiez puis confirmez le montant figé de votre commande réservée.':'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
     if(config.liveTest && quote.amount_xof>config.testCeiling!)return Response.json({error:'Montant supérieur au plafond de recette autorisé.'},{status:403});
     if(config.adminTest && Number(quote.amount_xof)!==config.adminTestAmount)return Response.json({error:'Ce total ne correspond pas au montant de test autorisé par le propriétaire.'},{status:403});
-    const args={p_key:input.idempotencyKey,p_hash:hash,p_customer:input.customer,p_lines:input.lines,p_account:config.accountId,p_shipping:config.shipping,p_expected_items:quote.items};
-    const {data,error}=config.liveTest
-      ? await db.rpc('create_authorized_live_test_payment',{...args,p_authorization:config.authorizationId,p_staff:staffId,p_ceiling:config.testCeiling})
-      : await db.rpc('create_shop_payment',{...args,p_environment:config.environment});
+    const { data, error } = await db.rpc('reserve_checkout_payment', {
+      p_client: client, p_max_open_units: maxOpenUnits, p_key: input.idempotencyKey, p_hash: hash,
+      p_customer: input.customer, p_lines: input.lines, p_environment: config.environment,
+      p_account: config.accountId, p_shipping: config.shipping, p_expected_items: quote.items,
+      ...(config.liveTest ? { p_authorization: config.authorizationId, p_staff: staffId, p_ceiling: config.testCeiling } : {}),
+    });
+    if (error?.code === 'P7429') return Response.json({ error: clientReservationLimitMessage }, { status: 429 });
     if (error || !data) return Response.json({ error: 'Article indisponible, stock insuffisant ou demande modifiée.' }, { status: 409 });
     const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string };
     paymentId = payment.id; reference = payment.public_token;

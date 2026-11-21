@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { createHmac, randomUUID } from 'node:crypto';
-import { commerceDatabase, sqlClient } from './test-support/commerce-db';
+import { ADMIN_OWNER_ID, commerceDatabase, sessionClaims, sqlClient } from './test-support/commerce-db';
 vi.mock('server-only', () => ({}));
 const fixture = vi.hoisted(() => ({ client: {} as ReturnType<typeof sqlClient> }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: () => fixture.client }));
@@ -92,12 +92,11 @@ it('keeps exactly two paid receipts through failure, provider recovery and staff
  provider.status = 'approved';
  expect((await signedEvent(202)).status).toBe(200);
 
- const staff = randomUUID();
- await db.query('insert into auth.users(id) values ($1)', [staff]);
- await db.query("insert into profiles(id, role, full_name) values ($1, 'admin', 'Staff fixture')", [staff]);
+ const staff = ADMIN_OWNER_ID; // One of the two authorised administrators.
  const order = (await db.query<{ id: string }>('select id from orders')).rows[0].id;
+ const claims = await sessionClaims(db, staff);
  await db.transaction(async (tx) => {
-   await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [staff]);
+   await tx.query("select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)", [staff, JSON.stringify(claims)]);
    await tx.exec('set local role authenticated');
    for (const [from, to] of [['pending', 'confirmed'], ['confirmed', 'preparing'], ['preparing', 'ready'], ['ready', 'delivered']]) {
      await tx.query('select admin_transition_order($1, $2, $3)', [order, from, to]);

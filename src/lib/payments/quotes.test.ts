@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {createQuoteToken,verifyQuoteToken,reservedPaymentQuote,type ShopQuote} from './quotes';
+import {createQuoteToken,verifyQuoteToken,reservedPaymentQuote,type ShopQuote, quoteSigningKey} from './quotes';
 const quote:ShopQuote={amount_xof:2000,shipping_xof:500,currency:'XOF',items:[{variantId:'test',quantity:1,unitPrice:1500,name:'Fixture',maxStock:5}]};
 const secret='fixture-reconcile-secret-32-characters';
 it('accepts a current signed server quote, rejects changed prices, quantities and expiration',()=>{
@@ -16,4 +16,14 @@ it('reviews immutable order prices on retry without requiring unreserved public 
  expect(reserved.items[0].maxStock).toBe(1);
  expect(verifyQuoteToken(createQuoteToken(quote,secret,1000),reserved,secret,1001)).toBe(true);
  expect(()=>reservedPaymentQuote({amount_xof:1,items:quote.items})).toThrow();
+});
+
+it('SEC-008: a dedicated quote key separates quote signatures from the reconciliation secret', () => {
+  const quote = { amount_xof: 1000, shipping_xof: 0, currency: 'XOF' as const, items: [{ variantId: 'v', quantity: 1, unitPrice: 1000, name: 'n', maxStock: 1 }] };
+  const shared = 'r'.repeat(40), dedicated = 'q'.repeat(40);
+  expect(quoteSigningKey({ PAYMENT_RECONCILE_SECRET: shared })).toBe(shared);
+  expect(quoteSigningKey({ PAYMENT_RECONCILE_SECRET: shared, PAYMENT_QUOTE_SECRET: dedicated })).toBe(dedicated);
+  const token = createQuoteToken(quote, dedicated);
+  expect(verifyQuoteToken(token, quote, dedicated)).toBe(true);
+  expect(verifyQuoteToken(token, quote, shared)).toBe(false);
 });

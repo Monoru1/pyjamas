@@ -9,13 +9,23 @@ import { safeSocialUrl } from '@/lib/security/urls';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-async function validateImage(file: FormDataEntryValue | null): Promise<File | null> {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type ValidatedImage = { file: File; extension: 'png' | 'jpg' | 'webp'; contentType: 'image/png' | 'image/jpeg' | 'image/webp' };
+
+/**
+ * SEC-002: the stored name and Content-Type come from the file's real signature, never from
+ * the browser-supplied name or MIME type (no "x.html", "a/../b" or mismatched type).
+ */
+async function validateImage(file: FormDataEntryValue | null): Promise<ValidatedImage | null> {
   if (!(file instanceof File) || !file.size || file.size > MAX_IMAGE_BYTES || !ALLOWED_IMAGE_TYPES.has(file.type)) return null;
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
   const isPng = bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
   const isJpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
   const isWebp = bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
-  return isPng || isJpeg || isWebp ? file : null;
+  if (isPng) return { file, extension: 'png', contentType: 'image/png' };
+  if (isJpeg) return { file, extension: 'jpg', contentType: 'image/jpeg' };
+  if (isWebp) return { file, extension: 'webp', contentType: 'image/webp' };
+  return null;
 }
 
 async function guardAdmin() {
@@ -26,10 +36,25 @@ async function guardAdmin() {
   return supabase;
 }
 
+/** Ends THIS computer's session only (the other administrator and devices stay signed in). */
 export async function signOutAdmin() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
   redirect('/admin/login');
+}
+
+/**
+ * Lost or compromised device: ends every other session of this account (scope 'others'), or all of
+ * them including this one (scope 'global'). Supabase deletes the sessions at once; the database
+ * then refuses their tokens (private.admin_assurance_ok checks auth.sessions), while an access
+ * token already issued stays technically valid for at most the JWT lifetime against other APIs.
+ */
+export async function revokeAdminSessions(formData: FormData) {
+  const supabase = await guardAdmin();
+  const scope = formData.get('scope') === 'global' ? 'global' : 'others';
+  const { error } = await supabase.auth.signOut({ scope });
+  if (error) throw new Error('La déconnexion des appareils a échoué. Réessayez.');
+  redirect(scope === 'global' ? '/admin/login' : '/admin/mfa?sessions=revoked');
 }
 
 export async function updateOrderStatus(formData: FormData) {
@@ -145,14 +170,14 @@ export async function deleteVariant(formData: FormData) {
 export async function uploadProductImage(formData: FormData) {
   const supabase = await guardAdmin();
   const productId = String(formData.get('product_id'));
-  const file = await validateImage(formData.get('image'));
-  if (!file) return;
+  if (!UUID.test(productId)) throw new Error('Produit invalide.');
+  const image = await validateImage(formData.get('image'));
+  if (!image) return;
 
-  const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
-  const path = `${productId}/${crypto.randomUUID()}.${extension}`;
+  const path = `${productId.toLowerCase()}/${crypto.randomUUID()}.${image.extension}`;
   const { error: uploadError } = await supabase.storage
     .from('product-images')
-    .upload(path, file, { contentType: file.type, upsert: false });
+    .upload(path, image.file, { contentType: image.contentType, upsert: false });
   if (uploadError) throw new Error(uploadError.message);
 
   const { data: publicUrl } = supabase.storage.from('product-images').getPublicUrl(path);
@@ -188,11 +213,10 @@ export async function setPrimaryProductImage(formData: FormData) {
 export async function updateSiteSettings(formData: FormData) {
   const supabase = await createManagerClient();
   async function uploadHomeImage(field: string, current: string) {
-    const file = await validateImage(formData.get(field));
-    if (!file) return current;
-    const extension = file.name.split('.').pop()?.toLowerCase() || 'webp';
-    const path = `homepage/${field}-${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
+    const image = await validateImage(formData.get(field));
+    if (!image) return current;
+    const path = `homepage/${field}-${crypto.randomUUID()}.${image.extension}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, image.file, { contentType: image.contentType });
     if (error) throw new Error(error.message);
     return supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
   }
@@ -327,11 +351,11 @@ export async function updateCollection(formData: FormData) {
   const name = String(formData.get('name_fr') ?? '').trim();
   if (!id || !name) return;
   let imageUrl = String(formData.get('image_url') ?? '');
-  const file = await validateImage(formData.get('image'));
-  if (file) {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'webp';
-    const path = `collections/${id}-${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from('site-assets').upload(path, file, { contentType: file.type });
+  const image = await validateImage(formData.get('image'));
+  if (image) {
+    if (!UUID.test(id)) throw new Error('Collection invalide.');
+    const path = `collections/${id.toLowerCase()}-${crypto.randomUUID()}.${image.extension}`;
+    const { error } = await supabase.storage.from('site-assets').upload(path, image.file, { contentType: image.contentType });
     if (error) throw new Error(error.message);
     imageUrl = supabase.storage.from('site-assets').getPublicUrl(path).data.publicUrl;
   }

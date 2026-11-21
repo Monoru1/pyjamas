@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowUpRight, CalendarHeart, FolderKanban, Images, LayoutDashboard, Menu, Package, ReceiptText, Settings, Tag, X } from 'lucide-react';
+import { ArrowUpRight, CalendarHeart, FolderKanban, Images, LayoutDashboard, Menu, Package, ReceiptText, Settings, ShieldCheck, Tag, X } from 'lucide-react';
 import { signOutAdmin } from '@/app/admin/actions';
 
 const sections = [
@@ -17,6 +17,7 @@ const sections = [
   { href: '/admin/collections', label: 'Collection Noël', icon: FolderKanban },
   { href: '/admin/promotions', label: 'Promotions', icon: Tag },
   { href: '/admin/site', label: 'Personnaliser le site', icon: Settings },
+  { href: '/admin/mfa', label: 'Sécurité du compte', icon: ShieldCheck },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

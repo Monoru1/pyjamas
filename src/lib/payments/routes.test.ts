@@ -25,7 +25,7 @@ beforeEach(()=>{
  vi.clearAllMocks();mocks.allowed=true;mocks.notifications.mockResolvedValue(0);
  const env={PAYMENT_RECONCILE_SECRET:'fixture-reconcile-secret-32-characters',PAYMENT_CHECKOUT_ENABLED:'true',FEDAPAY_ENABLED:'true',FEDAPAY_ENVIRONMENT:'sandbox',FEDAPAY_SECRET_KEY:'sk_sandbox_fixture',FEDAPAY_WEBHOOK_SECRET:'wh_fixture',SUPABASE_SERVICE_ROLE_KEY:'fixture',FEDAPAY_ACCOUNT_ID:'42',PAYMENT_DATABASE_ISOLATED:'true',NEXT_PUBLIC_SUPABASE_URL:'https://acceptance.supabase.co',PAYMENT_SITE_URL:'https://preview.example.test',PAYMENT_SHIPPING_XOF:'500'};
  for(const [key,value] of Object.entries(env))vi.stubEnv(key,value);
- mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?quote:{...payment},error:null}));
+ mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='consume_checkout_budget'?'ok':name==='quote_shop_basket'?quote:{...payment},error:null}));
  mocks.db.from.mockImplementation(()=>chain([{id:payment.id}]));
  mocks.provider.mockImplementation(async(path:string)=>path.endsWith('/token')?{token:'fixture',url:'https://sandbox-checkout.fedapay.com/fixture'}:{id:42});
  mocks.resolved.mockResolvedValue({id:42,amount:15500,status:'pending',currency:{iso:'XOF'},account_id:42,merchant_reference:payment.id,custom_metadata:{payment_id:payment.id,order_id:payment.order_id,purpose:'shop'}});
@@ -48,12 +48,12 @@ it('does not POST again when a refresh finds provider creation already claimed',
  expect((await checkout(request(input))).status).toBe(409);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('recovers token generation for existing transaction without creating another charge',async()=>{
- mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?quote:{...payment,provider_id:42},error:null}));
+ mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='consume_checkout_budget'?'ok':name==='quote_shop_basket'?quote:{...payment,provider_id:42},error:null}));
  expect((await checkout(request(input))).status).toBe(200);
  expect(mocks.provider.mock.calls.map(([path])=>path)).toEqual(['/transactions/42/token']);
 });
 it('rechecks the provider recipient before returning an existing URL without creating a new transaction',async()=>{
- mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?quote:{...payment,provider_id:42,checkout_url:'https://sandbox-checkout.fedapay.com/existing'},error:null}));
+ mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='consume_checkout_budget'?'ok':name==='quote_shop_basket'?quote:{...payment,provider_id:42,checkout_url:'https://sandbox-checkout.fedapay.com/existing'},error:null}));
  expect((await checkout(request(input))).status).toBe(200);expect(mocks.provider).not.toHaveBeenCalled();
  expect(mocks.resolved).toHaveBeenCalledWith(42);
 });
@@ -114,7 +114,7 @@ it('reconciliation rejects unauthorized callers without querying the DB',async()
 });
 it('returns the new total before creating any order or provider transaction when prices changed',async()=>{
  const r=await checkout(request({...input,quoteToken:'stale'}));expect(r.status).toBe(409);expect((await r.json()).quote.amount_xof).toBe(15500);
- expect(mocks.db.rpc.mock.calls.some(([name])=>name==='create_shop_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
+ expect(mocks.db.rpc.mock.calls.some(([name])=>name==='reserve_checkout_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('live preview rejects anonymous staff access and an amount above the owner ceiling',async()=>{
  for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'21',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-21--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
@@ -155,7 +155,7 @@ it('reconfirms and resumes the same reserved last unit after refresh without rer
   query.update = vi.fn(() => chain([{checkout_url:'https://sandbox-checkout.fedapay.com/fixture'}]));
   return query;
  });
- mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='quote_shop_basket'?null:{...payment,provider_id:42},error:null}));
+ mocks.db.rpc.mockImplementation(async(name:string)=>({data:name==='consume_order_request_budget'?true:name==='consume_checkout_budget'?'ok':name==='quote_shop_basket'?null:{...payment,provider_id:42},error:null}));
  const review=await checkout(request({...input,quoteToken:undefined}));
  expect(review.status).toBe(409);const data=await review.json();expect(data.quote.reserved).toBe(true);expect(data.quote.amount_xof).toBe(15500);
  expect(mocks.provider).not.toHaveBeenCalled();
