@@ -9,6 +9,8 @@ import { initializeStoredCheckout, CheckoutInitializationError } from '@/lib/pay
 import { checkoutConfiguration, providerRequest, transactionFromResponse, TransactionMismatchError } from '@/lib/payments/fedapay';
 export const runtime = 'nodejs';
 
+const clientReservationLimitMessage = 'Des articles sont déjà réservés en attente de paiement depuis votre connexion. Finalisez ce paiement ou réessayez plus tard.';
+
 /** Units a single connection may hold in unpaid reservations (SEC-001). Default 20. */
 function maxOpenUnitsPerClient(value = process.env.PAYMENT_MAX_OPEN_UNITS_PER_CLIENT) {
   const parsed = Number(value);
@@ -53,15 +55,16 @@ export async function POST(request: Request) {
     const subject = createHmac('sha256', fingerprintKey).update(input.customer.phone).digest('hex');
     // SEC-001: keyed fingerprint of the connection (Netlify sets this header); never stored raw.
     const client = checkoutClientFingerprint(request, fingerprintKey);
+    const maxOpenUnits = maxOpenUnitsPerClient();
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id,status,public_token').eq('idempotency_key',input.idempotencyKey).maybeSingle();
     if(lookupError)throw new Error('Recherche de commande indisponible.');
     // Resuming an existing order never reserves more units, so only NEW baskets count against the cap.
     const units = existing ? 0 : input.lines.reduce((sum, line) => sum + line.quantity, 0);
-    const { data: verdict, error: budgetError } = await db.rpc('consume_checkout_budget', { p_client: client, p_subject: subject, p_units: units, p_max_open_units: maxOpenUnitsPerClient() });
+    const { data: verdict, error: budgetError } = await db.rpc('consume_checkout_budget', { p_client: client, p_subject: subject, p_units: units, p_max_open_units: maxOpenUnits });
     if (budgetError || verdict !== 'ok') return Response.json({ error: verdict === 'client_units'
-      ? 'Des articles sont déjà réservés en attente de paiement depuis votre connexion. Finalisez ce paiement ou réessayez plus tard.'
+      ? clientReservationLimitMessage
       : 'Trop de demandes. Réessayez dans quelques minutes.' }, { status: 429 });
     if (config.liveTest && (!existing || !existing.provider_id)) {
       const { data: previous, error: previousError } = await db.from('payment_attempts')
@@ -96,17 +99,16 @@ export async function POST(request: Request) {
     if(!verifyQuoteToken(input.quoteToken,quote))return Response.json({error:quote.reserved?'Vérifiez puis confirmez le montant figé de votre commande réservée.':'Le prix ou le panier a changé. Vérifiez puis confirmez le nouveau total.',quote,quoteToken:createQuoteToken(quote)},{status:409});
     if(config.liveTest && quote.amount_xof>config.testCeiling!)return Response.json({error:'Montant supérieur au plafond de recette autorisé.'},{status:403});
     if(config.adminTest && Number(quote.amount_xof)!==config.adminTestAmount)return Response.json({error:'Ce total ne correspond pas au montant de test autorisé par le propriétaire.'},{status:403});
-    const args={p_key:input.idempotencyKey,p_hash:hash,p_customer:input.customer,p_lines:input.lines,p_account:config.accountId,p_shipping:config.shipping,p_expected_items:quote.items};
-    const {data,error}=config.liveTest
-      ? await db.rpc('create_authorized_live_test_payment',{...args,p_authorization:config.authorizationId,p_staff:staffId,p_ceiling:config.testCeiling})
-      : await db.rpc('create_shop_payment',{...args,p_environment:config.environment});
+    const { data, error } = await db.rpc('reserve_checkout_payment', {
+      p_client: client, p_max_open_units: maxOpenUnits, p_key: input.idempotencyKey, p_hash: hash,
+      p_customer: input.customer, p_lines: input.lines, p_environment: config.environment,
+      p_account: config.accountId, p_shipping: config.shipping, p_expected_items: quote.items,
+      ...(config.liveTest ? { p_authorization: config.authorizationId, p_staff: staffId, p_ceiling: config.testCeiling } : {}),
+    });
+    if (error?.code === 'P7429') return Response.json({ error: clientReservationLimitMessage }, { status: 429 });
     if (error || !data) return Response.json({ error: 'Article indisponible, stock insuffisant ou demande modifiée.' }, { status: 409 });
-    const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string; creator?: boolean };
+    const payment = data as { id: string; order_id: string; amount_xof: number; public_token: string; provider_id: number | null; checkout_url: string | null; status: string };
     paymentId = payment.id; reference = payment.public_token;
-    if (payment.creator) {
-      const { error: tagError } = await db.from('payment_attempts').update({ client_fingerprint: client }).eq('id', payment.id).is('client_fingerprint', null).select('id');
-      if (tagError) console.error('payment_client_tag_failed', { paymentId: payment.id });
-    }
     if(Number(payment.amount_xof)!==Number(quote.amount_xof))return Response.json({error:'Une commande antérieure est déjà figée à un autre montant. Consultez son suivi avant de recommencer.',reference},{status:409});
     const referenceUrl = `/paiement?reference=${payment.public_token}`;
     if (payment.status === 'paid') return Response.json({ url: `${storefront}${referenceUrl}`, reference: payment.public_token, internal: true });

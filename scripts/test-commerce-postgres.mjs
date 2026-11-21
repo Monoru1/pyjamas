@@ -79,4 +79,26 @@ try {
   assert.equal((await pool.query('select count(*)::int n from notification_jobs')).rows[0].n,2);
   assert.equal((await pool.query("select count(*)::int n from inventory_movements where kind='commit'")).rows[0].n,1);
   console.log('PASS concurrent webhook replay: one inventory commit and two unique notification jobs');
+
+  for (const migration of ['20261121170000_checkout_client_limits', '20261121180000_unpaid_reservation_30_minutes']) {
+    await pool.query(await readFile(`supabase/migrations/${migration}.sql`, 'utf8'));
+  }
+  await pool.query('update product_variants set stock_quantity=2 where id=$1', [variant]);
+  const { rows: [{ quote }] } = await pool.query('select quote_shop_basket($1,0) quote', [JSON.stringify(lines)]);
+  const fingerprint = 'a'.repeat(64);
+  const keys = [randomUUID(), randomUUID()];
+  const reserveForClient = key => pool.query(`select reserve_checkout_payment(
+    $1,1,$2,'fixture',$3,$4,'sandbox',42,0,$5) payment`,
+  [fingerprint, key, JSON.stringify(customer), JSON.stringify(lines), JSON.stringify(quote.items)]);
+  const concurrent = await Promise.allSettled(keys.map(reserveForClient));
+  const accepted = concurrent.findIndex(result => result.status === 'fulfilled');
+  assert.notEqual(accepted, -1);
+  assert.equal(concurrent[1 - accepted].status, 'rejected');
+  assert.equal(concurrent[1 - accepted].reason.code, 'P7429');
+  assert.equal((await pool.query('select stock_quantity from product_variants where id=$1', [variant])).rows[0].stock_quantity, 1);
+  const { rows: [acceptedPayment] } = await reserveForClient(keys[accepted]);
+  assert.equal(acceptedPayment.payment.creator, false);
+  assert.equal(acceptedPayment.payment.client_fingerprint, fingerprint);
+  assert.equal((await pool.query('select count(*)::int n from payment_attempts where client_fingerprint=$1', [fingerprint])).rows[0].n, 1);
+  console.log('PASS concurrent client reservation limit, atomic stock and idempotent retry');
 } finally { await pool.end(); }

@@ -16,7 +16,7 @@ PGlite (base jetable) et des doubles FedaPay/Resend : aucune transaction, aucun 
 
 1. Sauvegarde restaurable prouvée (procédure `production-release` existante).
 2. Appliquer **d'abord** `supabase/migrations/20261121170000_checkout_client_limits.sql`
-   (additive : une colonne nullable, un index partiel, une fonction réservée à `service_role`).
+   (additive : une colonne nullable, un index partiel et des fonctions réservées à `service_role`).
 3. Vérifier : `select has_function_privilege('anon','public.consume_checkout_budget(text,text,integer,integer)','execute');` → `false`.
 4. Seulement ensuite, déployer le code. Déployé avant la migration, le paiement répondrait 429 à tous.
 5. Option : `PAYMENT_MAX_OPEN_UNITS_PER_CLIENT` (défaut 20).
@@ -25,7 +25,13 @@ PGlite (base jetable) et des doubles FedaPay/Resend : aucune transaction, aucun 
 
 1. Redéployer le commit précédent (le code ancien n'utilise ni la colonne ni la fonction).
 2. Facultatif, après retour du code :
-   `drop function public.consume_checkout_budget(text,text,integer,integer); drop index public.payment_attempts_client_reserved_idx; alter table public.payment_attempts drop column client_fingerprint;`
+   ```sql
+   drop function public.reserve_checkout_payment(text, integer, uuid, text, jsonb, jsonb, text, bigint, bigint, jsonb, uuid, uuid, bigint);
+   drop function public.consume_checkout_budget(text, text, integer, integer);
+   drop function public.checkout_client_reserved_units(text);
+   drop index public.payment_attempts_client_reserved_idx;
+   alter table public.payment_attempts drop column client_fingerprint;
+   ```
 
 ## Points non corrigés (décision propriétaire requise)
 

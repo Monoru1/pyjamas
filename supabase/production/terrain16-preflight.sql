@@ -32,5 +32,5 @@ where routine_schema = 'public' and routine_name = 'create_order_request_atomic'
 select count(*) as open_reservations, min(expires_at) as first_deadline, max(expires_at) as last_deadline
 from public.payment_attempts where inventory_state = 'reserved';
 
--- 7. Migration history: the four Terrain 15/16 versions must not be present yet.
+-- 7. Migration history: the six Terrain 15/16 versions must not be present yet.
 select version, name from supabase_migrations.schema_migrations where version >= '20261121' order by version;

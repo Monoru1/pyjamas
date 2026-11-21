@@ -7,7 +7,7 @@ identique au patch livré) et les corrections Terrain 16. **Rien n'est appliqué
 
 | Fichier | Effet | Réversible |
 |---|---|---|
-| `20261121170000_checkout_client_limits.sql` | SEC-001 : budget par connexion, plafond 20 unités impayées | oui (doc Terrain 15) |
+| `20261121170000_checkout_client_limits.sql` | SEC-001 : budget par connexion, plafond de 20 unités impayées contrôlé dans la transaction de réservation | oui (doc Terrain 15) |
 | `20261121180000_unpaid_reservation_30_minutes.sql` | SEC-001 : réservation impayée 30 min (nouvelles commandes) | oui |
 | `20261121180100_two_admin_accounts_mfa.sql` | SEC-005/011 : **exactement deux administrateurs** (`sakryad@gmail.com`, `lamaisondespyjamas@gmail.com`) liés à leur identifiant Supabase Auth, droits identiques ; `employee`, `super_admin` ou tout autre profil ne donnent plus rien ; profils hors de ces deux identités désactivés (jamais supprimés, journalisés) ; interrupteur AAL2 ; journal clients/profils/collections/images. Refuse de s'exécuter si aucun des deux comptes n'existe. | oui |
 | `20261121180200_retire_unpaid_order_requests.sql` | SEC-006 : plus aucun rôle ne peut appeler `create_order_request_atomic` | oui |
@@ -24,11 +24,15 @@ Retour arrière base : `supabase/production/rollback-terrain16.sql` (après red�
 4. Production : `terrain16-preflight.sql` (lecture seule). La requête 2 doit montrer les deux adresses, deux identifiants distincts, `confirmed = true`. Un compte absent ou non confirmé : son titulaire le crée/confirme (aucun mot de passe n'est fixé par script), puis, après la migration : `select * from private.bind_authorized_admins();`. La requête 2b liste les profils qui seront désactivés.
 5. Vérifier que la branche passe la CI.
 6. **Autorisation explicite du propriétaire.**
-7. Appliquer les 6 migrations en production, puis `terrain16-postflight.sql`.
+7. Appliquer les 6 migrations en production, puis `terrain16-postflight.sql`. Vérifier aussi que
+   `select count(*) = 2 as both_admins_bound from private.admin_accounts;` retourne `true`.
 8. Fusionner la PR et laisser Netlify déployer. **Jamais le code avant les migrations** (le paiement répondrait 429).
 9. Contrôles : panier → page FedaPay ; connexion des deux administrateurs ; `/admin/commandes` ; suivi d'une commande.
 
-En cas d'échec à l'étape 7 : arrêter, ne pas déployer le code, exécuter `rollback-terrain16.sql`.
+En cas d'échec à l'étape 7, suspendre la publication et vérifier ce qui a été validé en base.
+Un échec dans une transaction annulée ne demande pas de rollback SQL. Après validation de la
+transaction, comparer l'impact du rollback ciblé et celui d'une restauration. Le rollback laisse
+les profils désactivés et les écritures commerciales en place.
 
 ## Netlify (aucune modification faite)
 

@@ -114,7 +114,7 @@ it('reconciliation rejects unauthorized callers without querying the DB',async()
 });
 it('returns the new total before creating any order or provider transaction when prices changed',async()=>{
  const r=await checkout(request({...input,quoteToken:'stale'}));expect(r.status).toBe(409);expect((await r.json()).quote.amount_xof).toBe(15500);
- expect(mocks.db.rpc.mock.calls.some(([name])=>name==='create_shop_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
+ expect(mocks.db.rpc.mock.calls.some(([name])=>name==='reserve_checkout_payment')).toBe(false);expect(mocks.provider).not.toHaveBeenCalled();
 });
 it('live preview rejects anonymous staff access and an amount above the owner ceiling',async()=>{
  for(const [key,value]of Object.entries({FEDAPAY_ENVIRONMENT:'live',FEDAPAY_SECRET_KEY:'sk_live_fixture',CONTEXT:'deploy-preview',REVIEW_ID:'21',FEDAPAY_ACCOUNT_ID:'101915',FEDAPAY_LIVE_APPROVED:'false',PAYMENT_SITE_URL:'https://deploy-preview-21--pyjamas25.netlify.app',NEXT_PUBLIC_SUPABASE_URL:'https://oxhymanjibveayhcaqvj.supabase.co',PAYMENT_LIVE_TEST_ENABLED:'true',PAYMENT_LIVE_TEST_MAX_XOF:'100',PAYMENT_LIVE_TEST_AUTHORIZATION_ID:'11111111-1111-4111-8111-111111111111'}))vi.stubEnv(key,value);
