@@ -1,12 +1,12 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { commerceDatabase } from '@/lib/payments/test-support/commerce-db';
+import { ADMIN_MANAGER_ID, commerceDatabase } from '@/lib/payments/test-support/commerce-db';
 import { emailKinds, renderOrderEmail } from '@/lib/payments/order-email';
 import { ORDER_ITEM_FIELDS, buildOrderRecord, orderEmailData } from './order-record';
 
 /** Full schema snapshot + every release migration, in a disposable database. No provider, no Supabase. */
 let db: PGlite;
-const staff = '44444444-4444-4444-8444-444444444444';
+const staff = ADMIN_MANAGER_ID; // One of the two authorised administrators.
 const outsider = '55555555-5555-4555-8555-555555555555';
 const [productA, productB] = ['22222222-2222-4222-8222-222222222221', '22222222-2222-4222-8222-222222222222'];
 const [small, large] = ['11111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111112'];
@@ -39,7 +39,7 @@ async function record(orderId: string) {
 
 beforeAll(async () => {
   db = await commerceDatabase();
-  await db.exec(`insert into auth.users values('${staff}'),('${outsider}');
+  await db.exec(`insert into auth.users(id) values('${outsider}');
     insert into profiles(id,role,is_active) values('${staff}','admin',true);
     insert into currencies(code,name,symbol) values('XOF','Franc CFA','FCFA');
     insert into products(id,slug,name_fr,base_price,currency_code,is_active) values

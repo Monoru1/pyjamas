@@ -8,8 +8,14 @@ select p.id, p.email, p.role, p.is_active, u.created_at, u.last_sign_in_at,
 from public.profiles p left join auth.users u on u.id = p.id
 order by p.is_active desc, p.role, p.created_at;
 
--- 2. Active employee profiles. Expected: 0 (the migration refuses to run otherwise).
-select count(*) as active_employees from public.profiles where is_active and role = 'employee';
+-- 2. The two authorised identities in Supabase Auth. Expected: 2 rows, distinct ids, both confirmed.
+--    A missing or unconfirmed one must be created/confirmed by its holder (no password is set here).
+select lower(u.email) as email, u.id, u.email_confirmed_at is not null as confirmed, u.last_sign_in_at
+from auth.users u where lower(u.email) in ('sakryad@gmail.com', 'lamaisondespyjamas@gmail.com');
+
+-- 2b. Active profiles OUTSIDE these two identities: the migration deactivates them (never deletes).
+select p.id, p.email, p.role from public.profiles p left join auth.users u on u.id = p.id
+where p.is_active and coalesce(lower(u.email), '') not in ('sakryad@gmail.com', 'lamaisondespyjamas@gmail.com');
 
 -- 3. Auth users without a profile (they hold no right; listed for awareness only).
 select count(*) as users_without_profile from auth.users u where not exists (select 1 from public.profiles p where p.id = u.id);

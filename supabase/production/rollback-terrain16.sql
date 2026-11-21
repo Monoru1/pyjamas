@@ -16,7 +16,12 @@ create or replace function public.is_super_admin() returns boolean language sql 
 $function$;
 drop function if exists public.is_admin_account();
 drop function if exists private.admin_assurance_ok();
+drop function if exists private.bind_authorized_admins();
 drop table if exists private.security_flags;
+drop table if exists private.admin_accounts;
+drop table if exists private.authorized_admin_emails;
+-- Profiles deactivated by the migration stay inactive (see activity_logs 'deactivate_unauthorized_profile').
+-- WARNING: the previous is_admin() also admitted active `employee` profiles.
 alter table public.profiles alter column is_active set default true;
 drop trigger if exists audit_customer_changes on public.customers;
 drop trigger if exists audit_profile_changes on public.profiles;
