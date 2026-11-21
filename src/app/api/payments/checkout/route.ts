@@ -2,7 +2,7 @@ import { readLimitedBody, requireJsonRequest, requireBrowserOrigin, HttpInputErr
 import { allowedBrowserOrigin } from '@/lib/security/site-domain';
 import { createHash, createHmac } from 'node:crypto';
 import { createQuoteToken, verifyQuoteToken, reservedPaymentQuote, type ShopQuote } from '@/lib/payments/quotes';
-import { checkoutSchema } from '@/lib/payments/checkout-input';
+import { checkoutSchema, customerErrorMessage, customerFieldErrors } from '@/lib/payments/checkout-input';
 import { createClient } from '@/lib/supabase/server';
 import { paymentDatabase } from '@/lib/payments/server';
 import { initializeStoredCheckout, CheckoutInitializationError } from '@/lib/payments/initialization';
@@ -20,8 +20,13 @@ export async function POST(request: Request) {
     // cart and resume key live (origin-scoped storage), even during a domain transition.
     const storefront = allowedBrowserOrigin(request, config.origin);
     requireBrowserOrigin(request, storefront);
-    const parsed = checkoutSchema.safeParse(JSON.parse(await readLimitedBody(request, 10000)));
-    if (!parsed.success) return Response.json({ error: 'Vérifiez nom, téléphone (+229 01…), e-mail, ville et adresse.' }, { status: 400 });
+    const json: unknown = JSON.parse(await readLimitedBody(request, 10000));
+    const parsed = checkoutSchema.safeParse(json);
+    if (!parsed.success) {
+      // Field names only: never echo customer values back.
+      const fields = customerFieldErrors((json as { customer?: unknown } | null)?.customer);
+      return Response.json({ error: fields.length ? customerErrorMessage(fields) : 'Demande de paiement invalide.', fields }, { status: 400 });
+    }
     let staffId: string | undefined;
     if (config.staffOnly) {
       const auth = await createClient();

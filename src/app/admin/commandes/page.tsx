@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { updateOrderStatus } from '@/app/admin/actions';
 import { OrdersAutoRefresh } from '@/app/admin/commandes/orders-auto-refresh';
 import { createAdminClient as createClient } from '@/lib/supabase/admin';
-import { canFulfill, dateTime, nextOrderStatuses, orderStatusLabels, paymentStateLabels, transitionLabels } from '@/lib/orders/labels';
+import { canFulfill, dateTime, fulfilmentLabel, isUnpaidOnlineOrder, nextOrderStatuses, orderStatusLabels, paymentStateLabels, transitionLabels } from '@/lib/orders/labels';
 import { notificationSummary, toneClass } from '@/lib/orders/notification-status';
 import { formatPrice } from '@/lib/utils/money';
 
@@ -93,11 +93,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <dt className="text-black/55">Paiement</dt>
                     <dd>{paymentStateLabels[order.payment_state] ?? order.payment_state}{order.source === 'fedapay_sandbox' ? ' · TEST SANDBOX' : ''}{order.needs_attention ? ' · INTERVENTION REQUISE' : ''}</dd>
                     <dt className="text-black/55">Préparation</dt>
-                    <dd>{orderStatusLabels[order.status] ?? order.status}</dd>
+                    <dd>{fulfilmentLabel(order)}</dd>
                     <dt className="text-black/55">Notifications</dt>
                     <dd><span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${toneClass[notifications.tone]}`}>{notifications.label}</span></dd>
                   </dl>
                   {order.source === 'notification_demo' && <p className="order-note">Démonstration des notifications</p>}
+                  {isUnpaidOnlineOrder(order) && <p className="order-note">Tentative de paiement non aboutie : ne pas préparer ni livrer. Le stock réservé est libéré automatiquement à l’échéance.</p>}
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <Link className="min-h-10 rounded-lg border border-black/20 px-4 py-2 text-sm font-bold" href={`/admin/commandes/${order.id}`}>Ouvrir la commande</Link>
                     {next && <form action={updateOrderStatus} style={{ margin: 0 }}>
