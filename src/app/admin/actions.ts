@@ -36,10 +36,25 @@ async function guardAdmin() {
   return supabase;
 }
 
+/** Ends THIS computer's session only (the other administrator and devices stay signed in). */
 export async function signOutAdmin() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
   redirect('/admin/login');
+}
+
+/**
+ * Lost or compromised device: ends every other session of this account (scope 'others'), or all of
+ * them including this one (scope 'global'). Supabase deletes the sessions at once; the database
+ * then refuses their tokens (private.admin_assurance_ok checks auth.sessions), while an access
+ * token already issued stays technically valid for at most the JWT lifetime against other APIs.
+ */
+export async function revokeAdminSessions(formData: FormData) {
+  const supabase = await guardAdmin();
+  const scope = formData.get('scope') === 'global' ? 'global' : 'others';
+  const { error } = await supabase.auth.signOut({ scope });
+  if (error) throw new Error('La déconnexion des appareils a échoué. Réessayez.');
+  redirect(scope === 'global' ? '/admin/login' : '/admin/mfa?sessions=revoked');
 }
 
 export async function updateOrderStatus(formData: FormData) {

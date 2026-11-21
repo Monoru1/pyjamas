@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { revokeAdminSessions } from '@/app/admin/actions';
 
 type Factor = { id: string; friendly_name?: string | null; status: string; factor_type: string };
 type Enrolment = { id: string; qr: string; secret: string };
@@ -91,6 +92,9 @@ export function MfaPanel() {
           <p>Double authentification active : {factors.length} appareil{factors.length > 1 ? 's' : ''} enregistré{factors.length > 1 ? 's' : ''}.</p>
           <p>Ajoutez un second appareil (téléphone de secours) pour ne pas perdre l’accès.</p>
           <button type="button" onClick={startEnrolment} disabled={busy}>Ajouter un appareil de secours</button>
+          <p>Cet ordinateur reste connecté jusqu’à 30 jours après la saisie du mot de passe. Téléphone ou ordinateur perdu ? Déconnectez les autres appareils.</p>
+          <form action={revokeAdminSessions}><input type="hidden" name="scope" value="others" /><button type="submit">Déconnecter les autres appareils</button></form>
+          <form action={revokeAdminSessions}><input type="hidden" name="scope" value="global" /><button type="submit">Déconnecter tous les appareils, y compris celui-ci</button></form>
           <a href="/admin">Retour au studio</a>
         </>
       )}

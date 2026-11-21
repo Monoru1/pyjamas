@@ -10,6 +10,7 @@ export async function commerceDatabase() {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create schema auth; create table auth.users(id uuid primary key, email text unique, email_confirmed_at timestamptz);
+    create table auth.sessions(id uuid primary key, user_id uuid not null, not_after timestamptz, created_at timestamptz default now());
     create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
     grant usage on schema auth to anon,authenticated,service_role;
@@ -18,7 +19,7 @@ export async function commerceDatabase() {
   await db.exec(readFileSync('supabase/recette/bootstrap-production-schema.sql','utf8').replace(/^create extension[^;]+;$/gm,''));
   // The two authorised administrators (Terrain 16 decision), as confirmed Auth identities.
   await db.query("insert into auth.users(id,email,email_confirmed_at) values ($1,'sakryad@gmail.com',now()),($2,'lamaisondespyjamas@gmail.com',now())", [ADMIN_OWNER_ID, ADMIN_MANAGER_ID]);
-  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113154852_physical_stock_receipts','20261119091918_paid_order_emails_only','20261121170000_checkout_client_limits','20261121180000_unpaid_reservation_30_minutes','20261121180100_two_admin_accounts_mfa','20261121180200_retire_unpaid_order_requests']) {
+  for (const name of ['20261029093122_fedapay_commerce','20261029105353_live_test_price_quotes','20261029105807_stock_price_admin_guards','20261029111200_payment_events_index','20261103163942_operational_notifications','20261113090005_order_whatsapp_lifecycle','20261113093826_staff_notification_channels','20261113102412_email_only_notifications','20261113150500_order_reconciliation','20261113154852_physical_stock_receipts','20261119091918_paid_order_emails_only','20261121170000_checkout_client_limits','20261121180000_unpaid_reservation_30_minutes','20261121180100_two_admin_accounts_mfa','20261121180200_retire_unpaid_order_requests','20261121180400_admin_session_30_days']) {
     await db.exec(readFileSync(`supabase/migrations/${name}.sql`,'utf8'));
   }
   return db;
@@ -79,4 +80,16 @@ export function sqlClient(db: PGlite) {
       return builder;
     },
   };
+}
+
+/**
+ * Opens a Supabase-like session for a user and returns the JWT claims PostgREST would expose:
+ * session_id (row in auth.sessions), aal and amr (primary authentication `ageSeconds` ago).
+ */
+export async function sessionClaims(db: PGlite, userId: string, { aal = 'aal1', ageSeconds = 60 }: { aal?: string; ageSeconds?: number } = {}) {
+  const sessionId = crypto.randomUUID();
+  await db.query('insert into auth.sessions(id,user_id) values ($1,$2)', [sessionId, userId]);
+  const now = Math.floor(Date.now() / 1000);
+  const amr = [{ method: 'password', timestamp: now - ageSeconds }, ...(aal === 'aal2' ? [{ method: 'totp', timestamp: now - 30 }] : [])];
+  return { sub: userId, role: 'authenticated', session_id: sessionId, aal, amr };
 }

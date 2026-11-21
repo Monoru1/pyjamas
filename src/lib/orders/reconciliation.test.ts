@@ -1,6 +1,6 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, expect, it } from 'vitest';
-import { ADMIN_MANAGER_ID, commerceDatabase } from '@/lib/payments/test-support/commerce-db';
+import { ADMIN_MANAGER_ID, commerceDatabase, sessionClaims } from '@/lib/payments/test-support/commerce-db';
 import { emailKinds, renderOrderEmail } from '@/lib/payments/order-email';
 import { ORDER_ITEM_FIELDS, buildOrderRecord, orderEmailData } from './order-record';
 
@@ -15,8 +15,12 @@ const customer = { name: 'Awa Fixture', phone: '2290100000000', email: 'fixture@
   city: 'Cotonou', comment: 'Sonner deux fois', emailConfirmation: true, emailTracking: true };
 type Row = Record<string, unknown>;
 const rows = async <T = Row>(sql: string, params: unknown[] = []) => (await db.query<T>(sql, params)).rows;
-const asStaff = (id = staff) => db.exec(`set request.jwt.claim.sub='${id}';set role authenticated;`);
-const asServer = () => db.exec(`reset role;set request.jwt.claim.sub='';`);
+const asStaff = async (id = staff) => {
+  await db.exec('reset role');
+  const claims = JSON.stringify(await sessionClaims(db, id));
+  await db.exec(`set request.jwt.claim.sub='${id}';set request.jwt.claims='${claims}';set role authenticated;`);
+};
+const asServer = () => db.exec(`reset role;set request.jwt.claim.sub='';set request.jwt.claims='';`);
 
 async function order(lines = [{ variantId: small, quantity: 1 }], shipping = 500) {
   const [{ quote }] = await rows<{ quote: { items: unknown } }>('select quote_shop_basket($1,$2) quote', [JSON.stringify(lines), shipping]);

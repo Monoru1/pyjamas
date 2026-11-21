@@ -4,13 +4,16 @@ import { NextRequest } from 'next/server';
 
 // Regression: production admin server actions failed with "Unexpected end of form"
 // because the proxy rebuilt the Request and consumed its body on Netlify Edge.
-const auth = vi.hoisted(() => ({ admin: true, setCookie: false, accountRpc: true, levels: { currentLevel: 'aal1', nextLevel: 'aal1' } as { currentLevel: string; nextLevel: string }, calls: [] as string[] }));
+const auth = vi.hoisted(() => ({ admin: true, setCookie: false, accountRpc: true, levels: { currentLevel: 'aal1', nextLevel: 'aal1' } as { currentLevel: string; nextLevel: string }, calls: [] as string[], authAge: 60, signOuts: [] as string[], claimsMode: 'ok' as 'ok' | 'none' | 'error' | 'network' }));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: (_url: string, _key: string, options: { cookies: { setAll: (c: { name: string; value: string; options: object }[]) => void } }) => ({
     auth: { getClaims: async () => {
+      if (auth.claimsMode === 'network') throw new TypeError('fetch failed');
+      if (auth.claimsMode === 'none') return { data: null, error: null };
+      if (auth.claimsMode === 'error') return { data: null, error: { name: 'AuthApiError', message: 'Invalid Refresh Token: Refresh Token Not Found' } };
       if (auth.setCookie) options.cookies.setAll([{ name: 'sb-session', value: 'refreshed', options: { path: '/' } }]);
-      return { data: { claims: { sub: 'staff' } }, error: null };
-    }, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: auth.levels, error: null }) } },
+      return { data: { claims: { sub: 'staff', amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) - auth.authAge }] } }, error: null };
+    }, signOut: async ({ scope }: { scope: string }) => { auth.signOuts.push(scope); return { error: null }; }, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: auth.levels, error: null }) } },
     rpc: async (name: string) => { auth.calls.push(name); return name === 'is_admin_account' && !auth.accountRpc ? { data: null, error: { code: 'PGRST202' } } : { data: auth.admin, error: null }; },
   }),
 }));
@@ -24,7 +27,7 @@ const form = () => {
   body.set('status', 'confirmed');
   return body;
 };
-afterEach(() => { auth.admin = true; auth.setCookie = false; auth.accountRpc = true; auth.levels = { currentLevel: 'aal1', nextLevel: 'aal1' }; auth.calls = []; vi.unstubAllEnvs(); });
+afterEach(() => { auth.admin = true; auth.setCookie = false; auth.accountRpc = true; auth.levels = { currentLevel: 'aal1', nextLevel: 'aal1' }; auth.calls = []; auth.authAge = 60; auth.signOuts = []; auth.claimsMode = 'ok'; vi.unstubAllEnvs(); });
 
 it('never consumes the body of an admin server action', async () => {
   const request = new NextRequest('https://pyjamas25.netlify.app/admin/commandes/x', { method: 'POST', body: form(), headers: { cookie: 'sb-session=old' } });
@@ -92,4 +95,29 @@ it('falls back to is_admin() before the Terrain 16 migration, so the back-office
   const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'));
   expect(response.headers.get('x-middleware-next')).toBe('1');
   expect(auth.calls).toEqual(['is_admin_account', 'is_admin']);
+});
+
+// Terrain 16 — persistent session: 30 days after the password, a new sign-in (and MFA) is required.
+it('keeps a 29-day-old session open without asking anything again', async () => {
+  auth.authAge = 29 * 24 * 3600;
+  expect((await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'))).headers.get('x-middleware-next')).toBe('1');
+  expect(auth.signOuts).toEqual([]);
+});
+it('ends a session 30 days after the password: server sign-out, cookies erased, back to login', async () => {
+  auth.authAge = 30 * 24 * 3600 + 5;
+  const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/commandes', { headers: { cookie: 'sb-ref-auth-token=old; theme=x' } }));
+  expect(response.headers.get('location')).toBe('https://pyjamas25.netlify.app/admin/login');
+  expect(auth.signOuts).toEqual(['local']);
+  const cleared = response.headers.get('set-cookie') ?? '';
+  expect(cleared).toMatch(/sb-ref-auth-token=;/);
+  expect(cleared).toMatch(/Max-Age=0/i);
+  expect(cleared).not.toContain('theme=');
+});
+
+it('fails closed to the login page: deleted cookies, invalid refresh token, network outage', async () => {
+  for (const mode of ['none', 'error', 'network'] as const) {
+    auth.claimsMode = mode;
+    const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/commandes'));
+    expect(response.headers.get('location'), mode).toBe('https://pyjamas25.netlify.app/admin/login');
+  }
 });

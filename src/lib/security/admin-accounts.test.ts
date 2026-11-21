@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
-import { ADMIN_MANAGER_ID, ADMIN_OWNER_ID, commerceDatabase } from '@/lib/payments/test-support/commerce-db';
+import { ADMIN_MANAGER_ID, ADMIN_OWNER_ID, commerceDatabase, sessionClaims } from '@/lib/payments/test-support/commerce-db';
 
 // Terrain 16 · SEC-005 / SEC-011 — owner decision: exactly two administrators
 // (sakryad@gmail.com, lamaisondespyjamas@gmail.com), identical rights, no employee, no third access.
@@ -10,8 +10,12 @@ let db: Awaited<ReturnType<typeof commerceDatabase>>;
 const owner = ADMIN_OWNER_ID, manager = ADMIN_MANAGER_ID;
 const employee = randomUUID(), stranger = randomUUID();
 const product = randomUUID(), variant = randomUUID();
-const as = async <T,>(id: string, aal: string, sql: string, params: unknown[] = []) => db.transaction(async tx => {
-  await tx.query("select set_config('request.jwt.claim.sub',$1,true), set_config('request.jwt.claims',$2,true)", [id, JSON.stringify({ sub: id, aal })]);
+const as = async <T,>(id: string, aal: string, sql: string, params: unknown[] = []) => {
+  const claims = await sessionClaims(db, id, { aal });
+  return asClaims<T>(claims, sql, params);
+};
+const asClaims = <T,>(claims: Record<string, unknown>, sql: string, params: unknown[] = []) => db.transaction(async tx => {
+  await tx.query("select set_config('request.jwt.claim.sub',$1,true), set_config('request.jwt.claims',$2,true)", [claims.sub, JSON.stringify(claims)]);
   await tx.exec('set local role authenticated');
   return (await tx.query<T>(sql, params)).rows;
 });
