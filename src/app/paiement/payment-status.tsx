@@ -44,6 +44,13 @@ export function describePayment(result: Tracking, hint: ReturnHint, stalled: boo
     : 'Nous attendons la confirmation de FedaPay. Si vous validez un paiement Mobile Money, confirmez-le sur votre téléphone.', action: null };
 }
 
+/** The order number alone reads as "order placed": say it is unpaid unless the server confirmed it. */
+export function orderReferenceLine(status: string, orderNumber: string) {
+  if (status === 'paid') return `Commande ${orderNumber}`;
+  if (status === 'refunded' || status === 'partially_refunded') return `Commande ${orderNumber} (remboursement)`;
+  return `Référence ${orderNumber} · commande non payée à ce stade`;
+}
+
 export function PaymentStatus({ reference, whatsappPhone = '', returnHint = '' }: { reference: string; whatsappPhone?: string; returnHint?: ReturnHint }) {
   const [result, setResult] = useState<Tracking>({ status: 'pending' });
   const [loaded, setLoaded] = useState(false);
@@ -78,7 +85,7 @@ export function PaymentStatus({ reference, whatsappPhone = '', returnHint = '' }
     {result.liveTest && <p className="mb-3 font-bold">RECETTE LIVE PRIVÉE — paiement réel de test</p>}
     {result.mode === 'sandbox' && <p className="mb-3 font-bold">TEST SANDBOX — aucun encaissement réel</p>}
     <h2 className="text-2xl">{loaded ? view.title : error ? 'Suivi indisponible' : 'Vérification en cours…'}{paid && result.order?.status && fulfilment[result.order.status] ? ` — ${fulfilment[result.order.status]}` : ''}</h2>
-    {result.order?.order_number && <p className="mt-3">Commande {result.order.order_number}</p>}
+    {result.order?.order_number && <p className="mt-3">{orderReferenceLine(result.status, result.order.order_number)}</p>}
     {loaded && <p className="mt-4 leading-7">{view.body}</p>}
     <p className="mt-4 text-sm leading-6">Seule la vérification serveur auprès de FedaPay confirme un paiement. Le retour du navigateur ne vaut ni paiement ni annulation.</p>
     {result.order?.needs_attention && <p className="mt-3">La boutique doit vérifier votre commande avant son traitement.</p>}

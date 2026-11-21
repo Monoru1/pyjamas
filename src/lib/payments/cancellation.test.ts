@@ -217,3 +217,125 @@ it('with a custom domain, FedaPay returns the customer to the storefront where t
   const hostile = new Request(custom + '/api/payments/checkout', { method: 'POST', headers: { origin: 'https://evil.test', 'content-type': 'application/json' }, body: JSON.stringify({ idempotencyKey: randomUUID(), quoteToken: priced.quoteToken, customer, lines }) });
   expect((await checkout(hostile)).status).toBe(403);
 });
+
+// ── Terrain final: "commande affichée comme passée" après annulation ────────────────────────────
+// Every scenario below checks the SERVER state (order, payment, stock movements, notification
+// jobs) and what each screen would say, for the customer and for the shop.
+const jobs = async () => (await one<{ n: number }>('select count(*)::int n from notification_jobs')).n;
+const movements = async (kind: string) => (await one<{ n: number }>(`select count(*)::int n from inventory_movements where kind='${kind}'`)).n;
+const orderRow = async () => one<{ status: string; payment_state: string; source: string }>('select status, payment_state, source from orders');
+
+it('cancelled on FedaPay: never paid, no notification, no delivery possible, clear wording on both sides', async () => {
+  const { body } = await pay();
+  provider.status = 'canceled';
+  expect((await signed('transaction.canceled')).status).toBe(200);
+  expect((await signed('transaction.canceled')).status).toBe(200); // Repeated delivery.
+  const order = await orderRow();
+  expect(order).toMatchObject({ payment_state: 'cancelled', status: 'pending' });
+  expect(await jobs()).toBe(0);
+  expect(await movements('commit')).toBe(0);
+  // Fulfilment is refused by the database itself while unpaid.
+  // Test-only staff identity: the guard under test is the payment one, not authentication.
+  await db.exec(`create or replace function public.is_admin() returns boolean language sql as $$select true$$;
+    select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);`);
+  const id = (await one<{ id: string }>('select id from orders')).id;
+  await expect(db.query(`select admin_transition_order($1,'pending','confirmed')`, [id])).rejects.toThrow('Provider-confirmed payment required');
+  await db.exec(`select set_config('request.jwt.claim.sub','',false)`);
+  // Customer screen.
+  const tracked = await track(body.reference);
+  expect(describePayment(tracked, 'canceled', false).title).toBe('Paiement annulé');
+  const { orderReferenceLine } = await import('@/app/paiement/payment-status');
+  expect(orderReferenceLine(tracked.status, tracked.order.order_number)).toContain('commande non payée');
+  // Shop screens: never "À confirmer"/"En attente" as if it were an order to prepare.
+  const { fulfilmentLabel, isUnpaidOnlineOrder } = await import('@/lib/orders/labels');
+  expect(isUnpaidOnlineOrder(order)).toBe(true);
+  expect(fulfilmentLabel(order)).toBe('Non payée — rien à préparer');
+});
+
+it('refused (declined) payment: same guarantees, retry on the same transaction can still succeed exactly once', async () => {
+  const { body } = await pay();
+  provider.status = 'declined';
+  expect((await signed('transaction.declined')).status).toBe(200);
+  expect(await orderRow()).toMatchObject({ payment_state: 'failed', status: 'pending' });
+  expect(await jobs()).toBe(0);
+  // The customer retries on FedaPay and pays.
+  provider.status = 'approved';
+  for (let i = 0; i < 3; i++) expect((await signed('transaction.approved')).status).toBe(200);
+  const tracked = await track(body.reference);
+  expect(tracked.status).toBe('paid');
+  expect(await movements('commit')).toBe(1);
+  expect(await stock()).toBe(4);
+  const notified = await jobs();
+  expect(notified).toBeGreaterThan(0);
+  for (let i = 0; i < 2; i++) expect((await signed('transaction.approved')).status).toBe(200);
+  expect(await jobs()).toBe(notified); // Notifications queued once, whatever the re-deliveries.
+});
+
+it('out-of-order / stale events never undo a confirmed payment nor release its stock', async () => {
+  const { body } = await pay();
+  provider.status = 'approved';
+  expect((await signed('transaction.approved')).status).toBe(200);
+  const notified = await jobs();
+  // A late "pending" or "canceled" event arrives after the approval: the server re-reads
+  // FedaPay (still approved) and nothing changes.
+  for (const name of ['transaction.created', 'transaction.canceled', 'transaction.pending']) expect((await signed(name)).status).toBe(200);
+  // Even if the provider itself later answered something else, paid stays paid.
+  provider.status = 'canceled';
+  expect((await signed('transaction.canceled')).status).toBe(200);
+  await age(`updated_at=now()-interval '1 minute', expires_at=now()-interval '1 minute'`);
+  expect((await track(body.reference, true)).status).toBe('paid');
+  expect(await orderRow()).toMatchObject({ payment_state: 'paid' });
+  expect(await movements('commit')).toBe(1);
+  expect(await movements('release')).toBe(0);
+  expect(await jobs()).toBe(notified);
+  expect(await stock()).toBe(4);
+});
+
+it('pending: explicit waiting, nothing confirmed, synchronised later by the scheduled reconciliation', async () => {
+  const { body } = await pay();
+  const tracked = await track(body.reference);
+  expect(tracked.status).toBe('pending');
+  expect(describePayment(tracked, '', false).title).toBe('Paiement en cours de vérification');
+  expect(await jobs()).toBe(0);
+  provider.status = 'approved'; // Webhook lost: only the scheduled run learns it.
+  await age(`next_reconcile_at=now()-interval '1 minute'`);
+  const run = await reconcile(new Request(origin + '/api/payments/reconcile', { method: 'POST', headers: { authorization: `Bearer ${env.PAYMENT_RECONCILE_SECRET}` } }));
+  expect(await run.json()).toMatchObject({ checked: 1, attempted: 1 });
+  expect((await track(body.reference)).status).toBe('paid');
+  expect(await movements('commit')).toBe(1);
+});
+
+it('rejects unsigned, forged or replayed-with-wrong-secret webhooks without touching the order', async () => {
+  await pay();
+  provider.status = 'approved';
+  const raw = JSON.stringify({ name: 'transaction.approved', object: 'transaction', entity: { id: 42 } });
+  const t = Math.floor(Date.now() / 1000);
+  const forged = `t=${t},s=${createHmac('sha256', 'not-the-secret').update(`${t}.${raw}`).digest('hex')}`;
+  const stale = `t=${t - 3600},s=${createHmac('sha256', 'wh_fixture').update(`${t - 3600}.${raw}`).digest('hex')}`;
+  for (const signature of [undefined, forged, stale]) {
+    const response = await webhook(new Request(origin + '/api/payments/webhook', { method: 'POST', headers: { 'content-type': 'application/json', ...(signature ? { 'x-fedapay-signature': signature } : {}) }, body: raw }));
+    expect(response.status).toBeGreaterThanOrEqual(400);
+  }
+  expect(await orderRow()).toMatchObject({ payment_state: 'pending_payment' });
+  expect(await jobs()).toBe(0);
+  expect(await movements('commit')).toBe(0);
+});
+
+it('shop dashboard counts separate real orders from unpaid attempts (same filters as the admin queries)', async () => {
+  const { orderDashboardCounts } = await import('@/lib/orders/dashboard-counts');
+  await pay(); provider.status = 'canceled'; await signed('transaction.canceled');           // cancelled attempt
+  await db.exec('update payment_attempts set provider_id=null'); // free provider id 42 for the next fixture order
+  await pay(); provider.status = 'approved'; await signed('transaction.approved');          // paid order
+  const q = async (where: string) => (await one<{ n: number }>(`select count(*)::int n from orders where ${where}`)).n;
+  const online = "source like 'fedapay\\_%'";
+  const counts = orderDashboardCounts({
+    all: await q('true'), online: await q(online),
+    paidOnline: await q(`${online} and payment_state in ('paid','refunded','partially_refunded')`),
+    pendingAll: await q(`status='pending'`),
+    pendingUnpaidOnline: await q(`status='pending' and ${online} and payment_state not in ('paid','refunded','partially_refunded')`),
+    unpaidAttempts: await q(`${online} and payment_state in ('pending_payment','failed','cancelled','expired')`),
+  });
+  // Before: "Commandes 2, À traiter 2" — the cancelled attempt looked like a second order to process.
+  expect((await q(`status='pending'`))).toBe(2);
+  expect(counts).toEqual({ orders: 1, toProcess: 1, unpaidAttempts: 1 });
+});

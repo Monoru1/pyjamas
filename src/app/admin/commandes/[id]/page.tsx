@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { updateOrderStatus } from '@/app/admin/actions';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canFulfill, dateTime, nextOrderStatuses, orderStatusLabels, paymentStateLabels, transitionLabels } from '@/lib/orders/labels';
+import { canFulfill, dateTime, fulfilmentLabel, isUnpaidOnlineOrder, nextOrderStatuses, orderStatusLabels, paymentStateLabels, transitionLabels } from '@/lib/orders/labels';
 import { notificationState, toneClass } from '@/lib/orders/notification-status';
 import { loadOrderRecord } from '@/lib/orders/order-record';
 import { emailLabel, isEmailKind } from '@/lib/payments/order-email';
@@ -60,7 +60,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         <div>
           <p><Link href="/admin/commandes">← COMMANDES</Link></p>
           <h1 className="break-all">{order.reference}</h1>
-          <span>Créée le {dateTime(order.createdAt)} · {orderStatusLabels[order.status] ?? order.status} · {paymentStateLabels[order.paymentState] ?? order.paymentState}</span>
+          <span>Créée le {dateTime(order.createdAt)} · {fulfilmentLabel({ status: order.status, source: order.source, payment_state: order.paymentState })} · {paymentStateLabels[order.paymentState] ?? order.paymentState}</span>
         </div>
       </header>
       {notice && notices[notice] && <p role="status" className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">{notices[notice]}</p>}
@@ -81,7 +81,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             <dt className="text-black/55">E-mail</dt><dd className="break-all">{order.client.email ?? '—'}</dd>
             <dt className="text-black/55">Livraison</dt><dd>{[order.client.address, order.client.city].filter(Boolean).join(', ') || '—'}</dd>
             <dt className="text-black/55">Instructions</dt><dd>{order.client.note ?? '—'}</dd>
-            <dt className="text-black/55">Commande</dt><dd>{orderStatusLabels[order.status] ?? order.status}{order.needsAttention ? ' · INTERVENTION REQUISE' : ''}</dd>
+            <dt className="text-black/55">Commande</dt><dd>{fulfilmentLabel({ status: order.status, source: order.source, payment_state: order.paymentState })}{order.needsAttention ? ' · INTERVENTION REQUISE' : ''}{isUnpaidOnlineOrder({ source: order.source, payment_state: order.paymentState }) ? ' · ne pas préparer ni livrer' : ''}</dd>
             <dt className="text-black/55">Paiement</dt><dd>{paymentStateLabels[order.paymentState] ?? order.paymentState}</dd>
           </dl>
         </section>
