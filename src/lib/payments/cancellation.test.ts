@@ -339,3 +339,16 @@ it('shop dashboard counts separate real orders from unpaid attempts (same filter
   expect((await q(`status='pending'`))).toBe(2);
   expect(counts).toEqual({ orders: 1, toProcess: 1, unpaidAttempts: 1 });
 });
+
+it('checkout validation: 400 naming the wrong fields, nothing created, no FedaPay call', async () => {
+  const priced = await (await quote(post('/api/payments/quote', { lines }))).json();
+  const before = { orders: (await one<{ n: number }>('select count(*)::int n from orders')).n, calls: (fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length };
+  const response = await checkout(post('/api/payments/checkout', { idempotencyKey: randomUUID(), quoteToken: priced.quoteToken, customer: { ...customer, phone: '+33 6 12 34 56 78', address: 'court' }, lines }));
+  expect(response.status).toBe(400);
+  const body = await response.json();
+  expect(body.fields).toEqual(['phone', 'address']);
+  expect(body.error).toContain('+229 01 suivi de 8 chiffres');
+  expect(JSON.stringify(body)).not.toContain('+33 6 12');
+  expect((await one<{ n: number }>('select count(*)::int n from orders')).n).toBe(before.orders);
+  expect((fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBe(before.calls);
+});

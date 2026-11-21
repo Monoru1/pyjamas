@@ -31,14 +31,14 @@ export function CustomerForm({ onlinePayment = false }: { onlinePayment?: boolea
       </label>
 
       <label className="grid gap-2 text-sm font-medium">
-        Telephone
+        Téléphone
         <input
           required
           type="tel" autoComplete="tel" maxLength={25}
           inputMode="tel"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
-          placeholder="Votre numero"
+          placeholder="+229 01 XX XX XX XX"
           className="rounded-2xl border border-brand-primary/10 px-4 py-3 font-normal outline-none focus:border-brand-primary"
         />
       </label>
@@ -62,7 +62,7 @@ export function CustomerForm({ onlinePayment = false }: { onlinePayment?: boolea
         <textarea
           value={comment}
           onChange={(event) => setComment(event.target.value)}
-          placeholder="Adresse, precision de taille, livraison..."
+          placeholder="Précision de taille, retrait ou livraison…"
           rows={4} maxLength={500}
           className="resize-none rounded-2xl border border-brand-primary/10 px-4 py-3 font-normal outline-none focus:border-brand-primary"
         />

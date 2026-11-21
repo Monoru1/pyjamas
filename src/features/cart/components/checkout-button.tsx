@@ -5,6 +5,7 @@ import { useCheckoutCustomerStore } from '@/features/checkout/customer-form.stor
 import type { ShopQuote } from '@/lib/payments/quotes';
 import { isFedaPayCheckoutUrl } from '@/lib/payments/checkout-hosts';
 import { internalTrackingUrl } from '@/lib/payments/tracking-url';
+import { customerErrorMessage, customerFieldErrors } from '@/lib/payments/checkout-input';
 
 export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'live';shipping:number;liveTest?:boolean}) {
   const lines=useCartStore(s=>s.lines);const refreshPrices=useCartStore(s=>s.refreshPrices);
@@ -22,6 +23,8 @@ export function CheckoutButton({mode,shipping,liveTest=false}:{mode:'sandbox'|'l
       const fingerprint=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
       const saved=JSON.parse(sessionStorage.getItem('mdp-shop-payment')||'null');
       const previous=saved?.fingerprint===fingerprint&&saved.key?saved.key:null;
+      // Same rules as the server, checked before any payment request: name the exact field to fix.
+      if((confirm&&current)||previous){const invalid=customerFieldErrors(basket.customer);if(invalid.length)throw new Error(customerErrorMessage(invalid));}
       if(!confirm||!current) {
         // A refresh may follow reservation of the last available unit. Fetch a
         // fresh signed review of that exact order without initiating a provider
