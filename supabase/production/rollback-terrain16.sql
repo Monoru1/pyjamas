@@ -1,12 +1,12 @@
 -- Terrain 16 — rollback of the database changes, ONLY after the previous code is redeployed
 -- (the Terrain 16 code falls back to is_admin() if is_admin_account() is missing).
--- Restores the pre-Terrain-16 definitions verbatim; journaled rows are kept.
+-- Restores legacy administrator checks without granting employee rights. Journaled rows are kept.
 begin;
 drop trigger if exists cap_unpaid_reservation on public.payment_attempts;
 drop function if exists public.cap_unpaid_reservation();
 
 create or replace function public.is_admin() returns boolean language sql stable security definer set search_path to 'public' as $function$
-  select exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_active = true and p.role in ('super_admin', 'admin', 'employee'));
+  select exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_active = true and p.role in ('super_admin', 'admin'));
 $function$;
 create or replace function public.is_manager() returns boolean language sql stable security definer set search_path = '' as $$
  select exists(select 1 from public.profiles where id=(select auth.uid()) and is_active and role in ('super_admin','admin'));
@@ -21,7 +21,6 @@ drop table if exists private.security_flags;
 drop table if exists private.admin_accounts;
 drop table if exists private.authorized_admin_emails;
 -- Profiles deactivated by the migration stay inactive (see activity_logs 'deactivate_unauthorized_profile').
--- WARNING: the previous is_admin() also admitted active `employee` profiles.
 alter table public.profiles alter column is_active set default true;
 drop trigger if exists audit_customer_changes on public.customers;
 drop trigger if exists audit_profile_changes on public.profiles;

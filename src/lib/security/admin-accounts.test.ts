@@ -137,12 +137,12 @@ it('journals sensitive administrative changes without copying their data', async
   expect(rows.every(r => r.before_data === null && r.after_data === null)).toBe(true);
 });
 
-it('refuses to lock the back-office when neither authorised account exists, and binds a late account on demand', async () => {
+it('deploys with the confirmed owner and binds only the original manager after confirmation', async () => {
   const empty = new PGlite();
   try {
     await empty.exec(`create role anon; create role authenticated; create schema auth;
       create table auth.users(id uuid primary key, email text unique, email_confirmed_at timestamptz);
-      create function auth.uid() returns uuid language sql as $$select null::uuid$$;
+      create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       create function auth.jwt() returns jsonb language sql as $$select '{}'::jsonb$$;
       create table public.profiles(id uuid primary key, role text, is_active boolean default true, full_name text);
       create table public.activity_logs(id uuid default gen_random_uuid(), actor_id uuid, action text, entity_type text, entity_id uuid, before_data jsonb, after_data jsonb, created_at timestamptz default now());
@@ -152,14 +152,32 @@ it('refuses to lock the back-office when neither authorised account exists, and 
       create function public.is_super_admin() returns boolean language sql as $$select false$$;`);
     const sql = readFileSync('supabase/migrations/20261121180100_two_admin_accounts_mfa.sql', 'utf8');
     await expect(empty.exec(sql)).rejects.toThrow('neither authorised administrator');
-    // Only the owner exists, the manager's address is still unconfirmed.
-    const ownerId = randomUUID(), managerId = randomUUID();
+    // The owner is confirmed; the manager's reserved identity is still unconfirmed.
+    const ownerId = randomUUID(), managerId = randomUUID(), replacementId = randomUUID();
     await empty.query("insert into auth.users values ($1,'sakryad@gmail.com',now()),($2,'lamaisondespyjamas@gmail.com',null)", [ownerId, managerId]);
     await empty.exec(sql);
     expect((await empty.query('select user_id from private.admin_accounts')).rows).toEqual([{ user_id: ownerId }]);
+    expect((await empty.query('select reserved_user_id from private.authorized_admin_emails where email=$1', ['lamaisondespyjamas@gmail.com'])).rows).toEqual([{ reserved_user_id: managerId }]);
+    const check = (id: string) => empty.transaction(async tx => {
+      await tx.query("select set_config('request.jwt.claim.sub',$1,true)", [id]);
+      await tx.exec('set local role authenticated');
+      return (await tx.query('select public.is_admin_account() as allowed')).rows;
+    });
+    expect(await check(ownerId)).toEqual([{ allowed: true }]);
+    expect(await check(managerId)).toEqual([{ allowed: false }]);
+    await empty.query("update auth.users set email='other-manager@example.test' where id=$1", [managerId]);
+    await empty.query("insert into auth.users values ($1,'lamaisondespyjamas@gmail.com',now())", [replacementId]);
+    await empty.exec('select * from private.bind_authorized_admins()');
+    expect(await check(replacementId)).toEqual([{ allowed: false }]);
+    await empty.query("update auth.users set email='replacement@example.test' where id=$1", [replacementId]);
+    await empty.query("update auth.users set email='lamaisondespyjamas@gmail.com' where id=$1", [managerId]);
     await empty.query('update auth.users set email_confirmed_at=now() where id=$1', [managerId]);
     const states = (await empty.query<{ email: string; state: string }>('select email,state from private.bind_authorized_admins() order by email')).rows;
     expect(states).toEqual([{ email: 'lamaisondespyjamas@gmail.com', state: 'bound' }, { email: 'sakryad@gmail.com', state: 'already_bound' }]);
+    expect(await check(managerId)).toEqual([{ allowed: true }]);
+    expect(await check(replacementId)).toEqual([{ allowed: false }]);
+    await empty.exec('select * from private.bind_authorized_admins()');
+    expect((await empty.query("select count(*)::int as n from activity_logs where action='admin_bound'")).rows).toEqual([{ n: 2 }]);
   } finally { await empty.close(); }
 });
 
@@ -181,6 +199,7 @@ it('rollback script restores the previous rights and keeps the journal', async (
     await copy.exec(readFileSync('supabase/production/rollback-terrain16.sql', 'utf8'));
     const def = (await copy.query<{ d: string }>("select pg_get_functiondef('public.is_admin()'::regprocedure) d")).rows[0].d;
     expect(def).toContain('profiles');
+    expect(def).not.toContain('employee');
     expect((await copy.query("select 1 from pg_trigger where tgname in ('cap_unpaid_reservation','audit_customer_changes')")).rows).toEqual([]);
     expect((await copy.query("select to_regclass('private.admin_accounts') r")).rows).toEqual([{ r: null }]);
     expect((await copy.query<{ ok: boolean }>("select has_function_privilege('service_role','public.create_order_request_atomic(uuid,text,text,text,text,jsonb)','execute') ok")).rows[0].ok).toBe(true);

@@ -12,8 +12,14 @@ select
   not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
               and cmd = 'SELECT' and roles::text like '%public%') as no_public_listing,
   (select array_agg(email order by email) from private.authorized_admin_emails) = array['lamaisondespyjamas@gmail.com', 'sakryad@gmail.com'] as exactly_two_authorised_addresses,
-  -- A one-account fixture can rehearse the migration. Production requires both bound identities.
-  (select count(*) from private.admin_accounts) between 1 and 2 as rehearsal_has_bound_admin_identity,
+  exists (select 1 from private.admin_accounts where email = 'sakryad@gmail.com') and not exists (
+    select 1
+    from private.authorized_admin_emails a
+    left join auth.users u on u.id = a.reserved_user_id and lower(u.email) = a.email
+    left join private.admin_accounts b on b.email = a.email
+    where u.id is null or b.user_id is distinct from
+      case when u.email_confirmed_at is not null then u.id else null end
+  ) as reserved_admin_identities_match_confirmed_bindings,
   not exists (select 1 from public.profiles p where p.is_active and not exists (select 1 from private.admin_accounts b where b.user_id = p.id)) as no_other_active_profile,
   (select pg_get_functiondef('private.admin_assurance_ok()'::regprocedure) like '%auth.sessions%') as session_revocation_checked,
   (select column_default from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_active') = 'false' as new_profiles_inactive;

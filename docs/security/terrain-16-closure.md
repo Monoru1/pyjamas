@@ -19,15 +19,14 @@ Retour arrière base : `supabase/production/rollback-terrain16.sql` (après red�
 ## Déploiement — ordre impératif, autorisation du propriétaire requise à partir de l'étape 6
 
 1. Sauvegarde restaurable prouvée (`production-release` → `backup-drill`).
-2. Recette `oxhymanjibveayhcaqvj` : `supabase/production/terrain16-preflight.sql`, puis les 6 migrations, puis `terrain16-postflight.sql` (tout `true`).
-3. Vérifier les permissions SQL (postflight) et un paiement sandbox de bout en bout.
-4. Production : `terrain16-preflight.sql` (lecture seule). La requête 2 doit montrer les deux adresses, deux identifiants distincts, `confirmed = true`. Un compte absent ou non confirmé : son titulaire le crée/confirme (aucun mot de passe n'est fixé par script), puis, après la migration : `select * from private.bind_authorized_admins();`. La requête 2b liste les profils qui seront désactivés.
+2. Répéter les six migrations sur PostgreSQL isolé avec les deux états possibles de la responsable et vérifier le retour arrière.
+3. Vérifier le checkout existant avec le nouveau schéma et les scénarios FedaPay simulés.
+4. Production : `terrain16-preflight.sql` (lecture seule). La requête 2 exige le propriétaire confirmé et actif et une identité Auth réservée pour la responsable. L'invitation en attente est suffisante pour la bascule. La requête 2b liste les profils qui seront désactivés.
 5. Vérifier que la branche passe la CI.
 6. **Autorisation explicite du propriétaire.**
-7. Appliquer les 6 migrations en production, puis `terrain16-postflight.sql`. Vérifier aussi que
-   `select count(*) = 2 as both_admins_bound from private.admin_accounts;` retourne `true`.
-8. Fusionner la PR et laisser Netlify déployer. **Jamais le code avant les migrations** (le paiement répondrait 429).
-9. Contrôles : panier → page FedaPay ; connexion des deux administrateurs ; `/admin/commandes` ; suivi d'une commande.
+7. Générer la transaction depuis la tête revue de la PR avec `node scripts/build-terrain16-migration.mjs`. L'appliquer sur le projet de production identifié et relire les 6 entrées d'historique et `terrain16-postflight.sql`. Toute anomalie détectée avant le commit annule la transaction.
+8. Fusionner la PR commerciale puis la PR de sécurité. Contrôler le commit publié sur Netlify après les migrations.
+9. Vérifier le panier, les pages de paiement et de suivi, la réconciliation et le back-office avec le propriétaire. La responsable pourra tester son accès après confirmation de son invitation.
 
 En cas d'échec à l'étape 7, suspendre la publication et vérifier ce qui a été validé en base.
 Un échec dans une transaction annulée ne demande pas de rollback SQL. Après validation de la
@@ -62,9 +61,10 @@ Le code est retiré du dépôt et la base refuse désormais l'appel (migration 1
 ## Décision du 21 novembre 2026 — accès administrateurs
 
 - Deux comptes, droits complets identiques : `sakryad@gmail.com` (propriétaire technique), `lamaisondespyjamas@gmail.com` (responsable).
-- Le droit repose sur l'identifiant Auth lié côté serveur (`private.admin_accounts`), jamais sur une adresse transmise par le navigateur ni sur `profiles.role`. Un changement d'adresse ne déplace ni n'accorde de droit ; la liaison n'est jamais réattribuée.
+- La migration réserve les deux identifiants Auth existants, y compris l'invitation en attente. Seules les identités réservées et confirmées sont liées côté serveur. Une autre identité utilisant la même adresse ne peut acquérir ces droits.
+- Après acceptation de l'invitation et confirmation de l'adresse existante, l'opérateur de la base exécute `select * from private.bind_authorized_admins();` et contrôle les deux liaisons. La procédure est idempotente et journalise la nouvelle attribution.
 - Aucun écran, aucune route ni aucune fonction ne crée de compte : un nouveau compte ou une inscription publique n'obtient aucun droit.
-- Révoquer un administrateur : `delete from private.admin_accounts where email = '…';` (journal conservé).
+- Pour retirer durablement un administrateur, supprimer sa liaison et vider l'identifiant réservé dans la même transaction. Le journal historique est conservé.
 - Accès complet à la boutique ne donne accès à aucun secret : clés API et service restent côté serveur.
 
 ## Session administrateur persistante (30 jours)

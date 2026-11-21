@@ -13,12 +13,18 @@ revoke all on schema private from public, anon, authenticated;
 -- Decision list (addresses already published in docs/GESTION_QUOTIDIENNE.md).
 create table if not exists private.authorized_admin_emails (
   email text primary key check (email = lower(email)),
-  label text not null
+  label text not null,
+  reserved_user_id uuid unique
 );
 revoke all on private.authorized_admin_emails from public, anon, authenticated;
-insert into private.authorized_admin_emails(email, label) values
+-- Reserve the existing Auth identities once, including the pending invitation. An empty
+-- reservation grants nothing and the binder cannot claim a later account with the same email.
+insert into private.authorized_admin_emails(email, label, reserved_user_id)
+select a.email, a.label, (select u.id from auth.users u where lower(u.email) = a.email)
+from (values
   ('sakryad@gmail.com', 'Propriétaire technique'),
   ('lamaisondespyjamas@gmail.com', 'Responsable de la boutique')
+) a(email, label)
 on conflict (email) do nothing;
 
 -- Binding of each address to ONE Auth identity, made server-side and then frozen.
@@ -29,20 +35,19 @@ create table if not exists private.admin_accounts (
 );
 revoke all on private.admin_accounts from public, anon, authenticated;
 
--- Binds every authorised address whose Auth identity exists and is confirmed. Idempotent; never
--- moves an address to another identity. Run again by the owner after creating a missing account.
+-- Binds the reserved identities after email confirmation. Safe to rerun after invite acceptance.
 create or replace function private.bind_authorized_admins() returns table(email text, user_id uuid, state text)
 language plpgsql security definer set search_path = '' as $$
 declare r record; found_id uuid; bound_id uuid;
 begin
-  for r in select a.email from private.authorized_admin_emails a order by a.email loop
+  for r in select a.email, a.reserved_user_id from private.authorized_admin_emails a order by a.email for update loop
     bound_id := null; found_id := null;
     select b.user_id into bound_id from private.admin_accounts b where b.email = r.email;
     if bound_id is not null then
       email := r.email; user_id := bound_id; state := 'already_bound'; return next; continue;
     end if;
     select u.id into found_id from auth.users u
-      where lower(u.email) = r.email and u.email_confirmed_at is not null;
+      where u.id = r.reserved_user_id and lower(u.email) = r.email and u.email_confirmed_at is not null;
     if found_id is null then
       email := r.email; user_id := null; state := 'missing_or_unconfirmed_account'; return next; continue;
     end if;
@@ -63,7 +68,7 @@ begin
   select string_agg(a.email, ', ') into missing from private.authorized_admin_emails a
     where not exists (select 1 from private.admin_accounts b where b.email = a.email);
   if missing is not null then
-    raise notice 'Terrain 16: create and confirm the Auth account for %, then run: select * from private.bind_authorized_admins();', missing;
+    raise notice 'Terrain 16: confirm the reserved Auth account for %, then run: select * from private.bind_authorized_admins();', missing;
   end if;
 end $$;
 
