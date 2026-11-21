@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getPublicEnv } from '@/lib/env';
 import type { Database } from './database.types';
-import { supabaseCookieOptions } from '@/lib/security/admin-session';
+import { capAdminCookieAge, supabaseCookieOptions } from '@/lib/security/admin-session';
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -17,7 +17,7 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, capAdminCookieAge(options));
           });
         } catch {
           // Server Components cannot set cookies; the proxy refreshes auth when needed.

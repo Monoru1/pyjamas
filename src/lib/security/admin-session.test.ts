@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { ADMIN_SESSION_MAX_AGE_SECONDS, adminSessionExpired, primaryAuthenticatedAt, supabaseCookieOptions } from './admin-session';
+import { ADMIN_SESSION_MAX_AGE_SECONDS, adminSessionExpired, capAdminCookieAge, primaryAuthenticatedAt, supabaseCookieOptions } from './admin-session';
 import { ADMIN_MANAGER_ID, ADMIN_OWNER_ID, commerceDatabase, sessionClaims } from '@/lib/payments/test-support/commerce-db';
 
 // Terrain 16 — persistent (30 days) yet bounded and revocable administrator sessions.
@@ -25,6 +25,8 @@ it('treats a missing, malformed or future authentication time as expired', () =>
 it('keeps Supabase cookies 30 days (not the 400-day default), Secure in production', () => {
   expect(supabaseCookieOptions(true)).toEqual({ path: '/', sameSite: 'lax', secure: true, maxAge: 30 * DAY });
   expect(supabaseCookieOptions(false).secure).toBe(false);
+  expect(capAdminCookieAge({ maxAge: 400 * DAY, path: '/' })).toEqual({ maxAge: 30 * DAY, path: '/' });
+  expect(capAdminCookieAge({ maxAge: 0 })).toEqual({ maxAge: 0 });
 });
 
 describe('database enforcement', () => {

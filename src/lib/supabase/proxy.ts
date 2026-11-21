@@ -3,8 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getPublicEnv } from '@/lib/env';
 import type { Database } from './database.types';
 import { trustedSiteOrigin } from '@/lib/security/urls';
-import { ADMIN_MFA_PATH, adminMfaGate } from '@/lib/security/admin-mfa';
-import { adminSessionExpired, supabaseCookieOptions } from '@/lib/security/admin-session';
+import { adminSessionExpired, capAdminCookieAge, supabaseCookieOptions } from '@/lib/security/admin-session';
 
 const publicAdminPages = /^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/;
 
@@ -25,7 +24,7 @@ function expiredRedirect(request: NextRequest) {
 }
 
 function mfaRedirect() {
-  const url = new URL(ADMIN_MFA_PATH, trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
+  const url = new URL('/admin/mfa', trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
   url.search = '';
   return NextResponse.redirect(url);
 }
@@ -55,7 +54,7 @@ export async function updateSession(request: NextRequest, headers: Headers = new
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = forward();
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, capAdminCookieAge(options)));
         },
       },
     });
@@ -71,16 +70,18 @@ export async function updateSession(request: NextRequest, headers: Headers = new
       return expiredRedirect(request);
     }
 
-    // Role only (no AAL): an admin who still has to pass MFA must reach /admin/mfa, not the login page.
-    // Before the Terrain 16 migration, fall back to is_admin() so the back-office never locks out.
-    let { data: allowed, error: roleError } = await supabase.rpc('is_admin_account');
-    if (roleError) ({ data: allowed, error: roleError } = await supabase.rpc('is_admin'));
-    if (roleError || !allowed) return loginRedirect();
+    const status = await supabase.rpc('admin_email_otp_status');
+    if (status.error || !status.data || status.data === 'denied') return loginRedirect();
 
-    const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (levelError) return loginRedirect();
-    const gate = adminMfaGate(levels);
-    if (gate !== 'ok' && !pathname.startsWith(ADMIN_MFA_PATH)) return mfaRedirect();
+    if (pathname !== '/admin/mfa') {
+      const allowed = status.data === 'verified' ||
+        (status.data === 'legacy' && (await supabase.rpc('is_admin')).data === true);
+      if (!allowed) {
+        const redirect = mfaRedirect();
+        for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
+        return redirect;
+      }
+    }
 
     return response;
   } catch (error) {

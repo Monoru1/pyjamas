@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 
 // Regression: production admin server actions failed with "Unexpected end of form"
 // because the proxy rebuilt the Request and consumed its body on Netlify Edge.
-const auth = vi.hoisted(() => ({ admin: true, setCookie: false, accountRpc: true, levels: { currentLevel: 'aal1', nextLevel: 'aal1' } as { currentLevel: string; nextLevel: string }, calls: [] as string[], authAge: 60, signOuts: [] as string[], claimsMode: 'ok' as 'ok' | 'none' | 'error' | 'network' }));
+const auth = vi.hoisted(() => ({ admin: true, setCookie: false, otp: 'verified' as 'denied' | 'legacy' | 'required' | 'verified' | 'error', calls: [] as string[], authAge: 60, signOuts: [] as string[], claimsMode: 'ok' as 'ok' | 'none' | 'error' | 'network' }));
 vi.mock('@supabase/ssr', () => ({
   createServerClient: (_url: string, _key: string, options: { cookies: { setAll: (c: { name: string; value: string; options: object }[]) => void } }) => ({
     auth: { getClaims: async () => {
@@ -13,8 +13,8 @@ vi.mock('@supabase/ssr', () => ({
       if (auth.claimsMode === 'error') return { data: null, error: { name: 'AuthApiError', message: 'Invalid Refresh Token: Refresh Token Not Found' } };
       if (auth.setCookie) options.cookies.setAll([{ name: 'sb-session', value: 'refreshed', options: { path: '/' } }]);
       return { data: { claims: { sub: 'staff', amr: [{ method: 'password', timestamp: Math.floor(Date.now() / 1000) - auth.authAge }] } }, error: null };
-    }, signOut: async ({ scope }: { scope: string }) => { auth.signOuts.push(scope); return { error: null }; }, mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: auth.levels, error: null }) } },
-    rpc: async (name: string) => { auth.calls.push(name); return name === 'is_admin_account' && !auth.accountRpc ? { data: null, error: { code: 'PGRST202' } } : { data: auth.admin, error: null }; },
+    }, signOut: async ({ scope }: { scope: string }) => { auth.signOuts.push(scope); return { error: null }; } },
+    rpc: async (name: string) => { auth.calls.push(name); if (name === 'admin_email_otp_status') return auth.otp === 'error' ? { data: null, error: { code: 'PGRST202' } } : { data: auth.otp }; return { data: auth.admin }; },
   }),
 }));
 vi.mock('@/lib/env', () => ({ getPublicEnv: () => ({ supabaseUrl: 'https://example.supabase.co', supabaseKey: 'fixture' }) }));
@@ -27,7 +27,7 @@ const form = () => {
   body.set('status', 'confirmed');
   return body;
 };
-afterEach(() => { auth.admin = true; auth.setCookie = false; auth.accountRpc = true; auth.levels = { currentLevel: 'aal1', nextLevel: 'aal1' }; auth.calls = []; auth.authAge = 60; auth.signOuts = []; auth.claimsMode = 'ok'; vi.unstubAllEnvs(); });
+afterEach(() => { auth.admin = true; auth.setCookie = false; auth.otp = 'verified'; auth.calls = []; auth.authAge = 60; auth.signOuts = []; auth.claimsMode = 'ok'; vi.unstubAllEnvs(); });
 
 it('never consumes the body of an admin server action', async () => {
   const request = new NextRequest('https://pyjamas25.netlify.app/admin/commandes/x', { method: 'POST', body: form(), headers: { cookie: 'sb-session=old' } });
@@ -57,7 +57,7 @@ it('keeps non-admin requests and their body untouched', async () => {
 });
 
 it('still redirects non-admin sessions away from the back-office', async () => {
-  auth.admin = false;
+  auth.otp = 'denied';
   const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/commandes'));
   expect(response.status).toBe(307);
   expect(response.headers.get('location')).toContain('/admin/login');
@@ -68,33 +68,36 @@ it('does not rebuild the request in the proxy', () => {
     expect(readFileSync(file, 'utf8')).not.toMatch(/new NextRequest\(|NextResponse\.next\(\{\s*request\s*\}\)/);
 });
 
-// Terrain 16 · SEC-011 — MFA gate for the two administrative accounts.
-it('sends an admin with a verified factor to /admin/mfa until the session reaches AAL2', async () => {
-  auth.levels = { currentLevel: 'aal1', nextLevel: 'aal2' };
-  const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/commandes'));
-  expect(response.status).toBe(307);
-  expect(response.headers.get('location')).toBe('https://pyjamas25.netlify.app/admin/mfa');
-  const mfa = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/mfa'));
-  expect(mfa.headers.get('x-middleware-next')).toBe('1');
-  auth.levels = { currentLevel: 'aal2', nextLevel: 'aal2' };
+it('requires the email code before pages or protected server actions and retains refreshed cookies', async () => {
+  auth.otp = 'required';
+  auth.setCookie = true;
+  for (const path of ['/admin/commandes', '/admin/mfa-extra']) {
+    const request = new NextRequest(`https://pyjamas25.netlify.app${path}`, { method: 'POST', body: form() });
+    const response = await proxy(request);
+    expect(response.headers.get('location')).toBe('https://pyjamas25.netlify.app/admin/mfa');
+    expect(response.headers.get('set-cookie')).toContain('sb-session=refreshed');
+    expect(request.bodyUsed).toBe(false);
+  }
+  expect((await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/mfa'))).headers.get('x-middleware-next')).toBe('1');
+  auth.otp = 'verified';
   expect((await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/commandes'))).headers.get('x-middleware-next')).toBe('1');
 });
-it('requires enrolment only once ADMIN_MFA_REQUIRED is switched on', async () => {
-  expect((await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'))).headers.get('x-middleware-next')).toBe('1');
-  vi.stubEnv('ADMIN_MFA_REQUIRED', 'true');
+
+it('honours the previous server-side restriction during the owner pilot', async () => {
+  auth.otp = 'legacy';
+  auth.admin = false;
   const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'));
   expect(response.headers.get('location')).toBe('https://pyjamas25.netlify.app/admin/mfa');
+  auth.admin = true;
+  expect((await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'))).headers.get('x-middleware-next')).toBe('1');
 });
-it('never lets a non-admin reach the MFA page', async () => {
-  auth.admin = false;
-  const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/mfa'));
-  expect(response.headers.get('location')).toContain('/admin/login');
-});
-it('falls back to is_admin() before the Terrain 16 migration, so the back-office never locks out', async () => {
-  auth.accountRpc = false;
-  const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin'));
-  expect(response.headers.get('x-middleware-next')).toBe('1');
-  expect(auth.calls).toEqual(['is_admin_account', 'is_admin']);
+
+it('fails closed when verification status is unavailable or the session is ineligible', async () => {
+  for (const status of ['denied', 'error'] as const) {
+    auth.otp = status;
+    const response = await proxy(new NextRequest('https://pyjamas25.netlify.app/admin/mfa'));
+    expect(response.headers.get('location')).toBe('https://pyjamas25.netlify.app/admin/login');
+  }
 });
 
 // Terrain 16 — persistent session: 30 days after the password, a new sign-in (and MFA) is required.
