@@ -94,7 +94,7 @@ it('keeps exactly two paid receipts through failure, provider recovery and staff
 
  const staff = randomUUID();
  await db.query('insert into auth.users(id) values ($1)', [staff]);
- await db.query("insert into profiles(id, role, full_name) values ($1, 'admin', 'Staff fixture')", [staff]);
+ await db.query("insert into profiles(id, role, full_name, is_active) values ($1, 'admin', 'Staff fixture', true)", [staff]);
  const order = (await db.query<{ id: string }>('select id from orders')).rows[0].id;
  await db.transaction(async (tx) => {
    await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [staff]);

@@ -56,3 +56,10 @@ test('an anonymous visitor is redirected and the local admin login renders', asy
   await expect(page).toHaveURL(url => url.origin === localOrigin && url.pathname === '/admin/login');
   await expect(page.getByRole('button', { name: 'Ouvrir le studio' })).toBeVisible();
 });
+
+// Terrain 16 · SEC-011: the MFA page is never reachable without an administrative session.
+test('an anonymous visitor cannot open the MFA enrolment page', async ({ request }) => {
+  const response = await request.get('/admin/mfa', { maxRedirects: 0 });
+  expect([301, 302, 303, 307, 308]).toContain(response.status());
+  expect(new URL(response.headers()['location'], 'http://127.0.0.1:3000').pathname).toBe('/admin/login');
+});

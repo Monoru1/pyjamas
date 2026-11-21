@@ -40,7 +40,7 @@ async function record(orderId: string) {
 beforeAll(async () => {
   db = await commerceDatabase();
   await db.exec(`insert into auth.users values('${staff}'),('${outsider}');
-    insert into profiles(id,role,is_active) values('${staff}','employee',true);
+    insert into profiles(id,role,is_active) values('${staff}','admin',true);
     insert into currencies(code,name,symbol) values('XOF','Franc CFA','FCFA');
     insert into products(id,slug,name_fr,base_price,currency_code,is_active) values
       ('${productA}','fixture-a','Pyjama fixture rouge',15000,'XOF',true),('${productB}','fixture-b','Pyjama fixture vert',20000,'XOF',true);

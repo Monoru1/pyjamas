@@ -3,12 +3,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getPublicEnv } from '@/lib/env';
 import type { Database } from './database.types';
 import { trustedSiteOrigin } from '@/lib/security/urls';
+import { ADMIN_MFA_PATH, adminMfaGate } from '@/lib/security/admin-mfa';
 
 const publicAdminPages = /^\/admin\/(login|forgot-password|reset-password)(?:\/|$)/;
 
 function loginRedirect() {
   const url = new URL('/admin/login', trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
   url.pathname = '/admin/login';
+  url.search = '';
+  return NextResponse.redirect(url);
+}
+
+function mfaRedirect() {
+  const url = new URL(ADMIN_MFA_PATH, trustedSiteOrigin(process.env.SITE_ORIGIN || process.env.DEPLOY_PRIME_URL || process.env.PAYMENT_SITE_URL));
   url.search = '';
   return NextResponse.redirect(url);
 }
@@ -46,8 +53,16 @@ export async function updateSession(request: NextRequest, headers: Headers = new
     const { data: claims, error: authError } = await supabase.auth.getClaims();
     if (authError || !claims?.claims) return loginRedirect();
 
-    const { data: allowed, error: roleError } = await supabase.rpc('is_admin');
+    // Role only (no AAL): an admin who still has to pass MFA must reach /admin/mfa, not the login page.
+    // Before the Terrain 16 migration, fall back to is_admin() so the back-office never locks out.
+    let { data: allowed, error: roleError } = await supabase.rpc('is_admin_account');
+    if (roleError) ({ data: allowed, error: roleError } = await supabase.rpc('is_admin'));
     if (roleError || !allowed) return loginRedirect();
+
+    const { data: levels, error: levelError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (levelError) return loginRedirect();
+    const gate = adminMfaGate(levels);
+    if (gate !== 'ok' && !pathname.startsWith(ADMIN_MFA_PATH)) return mfaRedirect();
 
     return response;
   } catch (error) {

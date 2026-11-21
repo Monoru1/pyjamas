@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { ADMIN_MFA_PATH, adminMfaGate } from '@/lib/security/admin-mfa';
 
 export function LoginForm() {
   const router = useRouter();
@@ -32,13 +33,16 @@ export function LoginForm() {
 
       // Fail clearly if an authenticated account has no active admin profile.
       // The server-side proxy still enforces the admin role on every request.
-      const { data: isAdmin, error: adminError } = await supabase.rpc('is_admin');
+      let { data: isAdmin, error: adminError } = await supabase.rpc('is_admin_account');
+      if (adminError) ({ data: isAdmin, error: adminError } = await supabase.rpc('is_admin'));
       if (adminError || !isAdmin) {
         await supabase.auth.signOut();
         setError('Ce compte ne dispose pas d’un accès administrateur actif.');
         return;
       }
-      router.replace('/admin');
+      // Terrain 16: a verified second factor (or the MFA obligation) is required before the back-office.
+      const { data: levels } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      router.replace(adminMfaGate(levels) === 'ok' ? '/admin' : ADMIN_MFA_PATH);
       router.refresh();
     } catch {
       setError('Connexion indisponible. Réessaie dans quelques instants.');
