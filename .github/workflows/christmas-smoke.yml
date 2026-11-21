@@ -5,6 +5,9 @@ on:
     branches: [feat/christmas-storefront-admin-v2]
     paths: [.github/workflows/christmas-smoke.yml]
 
+# SEC-004: this smoke test only reads public preview pages; the token needs no permission.
+permissions: {}
+
 jobs:
   storefront-http:
     runs-on: ubuntu-latest
