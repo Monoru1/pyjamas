@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { commerceDatabase, sqlClient } from './test-support/commerce-db';
 vi.mock('server-only', () => ({}));
 const fixture = vi.hoisted(() => ({ client: {} as ReturnType<typeof sqlClient> }));
@@ -113,4 +113,13 @@ it('SEC-001: the checkout budget is callable by the server only, never by browse
     })).rejects.toThrow('permission denied');
   }
   await expect(db.query('select consume_checkout_budget($1,$2,1,20)', ['not-a-fingerprint', 'b'.repeat(64)])).rejects.toThrow('Invalid checkout budget request');
+});
+
+it('SEC-008: connection fingerprints use the dedicated key once CHECKOUT_FINGERPRINT_SECRET is set', async () => {
+  const dedicated = 'f'.repeat(40);
+  vi.stubEnv('CHECKOUT_FINGERPRINT_SECRET', dedicated);
+  expect((await order(1, '198.51.100.77')).status).toBe(200);
+  const { client_fingerprint } = (await db.query<{ client_fingerprint: string }>('select client_fingerprint from payment_attempts')).rows[0];
+  expect(client_fingerprint).toBe(createHmac('sha256', dedicated).update('checkout-client:198.51.100.77').digest('hex'));
+  expect(client_fingerprint).not.toBe(createHmac('sha256', 'wh_fixture').update('checkout-client:198.51.100.77').digest('hex'));
 });

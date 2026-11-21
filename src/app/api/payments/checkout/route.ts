@@ -14,6 +14,9 @@ function maxOpenUnitsPerClient(value = process.env.PAYMENT_MAX_OPEN_UNITS_PER_CL
   const parsed = Number(value);
   return value && Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 200 ? parsed : 20;
 }
+function checkoutFingerprintKey(value = process.env.CHECKOUT_FINGERPRINT_SECRET) {
+  return value && value.length >= 32 ? value : undefined;
+}
 /** Netlify overwrites x-nf-client-connection-ip at its edge. Without it, a shared restrictive bucket. */
 function checkoutClientFingerprint(request: Request, key: string) {
   const address = (request.headers.get('x-nf-client-connection-ip') ?? '').trim().slice(0, 64) || 'unknown';
@@ -45,9 +48,11 @@ export async function POST(request: Request) {
     // Server-side key: all attempts of one authorization share one payment row.
     if (config.adminTest) input.idempotencyKey = config.adminTestKey!;
     const db = paymentDatabase();
-    const subject = createHmac('sha256', config.webhookSecret).update(input.customer.phone).digest('hex');
+    // SEC-008: dedicated fingerprint key; falls back to the webhook secret until it is set.
+    const fingerprintKey = checkoutFingerprintKey() ?? config.webhookSecret;
+    const subject = createHmac('sha256', fingerprintKey).update(input.customer.phone).digest('hex');
     // SEC-001: keyed fingerprint of the connection (Netlify sets this header); never stored raw.
-    const client = checkoutClientFingerprint(request, config.webhookSecret);
+    const client = checkoutClientFingerprint(request, fingerprintKey);
     input.lines.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = createHash('sha256').update(JSON.stringify({ customer: input.customer, lines: input.lines })).digest('hex');
     const {data:existing,error:lookupError}=await db.from('payment_attempts').select('id,request_hash,environment,merchant_account_id,amount_xof,items,provider_id,status,public_token').eq('idempotency_key',input.idempotencyKey).maybeSingle();
