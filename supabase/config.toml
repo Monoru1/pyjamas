@@ -13,5 +13,3 @@ public = true
 [storage.buckets.site-assets]
 public = true
 
-[functions.create-order-request]
-verify_jwt = false

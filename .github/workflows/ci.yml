@@ -12,8 +12,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Bootstrap status
@@ -45,11 +45,6 @@ jobs:
       - name: Typecheck
         if: ${{ hashFiles('package-lock.json') != '' }}
         run: npm run typecheck
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.5.6
-      - name: Typecheck deployed Edge Function
-        run: deno check --config supabase/functions/deno.json supabase/functions/create-order-request/index.ts
       - name: Test
         if: ${{ hashFiles('package-lock.json') != '' }}
         run: npm test -- --run
@@ -96,8 +91,8 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql://postgres:fixture-only-password@localhost:5432/mdp_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -109,8 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Disposable PostgreSQL 17
