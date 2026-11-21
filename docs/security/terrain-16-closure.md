@@ -47,7 +47,7 @@ Sans ces variables, le code reprend les secrets actuels : aucune rotation n'est 
 ## MFA — actions humaines
 
 1. Après déploiement, chaque titulaire se connecte et ouvre `/admin/mfa` → « Configurer l'application », scanne le QR code, valide le code à 6 chiffres.
-2. Dès qu'un facteur est vérifié, ce compte doit saisir un code à chaque connexion.
+2. Dès qu'un facteur est vérifié, ce compte doit atteindre AAL2 pour accéder au back-office ou à ses données, même avant l'activation globale.
 3. Chacun ajoute un **appareil de secours** depuis `/admin/mfa` (récupération : Supabase TOTP ne fournit pas de codes de secours).
 4. Quand les deux comptes ont au moins 1 facteur vérifié (préflight, colonne `verified_factors`) : `ADMIN_MFA_REQUIRED=true` sur Netlify + redéploiement, puis en SQL :
    `update private.security_flags set enabled = true where key = 'admin_mfa_required';`

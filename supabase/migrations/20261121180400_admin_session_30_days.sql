@@ -4,7 +4,7 @@
 --      for every RLS-protected read or write, without waiting for the access token to expire);
 --   2. a primary authentication (password, e-mail OTP, recovery) at most 30 days old, read from
 --      the JWT `amr` claim: token refreshes and TOTP re-entries never extend it;
---   3. AAL2 once private.security_flags.admin_mfa_required is on (unchanged).
+--   3. AAL2 for an enrolled account, or for all administrators once the global flag is on.
 create or replace function private.admin_assurance_ok() returns boolean
 language sql stable security definer set search_path = '' as $$
   with claims as (select coalesce((select auth.jwt()), '{}'::jsonb) as j),
@@ -23,7 +23,11 @@ language sql stable security definer set search_path = '' as $$
         and (s.not_after is null or s.not_after > now())
     )
     and coalesce((select at <= extract(epoch from now()) + 300 and extract(epoch from now()) - at < 30 * 24 * 3600 from first_factor), false)
-    and (not coalesce((select f.enabled from private.security_flags f where f.key = 'admin_mfa_required'), false)
-         or coalesce((select claims.j ->> 'aal' from claims), '') = 'aal2');
+    and (coalesce((select claims.j ->> 'aal' from claims), '') = 'aal2'
+         or (
+           not coalesce((select f.enabled from private.security_flags f where f.key = 'admin_mfa_required'), false)
+           and not exists (select 1 from auth.mfa_factors f
+                           where f.user_id = (select auth.uid()) and f.status = 'verified')
+         ));
 $$;
 revoke all on function private.admin_assurance_ok() from public, anon, authenticated;

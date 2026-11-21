@@ -79,6 +79,15 @@ describe('database enforcement', () => {
       expect((await check(forged)).allowed).toBe(false);
   });
 
+  it('requires AAL2 for an enrolled account before MFA becomes mandatory globally', async () => {
+    await db.query("insert into auth.mfa_factors(user_id,status) values ($1,'verified'),($2,'unverified')", [ADMIN_OWNER_ID, ADMIN_MANAGER_ID]);
+    try {
+      expect(await check(await sessionClaims(db, ADMIN_OWNER_ID))).toEqual({ allowed: false, customers: 0 });
+      expect(await check(await sessionClaims(db, ADMIN_OWNER_ID, { aal: 'aal2' }))).toEqual({ allowed: true, customers: 1 });
+      expect(await check(await sessionClaims(db, ADMIN_MANAGER_ID))).toEqual({ allowed: true, customers: 1 });
+    } finally { await db.exec('delete from auth.mfa_factors'); }
+  });
+
   it('requires AAL2 on a valid persistent session once MFA is mandatory, for both administrators', async () => {
     await db.query("update private.security_flags set enabled=true where key='admin_mfa_required'");
     try {
